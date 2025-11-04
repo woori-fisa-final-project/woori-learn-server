@@ -3,7 +3,9 @@
 &nbsp;
 
 **반드시 develop 브랜치에서 push/pull하기**
+&nbsp;
 !main 브랜치는 전부 검증이 끝나면 따로 PR을 통해 merge할 예정입니다!
+&nbsp;
 
 ## 🚀 워크플로우
 1. **이슈 생성** 및 **담당자(Assignee) 지정**
