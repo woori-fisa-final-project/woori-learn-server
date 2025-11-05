@@ -1,6 +1,7 @@
 package dev.woori.wooriLearn.domain.autopayment.service;
 
-
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.autopayment.dto.AutoPaymentResponse;
 import dev.woori.wooriLearn.domain.autopayment.repository.AutoPaymentRepository;
 import dev.woori.wooriLearn.domain.edubankapi.entity.AutoPayment;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,14 +27,22 @@ public class AutoPaymentService {
     public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status) {
         List<AutoPayment> autoPayments;
 
-        if (status != null && !status.isEmpty()) {
-            // 상태 필터링
-            AutoPaymentStatus paymentStatus = AutoPaymentStatus.valueOf(status.toUpperCase());
-            autoPayments = autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
-                    educationalAccountId, paymentStatus);
+        if (StringUtils.hasText(status)) {
+            if ("ALL".equalsIgnoreCase(status)) {
+                autoPayments = autoPaymentRepository.findByEducationalAccountId(educationalAccountId);
+            } else {
+                try {
+                    AutoPaymentStatus paymentStatus = AutoPaymentStatus.valueOf(status.toUpperCase());
+                    autoPayments = autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
+                            educationalAccountId, paymentStatus);
+                } catch (IllegalArgumentException e) {
+                    throw new CommonException(ErrorCode.INVALID_REQUEST,
+                            "유효하지 않은 상태 값입니다. (사용 가능: ACTIVE, CANCELLED, ALL)");
+                }
+            }
         } else {
-            // 전체 조회
-            autoPayments = autoPaymentRepository.findByEducationalAccountId(educationalAccountId);
+            autoPayments = autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
+                    educationalAccountId, AutoPaymentStatus.ACTIVE);
         }
 
         return autoPayments.stream()
