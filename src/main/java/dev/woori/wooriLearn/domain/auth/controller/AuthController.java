@@ -4,6 +4,8 @@ package dev.woori.wooriLearn.domain.auth.controller;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
+import dev.woori.wooriLearn.domain.auth.dto.LogoutReqDto;
+import dev.woori.wooriLearn.domain.auth.dto.RefreshReqDto;
 import dev.woori.wooriLearn.domain.auth.dto.SignupReqDto;
 import dev.woori.wooriLearn.domain.auth.service.AuthService;
 import dev.woori.wooriLearn.domain.auth.dto.LoginReqDto;
@@ -31,5 +33,15 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<BaseResponse<?>> login(@RequestBody LoginReqDto loginReqDto) {
         return ApiResponse.success(SuccessCode.OK, authService.login(loginReqDto));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<BaseResponse<?>> refresh(@RequestBody RefreshReqDto refreshToken) {
+        return ApiResponse.success(SuccessCode.OK, authService.refresh(refreshToken));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<BaseResponse<?>> logout(@RequestBody LogoutReqDto logoutReqDto) {
+        return ApiResponse.success(SuccessCode.OK, authService.logout(logoutReqDto));
     }
 }
