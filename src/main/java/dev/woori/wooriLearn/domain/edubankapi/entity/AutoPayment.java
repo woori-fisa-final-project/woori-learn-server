@@ -45,7 +45,7 @@ public class AutoPayment {
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(name = "expiration_date")
+    @Column(name = "expiration_date", nullable = false)
     private LocalDate expirationDate;
 
     @Enumerated(EnumType.STRING)
