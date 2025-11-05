@@ -8,6 +8,8 @@ import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
 import dev.woori.wooriLearn.domain.auth.repository.RefreshTokenRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -87,16 +89,23 @@ public class AuthService {
      */
     @Transactional(readOnly = true)
     public String refresh(RefreshReqDto refreshReqDto) {
-        // 토큰 만료 검증
-        if(!jwtUtil.validateToken(refreshReqDto.refreshToken())){
-            throw new CommonException(ErrorCode.TOKEN_EXPIRED);
+        String refreshToken = refreshReqDto.refreshToken();
+        String userName;
+
+        // 토큰 만료 및 유효성 검증
+        try {
+            userName = jwtUtil.getUsername(refreshToken);
+        } catch (ExpiredJwtException e) {
+            throw new CommonException(ErrorCode.TOKEN_EXPIRED, "토큰이 만료되었습니다.");
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new CommonException(ErrorCode.UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다.");
         }
 
-        // 토큰 일치 여부 검증
-        String userName = jwtUtil.getUsername(refreshReqDto.refreshToken());
+        // 토큰 존재 여부 검증
         RefreshToken token = refreshTokenRepository.findByUsername(userName)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "토큰이 존재하지 않습니다."));
 
+        // 토큰 일치 여부 검증
         if(!token.getToken().equals(refreshReqDto.refreshToken())){
             throw new CommonException(ErrorCode.CONFLICT, "토큰이 일치하지 않습니다.");
         }
