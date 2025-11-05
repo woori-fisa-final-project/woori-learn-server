@@ -13,10 +13,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Slf4j
-@RestController
-@RequestMapping("/test")
-@RequiredArgsConstructor
+@Slf4j  // 로깅
+@RestController // restful api를 처리하는 컨트롤러임을 명시 json으로 반환해야함
+@RequestMapping("/test")    // url 매핑
+@RequiredArgsConstructor    // 클래스 내의 final, nonNull이 붙은 필드만 인자로 받는 생성자 자동 생성
 public class TestController {
 
     private final TestService testService;
