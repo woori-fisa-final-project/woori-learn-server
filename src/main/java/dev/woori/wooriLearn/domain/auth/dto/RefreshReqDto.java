@@ -1,7 +1,9 @@
 package dev.woori.wooriLearn.domain.auth.dto;
 
-public record LoginResDto(
-        String accessToken,
+import lombok.Builder;
+
+@Builder
+public record RefreshReqDto(
         String refreshToken
 ) {
 }

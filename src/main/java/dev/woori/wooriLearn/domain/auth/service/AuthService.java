@@ -3,9 +3,9 @@ package dev.woori.wooriLearn.domain.auth.service;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.config.jwt.JwtUtil;
-import dev.woori.wooriLearn.domain.auth.dto.LoginReqDto;
-import dev.woori.wooriLearn.domain.auth.dto.LoginResDto;
-import dev.woori.wooriLearn.domain.auth.dto.SignupReqDto;
+import dev.woori.wooriLearn.domain.auth.dto.*;
+import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
+import dev.woori.wooriLearn.domain.auth.repository.RefreshTokenRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,12 +23,14 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     /**
      * id와 비밀번호, 사용자 이름을 입력받아 회원가입을 진행합니다.
      * @param signupReqDto id / pw / 이름
      * @return 회원가입 완료 안내문구
      */
+    @Transactional
     public String signup(SignupReqDto signupReqDto) {
         if(userRepository.existsByUserId(signupReqDto.userId())){
             throw new CommonException(ErrorCode.CONFLICT);
@@ -52,6 +54,7 @@ public class AuthService {
      * @param loginReqDto 로그인 입력값 - id / pw
      * @return loginResDto - access token / refresh token
      */
+    @Transactional
     public LoginResDto login(LoginReqDto loginReqDto) {
         Users user = userRepository.findByUserId(loginReqDto.userId())
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "존재하지 않는 회원입니다."));
@@ -60,9 +63,55 @@ public class AuthService {
             throw new CommonException(ErrorCode.UNAUTHORIZED, "비밀번호가 일치하지 않습니다.");
         }
 
-        String accessToken = jwtUtil.generateToken(loginReqDto.userId());
-        // TODO: refresh token 발급 로직 추가
+        // jwt 토큰 저장 로직
+        String accessToken = jwtUtil.generateAccessToken(loginReqDto.userId());
+        String refreshToken = jwtUtil.generateRefreshToken(loginReqDto.userId());
 
-        return new LoginResDto(accessToken);
+        RefreshToken refreshTokenEntity = RefreshToken.builder()
+                .username(loginReqDto.userId())
+                .token(refreshToken)
+                .expiration(jwtUtil.getRefreshTokenExpiration())
+                .build();
+
+        // 이전 토큰은 삭제하고 새로 만든 토큰만 저장하도록
+        refreshTokenRepository.deleteByUsername(loginReqDto.userId());
+        refreshTokenRepository.save(refreshTokenEntity);
+
+        return new LoginResDto(accessToken, refreshToken);
+    }
+
+    /**
+     * 입력된 refresh token을 이용해 새 access token을 발급합니다.
+     * @param refreshReqDto 사용자의 refresh token
+     * @return access token
+     */
+    @Transactional(readOnly = true)
+    public String refresh(RefreshReqDto refreshReqDto) {
+        // 토큰 만료 검증
+        if(!jwtUtil.validateToken(refreshReqDto.refreshToken())){
+            throw new CommonException(ErrorCode.TOKEN_EXPIRED);
+        }
+
+        // 토큰 일치 여부 검증
+        String userName = jwtUtil.getUsername(refreshReqDto.refreshToken());
+        RefreshToken token = refreshTokenRepository.findByUsername(userName)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "토큰이 존재하지 않습니다."));
+
+        if(!token.getToken().equals(refreshReqDto.refreshToken())){
+            throw new CommonException(ErrorCode.CONFLICT, "토큰이 일치하지 않습니다.");
+        }
+
+        // 검증 끝나면 access token 생성해서 return
+        return jwtUtil.generateAccessToken(userName);
+    }
+
+    /**
+     * 사용자의 요청을 받아서 로그아웃 처리 - db에서 refresh token 삭제
+     * @param logoutReqDto 사용자 id
+     * @return 결과 메시지
+     */
+    public String logout(LogoutReqDto logoutReqDto) {
+        refreshTokenRepository.deleteByUsername(logoutReqDto.userId());
+        return "로그아웃되었습니다.";
     }
 }
