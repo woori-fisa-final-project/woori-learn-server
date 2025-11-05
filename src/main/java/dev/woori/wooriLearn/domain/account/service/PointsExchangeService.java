@@ -3,56 +3,91 @@ package dev.woori.wooriLearn.domain.account.service;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.entity.Account;
-
-import dev.woori.wooriLearn.domain.account.entity.PointsExchangeRequest;
 import dev.woori.wooriLearn.domain.account.entity.PointsExchangeStatus;
+import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
-import dev.woori.wooriLearn.domain.account.repository.PointsExchangeRequestRepository;
+import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UsersRepository;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class PointsExchangeService {
 
-    private final PointsExchangeRequestRepository pointsExchangeRequestRepository;
+    private final PointsHistoryRepository pointsHistoryRepository;
     private final UsersRepository usersRepository;
     private final AccountRepository accountRepository;
 
     public PointsExchangeResponseDto requestExchange(PointsExchangeRequestDto dto) {
 
-        // ✅ 1. 유저 검증
-        Users user = usersRepository.findById(dto.getDb_id())
-                .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
+        Users user = usersRepository.findById(dto.getDb_id()).orElse(null);
+        Account account = accountRepository.findByAccountNumber(dto.getAccountNum()).orElse(null);
 
-        // ✅ 2. 계좌 검증 (계좌 없음 → 환전 신청 불가)
-        Account account = accountRepository.findByAccountNumber(dto.getAccountNum())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 계좌입니다."));
+        PointsExchangeStatus status;
+        String message;
 
-        // ✅ 3. 출금 신청 저장
-        PointsExchangeRequest req = pointsExchangeRequestRepository.save(
-                PointsExchangeRequest.builder()
+        if (user == null) {
+            status = PointsExchangeStatus.FAILED;
+            message = "유저가 존재하지 않아 환전 신청이 실패했습니다.";
+        } else if (account == null) {
+            status = PointsExchangeStatus.FAILED;
+            message = "계좌가 존재하지 않아 환전 신청이 실패했습니다.";
+        } else {
+            status = PointsExchangeStatus.APPLY;
+            message = "현금화 요청이 정상적으로 접수되었습니다.";
+        }
+
+        // ✅ points_history에 저장
+        PointsHistory history = pointsHistoryRepository.save(
+                PointsHistory.builder()
                         .user(user)
-                        .exchangeAmount(dto.getExchangeAmount())
-                        .bankCode(account.getBankCode())      // ✅ DB값 사용
-                        .accountNumber(account.getAccountNumber()) // ✅ DB값 사용
-                        .status(PointsExchangeStatus.APPLY)
+                        .paymentAmount(dto.getExchangeAmount())
+                        .status(status)
                         .build()
         );
 
-        // ✅ 4. 응답 반환
         return PointsExchangeResponseDto.builder()
-                .requestId(req.getId())
-                .user_id(user.getId())
-                .exchangeAmount(req.getExchangeAmount())
-                .status(req.getStatus())
-                .requestDate(req.getRequestDate().format(DateTimeFormatter.ISO_DATE_TIME))
-                .message("현금화 요청이 정상적으로 접수되었습니다.")
+                .requestId(history.getId())
+                .user_id(user != null ? user.getId() : null)
+                .exchangeAmount(history.getPaymentAmount())
+                .status(history.getStatus())
+                .requestDate(history.getPaymentDate().toString())
+                .message(message)
                 .build();
     }
+    public List<PointsExchangeResponseDto> getHistory(Long userId) {
+
+        List<PointsHistory> list = pointsHistoryRepository.findAllByUserId(userId);
+
+        // ✅ 내역 없을 때 안내 메시지 1건 리턴
+        if (list.isEmpty()) {
+            return List.of(
+                    PointsExchangeResponseDto.builder()
+                            .requestId(null)
+                            .user_id(userId)
+                            .exchangeAmount(0)
+                            .status(PointsExchangeStatus.FAILED)
+                            .requestDate(null)
+                            .message("해당 사용자의 환전 내역이 존재하지 않습니다.")
+                            .build()
+            );
+        }
+
+        return list.stream()
+                .map(h -> PointsExchangeResponseDto.builder()
+                        .requestId(h.getId())
+                        .user_id(h.getUser().getId())
+                        .exchangeAmount(h.getPaymentAmount())
+                        .status(h.getStatus())
+                        .requestDate(h.getPaymentDate().toString())
+                        .message(h.getStatus().toString())
+                        .build()
+                ).toList();
+    }
+
+
 }
