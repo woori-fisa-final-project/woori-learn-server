@@ -1,27 +1,25 @@
 package dev.woori.wooriLearn.domain.edubankapi.entity;
 
-import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "auto_payment")
+@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
 public class AutoPayment {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "withdrawal_account_id", nullable = false)
-    private EducationalAccount withdrawalAccount;
+    @JoinColumn(name = "educational_account_id", nullable = false)
+    private EducationalAccount educationalAccount;
 
     @Column(name = "deposit_number", nullable = false, length = 20)
     private String depositNumber;
@@ -47,14 +45,15 @@ public class AutoPayment {
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(name = "expiration_date", nullable = false)
+    @Column(name = "expiration_date")
     private LocalDate expirationDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "processing_status", nullable = false)
+    @Column(name = "processing_status", nullable = false, length = 20)
     private AutoPaymentStatus processingStatus;
 
     public enum AutoPaymentStatus {
-        ACTIVE, CANCELLED
+        ACTIVE,      // 활성
+        CANCELLED    // 해지됨
     }
 }
