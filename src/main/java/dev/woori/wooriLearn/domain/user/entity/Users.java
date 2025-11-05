@@ -10,6 +10,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class Users extends BaseEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -25,4 +26,9 @@ public class Users extends BaseEntity {
 
     @Column(nullable = false)
     private Integer points;
+
+    // ✅ 포인트 수정용 Setter
+    public void setPoints(Integer points) {
+        this.points = points;
+    }
 }

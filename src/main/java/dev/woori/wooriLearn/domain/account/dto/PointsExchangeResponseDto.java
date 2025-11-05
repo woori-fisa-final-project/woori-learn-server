@@ -4,6 +4,8 @@ import dev.woori.wooriLearn.domain.account.entity.PointsExchangeStatus;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Builder
 public class PointsExchangeResponseDto {
@@ -13,4 +15,6 @@ public class PointsExchangeResponseDto {
     private PointsExchangeStatus status;
     private String requestDate;
     private String message;
+    private LocalDateTime processedDate;
+
 }
