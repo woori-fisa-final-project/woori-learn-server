@@ -1,6 +1,7 @@
 package dev.woori.wooriLearn.config.jwt;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Header;
+import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -37,19 +38,12 @@ public class JwtUtil {
 
     public boolean validateToken(String token) {
         try {
-            Claims claims = Jwts.parserBuilder()
+            Jwts.parserBuilder()
                     .setSigningKey(secretKey)
                     .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-            System.out.println("토큰 만료 시각: " + claims.getExpiration());
-            System.out.println("현재 시각: " + new Date());
+                    .parseClaimsJws(token);
             return true;
-        } catch (ExpiredJwtException e) {
-            System.out.println("만료된 토큰입니다: " + e.getClaims().getExpiration());
-            return false;
-        } catch (JwtException | IllegalArgumentException e) {
-            System.out.println("JWT 예외: " + e.getMessage());
+        } catch (Exception e) {
             return false;
         }
     }
