@@ -1,16 +1,16 @@
 package dev.woori.wooriLearn.domain.account.dto;
 
-import dev.woori.wooriLearn.domain.account.entity.WithdrawStatus;
+import dev.woori.wooriLearn.domain.account.entity.PointsExchangeStatus;
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
-public class WithdrawResponseDto {
+public class PointsExchangeResponseDto {
     private Long requestId;
     private Long user_id;
-    private Integer withdrawAmount;
-    private WithdrawStatus status;
+    private Integer exchangeAmount;
+    private PointsExchangeStatus status;
     private String requestDate;
     private String message;
 }

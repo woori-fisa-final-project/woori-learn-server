@@ -20,8 +20,8 @@ public class AutoPayment {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "withdrawal_account_id", nullable = false)
-    private EducationalAccount withdrawalAccount;
+    @JoinColumn(name = "exchangeal_account_id", nullable = false)
+    private EducationalAccount exchangealAccount;
 
     @Column(name = "deposit_number", nullable = false, length = 20)
     private String depositNumber;
