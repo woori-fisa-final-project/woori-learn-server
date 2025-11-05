@@ -1,22 +1,22 @@
 package dev.woori.wooriLearn.domain.account.controller;
 
-import dev.woori.wooriLearn.domain.account.dto.WithdrawRequestDto;
-import dev.woori.wooriLearn.domain.account.dto.WithdrawResponseDto;
-import dev.woori.wooriLearn.domain.account.service.WithdrawService;
+import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
+import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
+import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/points/withdraw")
+@RequestMapping("/points/exchange")
 @RequiredArgsConstructor
-public class WithdrawController {
+public class PointsExchangeController {
 
-    private final WithdrawService withdrawService;
+    private final PointsExchangeService pointsExchangeService;
 
     @PostMapping("")
-    public ResponseEntity<WithdrawResponseDto> requestWithdraw(@RequestBody WithdrawRequestDto dto) {
-        WithdrawResponseDto response = withdrawService.requestWithdraw(dto);
+    public ResponseEntity<PointsExchangeResponseDto> requestExchange(@RequestBody PointsExchangeRequestDto dto) {
+        PointsExchangeResponseDto response = pointsExchangeService.requestExchange(dto);
         return ResponseEntity.ok(response);
     }
 }

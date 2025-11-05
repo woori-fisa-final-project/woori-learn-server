@@ -8,23 +8,23 @@ import org.springframework.data.annotation.CreatedDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "withdraw_request")
+@Table(name = "exchange_request")
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class WithdrawRequest {
+public class PointsExchangeRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;  // requestId
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private Users user;
 
-    @Column(name = "withdraw_amount", nullable = false)
-    private Integer withdrawAmount;
+    @Column(name = "exchange_amount", nullable = false)
+    private Integer exchangeAmount;
 
     @Column(name = "bank_code", nullable = false, length = 10)
     private String bankCode;
@@ -34,9 +34,13 @@ public class WithdrawRequest {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private WithdrawStatus status; // APPLY, SUCCESS, FAILED
+    private PointsExchangeStatus status;
 
-    @CreatedDate
-    @Column(name = "request_date", updatable = false, nullable = false)
+    @Column(name = "request_date", nullable = false)
     private LocalDateTime requestDate;
+
+    @PrePersist
+    protected void onCreate() {
+        this.requestDate = LocalDateTime.now();
+    }
 }

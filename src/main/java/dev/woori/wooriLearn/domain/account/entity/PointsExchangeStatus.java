@@ -1,5 +1,5 @@
 package dev.woori.wooriLearn.domain.account.entity;
 
-public enum WithdrawStatus {
+public enum PointsExchangeStatus {
     APPLY, SUCCESS, FAILED
 }
