@@ -17,7 +17,7 @@ public class RefreshToken {
 
     private String username;
 
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT")
     private String token;
 
     private LocalDateTime expiration;

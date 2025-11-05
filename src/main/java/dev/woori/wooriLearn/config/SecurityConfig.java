@@ -15,6 +15,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.util.List;
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -24,6 +26,12 @@ public class SecurityConfig {
 
     @Value("${spring.profiles.active:prod}") // 기본값 prod
     private String activeProfile;
+
+    // 인증 없이도 접근 가능한 엔드포인트 목록
+    private static final List<String> whiteList = List.of(
+            "/auth/login", // 로그인
+            "/auth/signup" // 회원가입
+    );
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
@@ -43,9 +51,7 @@ public class SecurityConfig {
                         sessionManagementConfigurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 사용 안함
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // 로그인 / 회원가입은 인증 없이도 접근 가능
-                        .requestMatchers("/auth/login").permitAll()
-                        .requestMatchers("/auth/signup").permitAll()
+                        .requestMatchers(whiteList.toArray(new String[0])).permitAll()
                         .anyRequest().authenticated()) // 나머지는 JWT 필요
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
