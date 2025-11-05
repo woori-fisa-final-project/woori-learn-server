@@ -1,21 +1,20 @@
 package dev.woori.wooriLearn.domain.account.entity;
 
+import dev.woori.wooriLearn.domain.account.entity.PointsExchangeStatus;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
-
+@Getter
 @Entity
 @Table(name = "points_history")
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class PointsHistory {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,4 +29,12 @@ public class PointsHistory {
 
     @Column(name = "payment_amount", nullable = false)
     private Integer paymentAmount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private PointsExchangeStatus status;
+    @PrePersist
+    protected void onCreate() {
+        this.paymentDate = LocalDateTime.now();
+    }
 }
