@@ -2,14 +2,12 @@ package dev.woori.wooriLearn.domain.edubankapi.entity;
 
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
 @Entity
+@Getter
 @Table(name = "educational_account")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
