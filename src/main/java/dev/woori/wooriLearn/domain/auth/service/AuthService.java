@@ -69,15 +69,19 @@ public class AuthService {
         String accessToken = jwtUtil.generateAccessToken(loginReqDto.userId());
         String refreshToken = jwtUtil.generateRefreshToken(loginReqDto.userId());
 
-        RefreshToken refreshTokenEntity = RefreshToken.builder()
-                .username(loginReqDto.userId())
-                .token(refreshToken)
-                .expiration(jwtUtil.getRefreshTokenExpiration())
-                .build();
-
-        // 이전 토큰은 삭제하고 새로 만든 토큰만 저장하도록
-        refreshTokenRepository.deleteByUsername(loginReqDto.userId());
-        refreshTokenRepository.save(refreshTokenEntity);
+        // 이전 토큰이 있다면 유효기간 갱신
+        // 없다면 만들어서 저장
+        RefreshToken token = refreshTokenRepository.findByUsername(loginReqDto.userId())
+                .map(entity -> {
+                    entity.updateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
+                    return entity;
+                })
+                .orElseGet(() -> RefreshToken.builder()
+                        .username(loginReqDto.userId())
+                        .token(refreshToken)
+                        .expiration(jwtUtil.getRefreshTokenExpiration())
+                        .build());
+        refreshTokenRepository.save(token);
 
         return new LoginResDto(accessToken, refreshToken);
     }
