@@ -22,23 +22,16 @@ public class PointsExchangeService {
     private final UsersRepository usersRepository;
     private final AccountRepository accountRepository;
 
-    public PointsExchangeResponseDto requestExchange(PointsExchangeRequestDto dto) {
+    public PointsExchangeResponseDto requestExchange(Long userId,PointsExchangeRequestDto dto) {
 
-        Users user = usersRepository.findById(dto.getDb_id()).orElse(null);
-        Account account = accountRepository.findByAccountNumber(dto.getAccountNum()).orElse(null);
+        Users user = usersRepository.findById(dto.getDbId())
+                .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
+        Account account = accountRepository.findByAccountNumber(dto.getAccountNum())
+                .orElseThrow(() -> new IllegalArgumentException("계좌가 존재하지 않습니다."));
 
-        PointsExchangeStatus status;
-        String message;
-
-        if (user == null) {
-            status = PointsExchangeStatus.FAILED;
-            message = "유저가 존재하지 않아 환전 신청이 실패했습니다.";
-        } else if (account == null) {
-            status = PointsExchangeStatus.FAILED;
-            message = "계좌가 존재하지 않아 환전 신청이 실패했습니다.";
-        } else {
-            status = PointsExchangeStatus.APPLY;
-            message = "현금화 요청이 정상적으로 접수되었습니다.";
+        // 사용자의 계좌가 맞는지 확인
+        if (!account.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("사용자 소유의 계좌가 아닙니다.");
         }
 
         // ✅ points_history에 저장
@@ -46,29 +39,29 @@ public class PointsExchangeService {
                 PointsHistory.builder()
                         .user(user)
                         .paymentAmount(dto.getExchangeAmount())
-                        .status(status)
+                        .status(PointsExchangeStatus.APPLY)
                         .build()
         );
 
         return PointsExchangeResponseDto.builder()
                 .requestId(history.getId())
-                .user_id(user != null ? user.getId() : null)
+                .userId(user.getId())
                 .exchangeAmount(history.getPaymentAmount())
                 .status(history.getStatus())
                 .requestDate(history.getPaymentDate().toString())
-                .message(message)
+                .message("현금화 요청이 정상적으로 접수되었습니다.")
                 .build();
     }
     public List<PointsExchangeResponseDto> getHistory(Long userId) {
 
-        List<PointsHistory> list = pointsHistoryRepository.findAllByUserId(userId);
+        List<PointsHistory> list = pointsHistoryRepository.findAllByUser_Id(userId);
 
         // ✅ 내역 없을 때 안내 메시지 1건 리턴
         if (list.isEmpty()) {
             return List.of(
                     PointsExchangeResponseDto.builder()
                             .requestId(null)
-                            .user_id(userId)
+                            .userId(userId)
                             .exchangeAmount(0)
                             .status(PointsExchangeStatus.FAILED)
                             .requestDate(null)
@@ -80,7 +73,7 @@ public class PointsExchangeService {
         return list.stream()
                 .map(h -> PointsExchangeResponseDto.builder()
                         .requestId(h.getId())
-                        .user_id(h.getUser().getId())
+                        .userId(h.getUser().getId())
                         .exchangeAmount(h.getPaymentAmount())
                         .status(h.getStatus())
                         .requestDate(h.getPaymentDate().toString())
