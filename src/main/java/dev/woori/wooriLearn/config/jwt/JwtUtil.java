@@ -64,21 +64,19 @@ public class JwtUtil {
                 .compact();
     }
 
-    public String generateRefreshToken(String username) {
+    public TokenInfo generateRefreshToken(String username) {
         Instant now = Instant.now();
         Instant expiration = now.plusMillis(refreshTokenExpiration);
 
-        return Jwts.builder()
+        String token = Jwts.builder()
                 .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
                 .claim("username", username)
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(expiration))
                 .signWith(secretKey)
                 .compact();
-    }
 
-    public Instant getRefreshTokenExpiration() {
-        return Instant.now().plus(refreshTokenExpiration, ChronoUnit.MILLIS);
+        return new TokenInfo(token, expiration);
     }
 
 }
