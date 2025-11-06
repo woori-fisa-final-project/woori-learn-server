@@ -13,7 +13,7 @@ public class AutoPaymentSpecification {
         return (root, query, criteriaBuilder) -> {
             // N+1 방지를 위한 fetch join (count 쿼리에서는 제외)
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
-                root.fetch(AutoPayment_.educationalAccount, JoinType.LEFT);
+                root.fetch(AutoPayment_.educationalAccount, JoinType.INNER);
             }
             return criteriaBuilder.equal(
                     root.get(AutoPayment_.educationalAccount).get(EducationalAccount_.id),
