@@ -2,12 +2,8 @@ package dev.woori.wooriLearn.domain.edubankapi.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
@@ -17,7 +13,6 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-@EntityListeners(AuditingEntityListener.class)
 public class AutoPayment {
 
     @Id
@@ -52,7 +47,7 @@ public class AutoPayment {
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(name = "expiration_date", nullable = false)
+    @Column(name = "expiration_date")
     private LocalDate expirationDate;
 
     @Enumerated(EnumType.STRING)
