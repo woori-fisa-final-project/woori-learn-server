@@ -33,11 +33,6 @@ public class AccountService {
         // Repository 호출을 통해 educationl_account 테이블에 user_id가 일치하는 계좌 엔티티 목록 조회
         List<EducationalAccount> accounts = accountRepository.findByUserId(userId);
 
-        // 사용자 ID가 없으면 404 응답 처리
-        if (accounts.isEmpty()) {
-            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "해당 사용자의 계좌를 찾을 수 없습니다.");
-        }
-
         return accounts.stream()
                 .map(AccountDto::from)
                 .collect(Collectors.toList());
