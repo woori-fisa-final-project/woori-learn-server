@@ -1,0 +1,55 @@
+package dev.woori.wooriLearn.domain.autopayment.service;
+
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.autopayment.dto.AutoPaymentResponse;
+import dev.woori.wooriLearn.domain.autopayment.repository.AutoPaymentRepository;
+import dev.woori.wooriLearn.domain.edubankapi.entity.AutoPayment;
+import dev.woori.wooriLearn.domain.edubankapi.entity.AutoPayment.AutoPaymentStatus;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+@Transactional(readOnly = true)
+public class AutoPaymentService {
+
+    private final AutoPaymentRepository autoPaymentRepository;
+    private static final String ALL_STATUS = "ALL";
+
+    public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status) {
+        List<AutoPayment> autoPayments;
+
+        if (ALL_STATUS.equalsIgnoreCase(status)) {
+            autoPayments = autoPaymentRepository.findByEducationalAccountId(educationalAccountId);
+        } else {
+            AutoPaymentStatus paymentStatus = resolveStatus(status);
+            autoPayments = autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
+                    educationalAccountId, paymentStatus);
+        }
+
+        return autoPayments.stream()
+                .map(autoPayment -> AutoPaymentResponse.of(autoPayment, educationalAccountId))
+                .toList();
+    }
+
+    private AutoPaymentStatus resolveStatus(String status) {
+        if (!StringUtils.hasText(status)) {
+            return AutoPaymentStatus.ACTIVE;
+        }
+
+        try {
+            return AutoPaymentStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST,
+                    "유효하지 않은 상태 값입니다. (사용 가능: " + AutoPaymentStatus.getAvailableValues() + ")");
+        }
+    }
+}
