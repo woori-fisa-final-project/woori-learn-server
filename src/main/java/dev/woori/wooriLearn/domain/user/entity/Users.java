@@ -28,7 +28,9 @@ public class Users extends BaseEntity {
     private Integer points;
 
     @Version
-    private Integer version;
+    @Column(nullable = false)
+    private Integer version = 0;
+
 
 
     // ✅ 포인트 수정용 Setter

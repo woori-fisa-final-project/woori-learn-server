@@ -11,6 +11,7 @@ import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UsersRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -90,28 +91,20 @@ public class PointsExchangeService {
         }
 
 
+        Sort sortOption = sort.equalsIgnoreCase("ASC") ?
+                Sort.by("paymentDate").ascending() :
+                Sort.by("paymentDate").descending();
+
         List<PointsHistory> list = pointsHistoryRepository.findByFilters(
-                userId, statusEnum, start, end
+                userId, statusEnum, start, end, sortOption
         );
 
-        if (sort.equalsIgnoreCase("ASC")) {
-            list.sort((a, b) -> a.getPaymentDate().compareTo(b.getPaymentDate()));
-        } else {
-            list.sort((a, b) -> b.getPaymentDate().compareTo(a.getPaymentDate()));
-        }
+
 
         if (list.isEmpty()) {
-            return List.of(
-                    PointsExchangeResponseDto.builder()
-                            .requestId(null)
-                            .userId(userId)
-                            .exchangeAmount(0)
-                            .status(null)
-                            .requestDate(null)
-                            .message("해당 조건에 맞는 환전 내역이 없습니다.")
-                            .build()
-            );
+            return List.of();
         }
+
 
         return list.stream()
                 .map(h -> PointsExchangeResponseDto.builder()
@@ -127,7 +120,6 @@ public class PointsExchangeService {
 
     @Transactional
     public PointsExchangeResponseDto approveExchange(Long requestId) {
-
         PointsHistory history = pointsHistoryRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("해당 요청이 존재하지 않습니다."));
 
@@ -135,17 +127,18 @@ public class PointsExchangeService {
             throw new RuntimeException("이미 처리된 요청입니다.");
         }
 
-        // ✅ User row에 DB 락 걸림 (동시성 차단)
-        Users user = usersRepository.findByIdForUpdate(history.getUser().getId());
+        Users user = usersRepository.findById(history.getUser().getId())
+                .orElseThrow(() -> new RuntimeException("유저가 존재하지 않습니다."));
 
         int amount = history.getPaymentAmount();
 
+        // ✅ 포인트 부족 → 바로 return (DB 저장 먼저)
         if (user.getPoints() < amount) {
             history.setStatus(PointsExchangeStatus.FAILED);
             history.setProcessedDate(LocalDateTime.now());
             history.setFailReason("포인트가 부족하여 실패했습니다.");
-            pointsHistoryRepository.save(history);
 
+            pointsHistoryRepository.save(history);
             return PointsExchangeResponseDto.builder()
                     .requestId(requestId)
                     .userId(user.getId())
@@ -156,12 +149,12 @@ public class PointsExchangeService {
                     .build();
         }
 
-        // ✅ 락이 유지된 상태에서 안전하게 차감
+        // ✅ SUCCESS 처리 (여기서 version update + points update)
         user.setPoints(user.getPoints() - amount);
+        usersRepository.save(user);
+
         history.setStatus(PointsExchangeStatus.SUCCESS);
         history.setProcessedDate(LocalDateTime.now());
-
-        usersRepository.save(user);
         pointsHistoryRepository.save(history);
 
         return PointsExchangeResponseDto.builder()
@@ -173,6 +166,7 @@ public class PointsExchangeService {
                 .processedDate(history.getProcessedDate())
                 .build();
     }
+
 
 
 }
