@@ -29,12 +29,12 @@ public class AutoPaymentService {
     public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status) {
         Specification<AutoPayment> spec = AutoPaymentSpecification.hasEducationalAccountId(educationalAccountId);
 
-        if (StringUtils.hasText(status) && !ALL_STATUS.equalsIgnoreCase(status)) {
-            // status 값이 있고 'ALL'이 아닌 경우, 해당 상태로 필터링합니다.
-            spec = spec.and(AutoPaymentSpecification.hasStatus(resolveStatus(status)));
-        } else if (!StringUtils.hasText(status)) {
+        if (!StringUtils.hasText(status)) {
             // status 값이 없는 경우(null 또는 empty), 기본적으로 'ACTIVE' 상태로 필터링합니다.
             spec = spec.and(AutoPaymentSpecification.hasStatus(AutoPaymentStatus.ACTIVE));
+        } else if (!ALL_STATUS.equalsIgnoreCase(status)) {
+            // status 값이 있고 'ALL'이 아닌 경우, 해당 상태로 필터링합니다.
+            spec = spec.and(AutoPaymentSpecification.hasStatus(resolveStatus(status)));
         }
 
         List<AutoPayment> autoPayments = autoPaymentRepository.findAll(spec);
