@@ -30,9 +30,23 @@ public class AutoPaymentService {
         // 기본 조건: educationalAccountId로 필터링
         Specification<AutoPayment> spec = AutoPaymentSpecification.hasEducationalAccountId(educationalAccountId);
 
-        // status가 "ALL"이 아니면 상태 조건 추가
+        // "ALL"이 아닌 경우 상태 조건 추가
         if (!ALL_STATUS.equalsIgnoreCase(status)) {
-            AutoPaymentStatus paymentStatus = resolveStatus(status);
+            AutoPaymentStatus paymentStatus;
+
+            // status가 없으면 기본값 ACTIVE
+            if (!StringUtils.hasText(status)) {
+                paymentStatus = AutoPaymentStatus.ACTIVE;
+            } else {
+                // 유효한 enum 값으로 변환
+                try {
+                    paymentStatus = AutoPaymentStatus.valueOf(status.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    throw new CommonException(ErrorCode.INVALID_REQUEST,
+                            "유효하지 않은 상태 값입니다. (사용 가능: " + java.util.Arrays.toString(AutoPaymentStatus.values()) + ")");
+                }
+            }
+
             spec = spec.and(AutoPaymentSpecification.hasStatus(paymentStatus));
         }
 
@@ -42,20 +56,5 @@ public class AutoPaymentService {
         return autoPayments.stream()
                 .map(AutoPaymentResponse::of)
                 .toList();
-    }
-
-    private AutoPaymentStatus resolveStatus(String status) {
-        // status가 없으면 기본값 ACTIVE
-        if (!StringUtils.hasText(status)) {
-            return AutoPaymentStatus.ACTIVE;
-        }
-
-        // 유효한 enum 값으로 변환
-        try {
-            return AutoPaymentStatus.valueOf(status.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST,
-                    "유효하지 않은 상태 값입니다. (사용 가능: " + java.util.Arrays.toString(AutoPaymentStatus.values()) + ")");
-        }
     }
 }

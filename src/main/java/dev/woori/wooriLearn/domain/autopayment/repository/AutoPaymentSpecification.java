@@ -30,6 +30,6 @@ public class AutoPaymentSpecification {
 
     public static Specification<AutoPayment> transferDayBetween(Integer startDay, Integer endDay) {
         return (root, query, criteriaBuilder) ->
-                criteriaBuilder.between(root.get("transferDay"), startDay, endDay);
+                criteriaBuilder.between(root.get("designatedDate"), startDay, endDay);
     }
 }
