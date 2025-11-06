@@ -52,21 +52,16 @@ public class JwtUtil {
     }
 
     public String generateAccessToken(String username) {
-        Instant now = Instant.now();
-        Instant expiration = now.plusMillis(accessTokenExpiration);
-
-        return Jwts.builder()
-                .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
-                .claim("username", username)
-                .setIssuedAt(Date.from(now))
-                .setExpiration(Date.from(expiration))
-                .signWith(secretKey)
-                .compact();
+        return generateToken(username, accessTokenExpiration).token();
     }
 
     public TokenInfo generateRefreshToken(String username) {
+        return generateToken(username, refreshTokenExpiration);
+    }
+
+    public TokenInfo generateToken(String username, long expirationMilis){
         Instant now = Instant.now();
-        Instant expiration = now.plusMillis(refreshTokenExpiration);
+        Instant expiration = now.plusMillis(expirationMilis);
 
         String token = Jwts.builder()
                 .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
