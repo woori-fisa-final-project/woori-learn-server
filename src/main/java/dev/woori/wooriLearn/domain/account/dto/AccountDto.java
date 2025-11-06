@@ -1,7 +1,6 @@
 package dev.woori.wooriLearn.domain.account.dto;
 
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
-import jakarta.persistence.Entity;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
