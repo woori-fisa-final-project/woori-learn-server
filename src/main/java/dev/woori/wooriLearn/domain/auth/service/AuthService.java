@@ -13,6 +13,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ import java.time.Instant;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
     private final Encoder encoder;
     private final JwtUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -34,7 +36,6 @@ public class AuthService {
      * @param signupReqDto id / pw / 이름
      * @return 회원가입 완료 안내문구
      */
-    @Transactional
     public String signup(SignupReqDto signupReqDto) {
         if(userRepository.existsByUserId(signupReqDto.userId())){
             throw new CommonException(ErrorCode.CONFLICT);
@@ -42,7 +43,7 @@ public class AuthService {
 
         Users user = Users.builder()
                 .userId(signupReqDto.userId())
-                .password(encoder.encode(signupReqDto.password()))
+                .password(passwordEncoder.encode(signupReqDto.password()))
                 .nickname(signupReqDto.nickname())
                 .points(0) // 초기 설정, 이후 수정 가능
                 .build();
@@ -58,13 +59,12 @@ public class AuthService {
      * @param loginReqDto 로그인 입력값 - id / pw
      * @return loginResDto - access token / refresh token
      */
-    @Transactional
     public LoginResDto login(LoginReqDto loginReqDto) {
         Users user = userRepository.findByUserId(loginReqDto.userId())
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "존재하지 않는 회원입니다."));
+                .orElseThrow(() -> new CommonException(ErrorCode.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다."));
 
-        if(!encoder.matches(loginReqDto.password(), user.getPassword())){
-            throw new CommonException(ErrorCode.UNAUTHORIZED, "비밀번호가 일치하지 않습니다.");
+        if(!passwordEncoder.matches(loginReqDto.password(), user.getPassword())){
+            throw new CommonException(ErrorCode.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다.");
         }
 
         return generateAndSaveToken(loginReqDto.userId());
@@ -75,7 +75,6 @@ public class AuthService {
      * @param refreshReqDto 사용자의 refresh token
      * @return access token
      */
-    @Transactional
     public LoginResDto refresh(RefreshReqDto refreshReqDto) {
         String refreshToken = refreshReqDto.refreshToken();
         String username;
@@ -107,7 +106,6 @@ public class AuthService {
      * @param username 사용자 id
      * @return 결과 메시지
      */
-    @Transactional
     public String logout(String username) {
         refreshTokenRepository.deleteByUsername(username);
         return "로그아웃되었습니다.";

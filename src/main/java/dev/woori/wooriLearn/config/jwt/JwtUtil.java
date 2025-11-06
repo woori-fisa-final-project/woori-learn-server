@@ -3,6 +3,7 @@ package dev.woori.wooriLearn.config.jwt;
 import io.jsonwebtoken.Header;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 
+@Slf4j
 @Component
 public class JwtUtil {
     private final SecretKey secretKey;
@@ -42,8 +44,7 @@ public class JwtUtil {
                     .parseClaimsJws(token);
             return true;
         } catch (Exception e) {
-            System.out.println("[JwtUtil] Token validation failed: " + e.getClass().getSimpleName());
-            System.out.println("[JwtUtil] Message: " + e.getMessage());
+            log.warn("[JwtUtil] Token validation failed: {} - {}", e.getClass().getSimpleName(), e.getMessage());
             return false;
         }
     }
