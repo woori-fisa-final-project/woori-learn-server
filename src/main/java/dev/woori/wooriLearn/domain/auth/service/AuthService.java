@@ -114,7 +114,7 @@ public class AuthService {
         // 토큰 일치 여부 검증
         if(!MessageDigest.isEqual
                 (token.getToken().getBytes(), refreshReqDto.refreshToken().getBytes())){
-            throw new CommonException(ErrorCode.CONFLICT, "토큰이 일치하지 않습니다.");
+            throw new CommonException(ErrorCode.UNAUTHORIZED, "토큰이 일치하지 않습니다.");
         }
 
         // 검증 끝나면 access token 생성해서 return
