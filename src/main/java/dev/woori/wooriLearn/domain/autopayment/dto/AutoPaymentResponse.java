@@ -5,11 +5,9 @@ import dev.woori.wooriLearn.domain.edubankapi.entity.AutoPayment;
 
 import java.time.LocalDate;
 
-/**
- * 자동이체 응답 DTO
- */
 public record AutoPaymentResponse(
         Long id,
+        Long educationalAccountId,
         String depositNumber,
         String depositBankCode,
         Integer amount,
@@ -22,20 +20,21 @@ public record AutoPaymentResponse(
         @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate expirationDate,
         String processingStatus
-){
-    public static AutoPaymentResponse of(AutoPayment a) {
+) {
+    public static AutoPaymentResponse of(AutoPayment autoPayment) {
         return new AutoPaymentResponse(
-                a.getId(),
-                a.getDepositNumber(),
-                a.getDepositBankCode(),
-                a.getAmount(),
-                a.getCounterpartyName(),
-                a.getDisplayName(),
-                a.getTransferCycle(),
-                a.getDesignatedDate(),
-                a.getStartDate(),
-                a.getExpirationDate(),
-                a.getProcessingStatus().name()
+                autoPayment.getId(),
+                autoPayment.getEducationalAccount().getId(),
+                autoPayment.getDepositNumber(),
+                autoPayment.getDepositBankCode(),
+                autoPayment.getAmount(),
+                autoPayment.getCounterpartyName(),
+                autoPayment.getDisplayName(),
+                autoPayment.getTransferCycle(),
+                autoPayment.getDesignatedDate(),
+                autoPayment.getStartDate(),
+                autoPayment.getExpirationDate(),
+                autoPayment.getProcessingStatus().name()
         );
     }
 }
