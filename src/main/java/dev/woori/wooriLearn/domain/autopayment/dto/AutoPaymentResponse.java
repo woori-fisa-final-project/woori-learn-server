@@ -21,17 +21,11 @@ public record AutoPaymentResponse(
         LocalDate expirationDate,
         String processingStatus
 ) {
-    /**
-     * AutoPayment 엔티티로부터 Response DTO 생성
-     *
-     * @param autoPayment 자동이체 엔티티
-     * @param educationalAccountId 교육계좌 ID (명시적 전달로 N+1 문제 방지)
-     * @return AutoPaymentResponse
-     */
-    public static AutoPaymentResponse of(AutoPayment autoPayment, Long educationalAccountId) {
+
+    public static AutoPaymentResponse of(AutoPayment autoPayment) {
         return new AutoPaymentResponse(
                 autoPayment.getId(),
-                educationalAccountId,
+                autoPayment.getEducationalAccount().getId(),
                 autoPayment.getDepositNumber(),
                 autoPayment.getDepositBankCode(),
                 autoPayment.getAmount(),
@@ -41,7 +35,7 @@ public record AutoPaymentResponse(
                 autoPayment.getDesignatedDate(),
                 autoPayment.getStartDate(),
                 autoPayment.getExpirationDate(),
-                autoPayment.getProcessingStatus().name()
+                autoPayment.getProcessingStatus().getDescription()
         );
     }
 }
