@@ -10,9 +10,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Long> {
-    List<PointsHistory> findAllByUserId(Long userId);
+
+    List<PointsHistory> findAllByUser_Id(Long userId);
+
     @Query("SELECT p FROM PointsHistory p WHERE p.user.id = :userId "
-            + "AND (:status = 'ALL' OR p.status = :status) "
+            + "AND (:status IS NULL OR p.status = :status) "
             + "AND (:start IS NULL OR p.paymentDate >= :start) "
             + "AND (:end IS NULL OR p.paymentDate <= :end)")
     List<PointsHistory> findByFilters(
