@@ -1,10 +1,13 @@
 package dev.woori.wooriLearn.domain.account.controller;
 
+import dev.woori.wooriLearn.config.CustomUserDetails;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,28 +19,33 @@ public class PointsExchangeController {
 
     private final PointsExchangeService pointsExchangeService;
 
+    /** 포인트 환전 신청 */
     @PostMapping("")
-    public ResponseEntity<PointsExchangeResponseDto> requestExchange( //환전 요청
+    public ResponseEntity<PointsExchangeResponseDto> requestExchange(
+            @AuthenticationPrincipal CustomUserDetails principal,
             @RequestBody PointsExchangeRequestDto dto) {
 
-        PointsExchangeResponseDto response = pointsExchangeService.requestExchange(dto);
+        Long userId = principal.getId();
+        PointsExchangeResponseDto response = pointsExchangeService.requestExchange(userId, dto);
         return ResponseEntity.ok(response);
     }
 
-    // ✅ 필터 적용된 환전 내역 조회
+    /** 특정 사용자 환전 내역 조회 (로그인 기능 없을 때 테스트용) */
     @GetMapping("/{userId}")
     public ResponseEntity<List<PointsExchangeResponseDto>> getHistory(
             @PathVariable Long userId,
             @RequestParam(required = false) String startDate,     // yyyy-MM-dd
             @RequestParam(required = false) String endDate,       // yyyy-MM-dd
-            @RequestParam(required = false, defaultValue = "ALL") String status, // ALL/REQUESTED/DONE/FAILED
-            @RequestParam(required = false, defaultValue = "DESC") String sort   // DESC=최신순, ASC=과거순
+            @RequestParam(required = false, defaultValue = "ALL") String status,
+            @RequestParam(required = false, defaultValue = "DESC") String sort
     ) {
         List<PointsExchangeResponseDto> history = pointsExchangeService
                 .getHistory(userId, startDate, endDate, status, sort);
 
         return ResponseEntity.ok(history);
     }
+
+    /** 환전 승인(관리자용) */
     @PatchMapping("/{requestId}/approve")
     public ResponseEntity<PointsExchangeResponseDto> approveExchange(
             @PathVariable Long requestId
@@ -45,5 +53,15 @@ public class PointsExchangeController {
         PointsExchangeResponseDto response = pointsExchangeService.approveExchange(requestId);
         return ResponseEntity.ok(response);
     }
+
+    // /** 로그인한 사용자 본인 환전 내역 조회 */ (로그인 구현 후 적용 예정)
+    // @GetMapping("/me")
+    // public ResponseEntity<List<PointsExchangeResponseDto>> getMyHistory(
+    //         @AuthenticationPrincipal CustomUserDetails principal) {
+    //
+    //     Long userId = principal.getId();
+    //     List<PointsExchangeResponseDto> history = pointsExchangeService.getHistory(userId);
+    //     return ResponseEntity.ok(history);
+    // }
 
 }
