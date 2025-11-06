@@ -4,11 +4,13 @@ import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.autopayment.dto.AutoPaymentResponse;
 import dev.woori.wooriLearn.domain.autopayment.repository.AutoPaymentRepository;
+import dev.woori.wooriLearn.domain.autopayment.repository.AutoPaymentSpecification;
 import dev.woori.wooriLearn.domain.edubankapi.entity.AutoPayment;
 import dev.woori.wooriLearn.domain.edubankapi.entity.AutoPayment.AutoPaymentStatus;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -25,18 +27,17 @@ public class AutoPaymentService {
     private static final String ALL_STATUS = "ALL";
 
     public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status) {
-        // status에 따라 리스트 조회
-        List<AutoPayment> autoPayments;
+        // 기본 조건: educationalAccountId로 필터링
+        Specification<AutoPayment> spec = AutoPaymentSpecification.hasEducationalAccountId(educationalAccountId);
 
-        if (ALL_STATUS.equalsIgnoreCase(status)) {
-            // "ALL"인 경우 전체 조회
-            autoPayments = autoPaymentRepository.findByEducationalAccountId(educationalAccountId);
-        } else {
-            // 그 외의 경우 상태별 조회 (null이면 ACTIVE)
+        // status가 "ALL"이 아니면 상태 조건 추가
+        if (!ALL_STATUS.equalsIgnoreCase(status)) {
             AutoPaymentStatus paymentStatus = resolveStatus(status);
-            autoPayments = autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
-                    educationalAccountId, paymentStatus);
+            spec = spec.and(AutoPaymentSpecification.hasStatus(paymentStatus));
         }
+
+        // 동적 쿼리 실행
+        List<AutoPayment> autoPayments = autoPaymentRepository.findAll(spec);
 
         return autoPayments.stream()
                 .map(AutoPaymentResponse::of)

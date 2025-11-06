@@ -10,7 +10,6 @@ import java.time.LocalDate;
  */
 public record AutoPaymentResponse(
         Long id,
-        Long educationalAccountId,
         String depositNumber,
         String depositBankCode,
         Integer amount,
@@ -27,7 +26,6 @@ public record AutoPaymentResponse(
     public static AutoPaymentResponse of(AutoPayment a) {
         return new AutoPaymentResponse(
                 a.getId(),
-                a.getEducationalAccount().getId(),
                 a.getDepositNumber(),
                 a.getDepositBankCode(),
                 a.getAmount(),
