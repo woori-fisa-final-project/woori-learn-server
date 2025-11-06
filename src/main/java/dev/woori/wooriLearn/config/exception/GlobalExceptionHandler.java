@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
                 request.getMethod(),
                 request.getRequestURI(),
                 ex.getMessage());
-        return ApiResponse.failure(errorCode, ex.getMessage());
+        return ApiResponse.failure(errorCode);
     }
 
 }
