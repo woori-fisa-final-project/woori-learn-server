@@ -27,15 +27,16 @@ public class AutoPaymentService {
     private static final String ALL_STATUS = "ALL";
 
     public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status) {
-        // 기본 조건: educationalAccountId로 필터링
+
         Specification<AutoPayment> spec = AutoPaymentSpecification.hasEducationalAccountId(educationalAccountId);
 
-        // "ALL"이 아닌 경우 상태 조건 추가
-        if (!ALL_STATUS.equalsIgnoreCase(status)) {
+        if (!StringUtils.hasText(status)) {
+            spec = spec.and(AutoPaymentSpecification.hasStatus(AutoPaymentStatus.ACTIVE));
+        } else if (!ALL_STATUS.equalsIgnoreCase(status)) {
+            // "ALL"이 아닌 경우 해당 상태로 필터링
             AutoPaymentStatus paymentStatus = resolveStatus(status);
             spec = spec.and(AutoPaymentSpecification.hasStatus(paymentStatus));
         }
-
         // 동적 쿼리 실행
         List<AutoPayment> autoPayments = autoPaymentRepository.findAll(spec);
 
@@ -43,14 +44,7 @@ public class AutoPaymentService {
                 .map(AutoPaymentResponse::of)
                 .toList();
     }
-
     private AutoPaymentStatus resolveStatus(String status) {
-        // status가 없으면 기본값 ACTIVE
-        if (!StringUtils.hasText(status)) {
-            return AutoPaymentStatus.ACTIVE;
-        }
-
-        // 유효한 enum 값으로 변환
         try {
             return AutoPaymentStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
