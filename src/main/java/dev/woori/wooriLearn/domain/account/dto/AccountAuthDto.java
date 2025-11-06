@@ -43,7 +43,6 @@ public class AccountAuthDto {
         @Pattern(regexp = "^01\\d{8,9}$", message = "휴대폰 번호는 하이픈 없이 숫자만 입력하세요.")
         private String phoneNum;
 
-        @NotBlank
         @ValidBirthdate(minAgeYears = 14)
         @Pattern(regexp="^\\d{7}$", message="생년월일은 YYMMDDG 형식(하이픈 없이 7자리)이어야 합니다.")
         private String birthdate;

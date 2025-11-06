@@ -19,7 +19,4 @@ public @interface ValidBirthdate {
 
     /** 최소 나이(년). 0이면 제한 없음 */
     int minAgeYears() default 0;
-
-    /** 최대 나이(년). 0이면 제한 없음 */
-    int maxAgeYears() default 0;
 }
