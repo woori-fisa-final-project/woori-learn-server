@@ -23,7 +23,7 @@ public class AutoPaymentController {
 
     @GetMapping("/list")
     public ResponseEntity<BaseResponse<?>> getAutoPaymentList(
-            @RequestParam Long educationalAccountId,
+            @RequestParam @jakarta.validation.constraints.Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId,
             @RequestParam(required = false) String status) {
 
         log.info("자동이체 목록 조회 요청 - 교육용계좌ID: {}, 상태: {}", educationalAccountId, status);
