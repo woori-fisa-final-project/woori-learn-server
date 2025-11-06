@@ -9,13 +9,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
-import java.util.Base64;
 import java.util.Date;
-
-import static java.time.Instant.now;
 
 @Component
 public class JwtUtil {
