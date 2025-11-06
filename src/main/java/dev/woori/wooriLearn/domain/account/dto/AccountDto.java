@@ -1,5 +1,7 @@
 package dev.woori.wooriLearn.domain.account.dto;
 
+import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
+import jakarta.persistence.Entity;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -12,17 +14,25 @@ import lombok.Getter;
  */
 
 @Getter
-@AllArgsConstructor     // 모든 필드를 파리미터로 받는 생성자 자동 생성 개발자 편의성 굳
+@AllArgsConstructor
 public class AccountDto {
 
-    // 계좌 이름
     private String accountName;
-
-    // 계좌 번호
     private String accountNumber;
-
-    // 현재 잔액
-    // int보다 안정성과 확장성이 좋아서 Integer 사용
     private Integer balance;
+
+    /*
+        정적 팩토리 메서드
+        컨트롤러와 클라이언트에 필요한 필드만 노출하기 위해 DTO 매핑
+        엔티티 -> DTO로 변환
+     */
+
+    public static AccountDto from(EducationalAccount account){
+        return new AccountDto(
+                account.getAccountName(),
+                account.getAccountNumber(),
+                account.getBalance()
+        );
+    }
 
 }
