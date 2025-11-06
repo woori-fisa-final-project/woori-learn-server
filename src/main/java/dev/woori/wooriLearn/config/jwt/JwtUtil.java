@@ -8,10 +8,13 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+
+import static java.time.Instant.now;
 
 @Component
 public class JwtUtil {
@@ -49,27 +52,33 @@ public class JwtUtil {
     }
 
     public String generateAccessToken(String username) {
+        Instant now = Instant.now();
+        Instant expiration = now.plusMillis(accessTokenExpiration);
+
         return Jwts.builder()
                 .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
                 .claim("username", username)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(expiration))
                 .signWith(secretKey)
                 .compact();
     }
 
     public String generateRefreshToken(String username) {
+        Instant now = Instant.now();
+        Instant expiration = now.plusMillis(refreshTokenExpiration);
+
         return Jwts.builder()
                 .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
                 .claim("username", username)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + refreshTokenExpiration))
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(expiration))
                 .signWith(secretKey)
                 .compact();
     }
 
-    public LocalDateTime getRefreshTokenExpiration() {
-        return LocalDateTime.now(ZoneId.of("Asia/Seoul")).plus(refreshTokenExpiration, ChronoUnit.MILLIS);
+    public Instant getRefreshTokenExpiration() {
+        return Instant.now().plus(refreshTokenExpiration, ChronoUnit.MILLIS);
     }
 
 }

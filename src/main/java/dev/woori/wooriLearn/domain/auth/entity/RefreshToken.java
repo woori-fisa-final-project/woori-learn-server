@@ -3,6 +3,7 @@ package dev.woori.wooriLearn.domain.auth.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -20,9 +21,9 @@ public class RefreshToken {
     @Column(columnDefinition = "TEXT")
     private String token;
 
-    private LocalDateTime expiration;
+    private Instant expiration;
 
-    public void updateToken(String newToken, LocalDateTime newExpiration) {
+    public void updateToken(String newToken, Instant newExpiration) {
         this.token = newToken;
         this.expiration = newExpiration;
     }
