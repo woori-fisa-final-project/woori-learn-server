@@ -1,6 +1,7 @@
 package dev.woori.wooriLearn.domain.account.controller;
 
 import dev.woori.wooriLearn.config.response.ApiResponse;
+import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.account.dto.AccountDto;
 import dev.woori.wooriLearn.domain.account.service.AccountService;
@@ -34,7 +35,7 @@ public class AccountController {
      *   @return : 계좌목록 (계좌명, 계좌번호, 잔액)
      **/
     @GetMapping("/list/{userId}")
-    public ResponseEntity<?> getAccountsList(@PathVariable long userId){
+    public ResponseEntity<BaseResponse<?>> getAccountsList(@PathVariable long userId){
 
         // 서비스 호출을 통해 userId 계좌 목록 조회
         List<AccountDto> accounts = accountService.getAccountByUserId(userId);

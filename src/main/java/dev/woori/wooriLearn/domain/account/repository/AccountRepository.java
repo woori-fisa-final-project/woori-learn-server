@@ -13,7 +13,7 @@ public interface AccountRepository extends JpaRepository<EducationalAccount, Lon
 
         educational_account 테이블에 접근하여 user_id로 계좌 목록 조회
         JPA를 통해 자동으로 SQL 쿼리 생성함
-        @parm userId : 조회된 사용자 ID
+        @param userId : 조회된 사용자 ID
         @return List<EducationalAccount> : 해당 사용자가 소유한 모든 계좌 리스트
      */
 
