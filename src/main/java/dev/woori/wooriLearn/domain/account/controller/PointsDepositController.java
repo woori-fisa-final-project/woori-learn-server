@@ -1,0 +1,26 @@
+package dev.woori.wooriLearn.domain.account.controller;
+
+import dev.woori.wooriLearn.domain.account.dto.PointsDepositRequestDto;
+import dev.woori.wooriLearn.domain.account.dto.PointsDepositResponseDto;
+import dev.woori.wooriLearn.domain.account.service.PointsDepositService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/points/deposit")
+@RequiredArgsConstructor
+public class PointsDepositController {
+
+    private final PointsDepositService pointsDepositService;
+
+    @PostMapping("")
+    public ResponseEntity<PointsDepositResponseDto> deposit(
+            @RequestBody PointsDepositRequestDto dto
+    ) {
+        return ResponseEntity.ok(pointsDepositService.depositPoints(dto));
+    }
+}

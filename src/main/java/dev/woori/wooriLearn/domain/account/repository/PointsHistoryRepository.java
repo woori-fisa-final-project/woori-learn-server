@@ -1,6 +1,6 @@
 package dev.woori.wooriLearn.domain.account.repository;
 
-import dev.woori.wooriLearn.domain.account.entity.PointsExchangeStatus;
+import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,11 +17,11 @@ public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Lo
     @Query("SELECT p FROM PointsHistory p WHERE "
             + "p.user.id = :userId "
             + "AND (:status IS NULL OR p.status = :status) "
-            + "AND (:start IS NULL OR p.paymentDate >= :start) "
-            + "AND (:end IS NULL OR p.paymentDate <= :end)")
+            + "AND (:start IS NULL OR p.createdAt >= :start) "
+            + "AND (:end IS NULL OR p.createdAt <= :end)")
     List<PointsHistory> findByFilters(
             @Param("userId") Long userId,
-            @Param("status") PointsExchangeStatus status,
+            @Param("status") PointsStatus status,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end,
             Sort sort
