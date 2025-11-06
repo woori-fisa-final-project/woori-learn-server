@@ -20,6 +20,4 @@ public interface AccountRepository extends JpaRepository<EducationalAccount, Lon
     // findBy + [엔티티 필드명] => JPA가 user_Id 컬럼을 조건으로 자동 쿼리 생성 됨.
     List<EducationalAccount> findByUserId(Long userId);
 
-    boolean existsByUserId(Long uerId);
-
 }
