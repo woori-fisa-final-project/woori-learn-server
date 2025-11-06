@@ -19,13 +19,21 @@ public class PointsExchangeController {
 
     private final PointsExchangeService pointsExchangeService;
 
-    /** 포인트 환전 신청 */
+//    /** 포인트 환전 신청(로그인 구현 전 개발용) */
+//    @PostMapping("")
+//    public ResponseEntity<PointsExchangeResponseDto> requestExchange(
+//            @AuthenticationPrincipal CustomUserDetails principal,
+//            @RequestBody PointsExchangeRequestDto dto) {
+//
+//        Long userId = principal.getId();
+//        PointsExchangeResponseDto response = pointsExchangeService.requestExchange(userId, dto);
+//        return ResponseEntity.ok(response);
+//    }
     @PostMapping("")
     public ResponseEntity<PointsExchangeResponseDto> requestExchange(
-            @AuthenticationPrincipal CustomUserDetails principal,
-            @RequestBody PointsExchangeRequestDto dto) {
-
-        Long userId = principal.getId();
+            @RequestBody PointsExchangeRequestDto dto
+    ) {
+        Long userId = dto.getDbId();  // 로그인 없이 userId 사용
         PointsExchangeResponseDto response = pointsExchangeService.requestExchange(userId, dto);
         return ResponseEntity.ok(response);
     }
@@ -36,7 +44,7 @@ public class PointsExchangeController {
             @PathVariable Long userId,
             @RequestParam(required = false) String startDate,     // yyyy-MM-dd
             @RequestParam(required = false) String endDate,       // yyyy-MM-dd
-            @RequestParam(required = false, defaultValue = "ALL") String status,
+            @RequestParam(required = false, defaultValue = "ALL") String status, //ALL/APPLY/SUCCESS/FAILED
             @RequestParam(required = false, defaultValue = "DESC") String sort
     ) {
         List<PointsExchangeResponseDto> history = pointsExchangeService
