@@ -22,12 +22,13 @@ import java.util.List;
 public class AutoPaymentService {
 
     private final AutoPaymentRepository autoPaymentRepository;
+    private static final String ALL_STATUS = "ALL";
 
     public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status) {
         // status에 따라 리스트 조회
         List<AutoPayment> autoPayments;
 
-        if ("ALL".equalsIgnoreCase(status)) {
+        if (ALL_STATUS.equalsIgnoreCase(status)) {
             // "ALL"인 경우 전체 조회
             autoPayments = autoPaymentRepository.findByEducationalAccountId(educationalAccountId);
         } else {
@@ -53,7 +54,7 @@ public class AutoPaymentService {
             return AutoPaymentStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new CommonException(ErrorCode.INVALID_REQUEST,
-                    "유효하지 않은 상태 값입니다. (사용 가능: ACTIVE, CANCELLED)");
+                    "유효하지 않은 상태 값입니다. (사용 가능: " + java.util.Arrays.toString(AutoPaymentStatus.values()) + ")");
         }
     }
 }
