@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -33,18 +34,19 @@ public class SecurityConfig {
             "/auth/signup" // 회원가입
     );
 
+    // 개발 모드에서는 인증 적용 x
     @Bean
+    @Profile("dev")
+    public SecurityFilterChain devFilterChain(HttpSecurity httpSecurity) throws Exception {
+        return httpSecurity
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .build();
+    }
+
+    @Bean
+    @Profile("!dev")
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-
-        // 개발 단계에서는 인증 x
-        if(activeProfile.equals("dev")){
-            return httpSecurity
-                    .csrf(AbstractHttpConfigurer::disable)
-                    .authorizeHttpRequests(auth -> auth
-                            .anyRequest().permitAll())
-                    .build();
-        }
-
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable) // API 테스트용, 실제 서비스면 토큰 기반 CSRF 설정 필요
                 .sessionManagement(sessionManagementConfigurer ->
