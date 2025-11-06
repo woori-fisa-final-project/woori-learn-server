@@ -8,7 +8,7 @@ import lombok.Getter;
 @Builder
 public class PointsExchangeResponseDto {
     private Long requestId;
-    private Long user_id;
+    private Long userId;
     private Integer exchangeAmount;
     private PointsExchangeStatus status;
     private String requestDate;

@@ -4,7 +4,7 @@ import lombok.Getter;
 
 @Getter
 public class PointsExchangeRequestDto {
-    private Long db_id;
+    private Long dbId;
     // 또는 user_id
     private Integer exchangeAmount;
     private String accountNum;

@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Long> {
-    List<PointsHistory> findAllByUserId(Long userId);
+    List<PointsHistory> findAllByUser_Id(Long userId);
 }
