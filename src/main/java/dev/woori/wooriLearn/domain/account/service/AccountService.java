@@ -26,7 +26,7 @@ public class AccountService {
         - Entity를 DTO로 변환하여 Controller에 전달
 
         @param userId : 사용자 ID
-        @return 계좌 목록 : <List<AccountListDto>>
+        @return 계좌 목록 : <List<AccountDto>>
      */
     public List<AccountDto> getAccountByUserId(long userId) {
 
@@ -34,19 +34,12 @@ public class AccountService {
         List<EducationalAccount> accounts = accountRepository.findByUserId(userId);
 
         // 사용자 ID가 없으면 404 응답 처리
-        if(accounts.isEmpty()){
-           throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "해당 사용자의 계좌를 찾을 수 없습니다.");
+        if (accounts.isEmpty()) {
+            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "해당 사용자의 계좌를 찾을 수 없습니다.");
         }
 
-        // 엔티티 -> Dto로 변환
-        // 컨트롤러와 클라이언트에 필요한 필드만 노출하기 위해 DTO 매핑
-        // stream을 통해서 엔티티를 dto로 바꿔준 후 리스트로 반환
         return accounts.stream()
-                .map(acc -> new AccountDto(
-                        acc.getAccountName(),       // 계좌 이름
-                        acc.getAccountNumber(),     // 계좌 번호
-                        acc.getBalance()            // 계좌 잔액
-                ))
+                .map(AccountDto::from)
                 .collect(Collectors.toList());
     }
 }
