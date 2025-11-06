@@ -40,6 +40,17 @@ public class AutoPaymentService {
                 .toList();
     }
 
+    public AutoPaymentResponse getAutoPaymentDetail(Long autoPaymentId) {
+        AutoPayment autoPayment = autoPaymentRepository.findById(autoPaymentId)
+                .orElseThrow(() -> {
+                    log.error("자동이체 정보 조회 실패 - ID: {}", autoPaymentId);
+                    return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                            "자동이체 정보를 찾을 수 없습니다.");
+                });
+
+        return AutoPaymentResponse.of(autoPayment, autoPayment.getEducationalAccount().getId());
+    }
+
     private AutoPaymentStatus resolveStatus(String status) {
         if (!StringUtils.hasText(status)) {
             return AutoPaymentStatus.ACTIVE;

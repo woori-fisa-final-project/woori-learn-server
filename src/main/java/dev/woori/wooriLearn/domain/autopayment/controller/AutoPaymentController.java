@@ -35,4 +35,15 @@ public class AutoPaymentController {
 
         return ApiResponse.success(SuccessCode.OK, response);
     }
+
+    @GetMapping("/detail/{autoPaymentId}")
+    public ResponseEntity<BaseResponse<?>> getAutoPaymentDetail(
+            @PathVariable @Positive(message = "자동이체 ID는 양수여야 합니다.") Long autoPaymentId) {
+
+        log.info("자동이체 상세 조회 요청 - ID: {}", autoPaymentId);
+
+        AutoPaymentResponse response = autoPaymentService.getAutoPaymentDetail(autoPaymentId);
+
+        return ApiResponse.success(SuccessCode.OK, response);
+    }
 }

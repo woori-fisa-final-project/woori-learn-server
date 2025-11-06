@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AutoPaymentRepository extends JpaRepository<AutoPayment, Long> {
@@ -18,4 +19,7 @@ public interface AutoPaymentRepository extends JpaRepository<AutoPayment, Long> 
     List<AutoPayment> findByEducationalAccountIdAndProcessingStatus(
             Long educationalAccountId,
             AutoPaymentStatus processingStatus);
+
+    @EntityGraph(attributePaths = {"educationalAccount"})
+    Optional<AutoPayment> findById(Long id);
 }
