@@ -47,7 +47,7 @@ public class AutoPayment {
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(name = "expiration_date")
+    @Column(name = "expiration_date", nullable = false)
     private LocalDate expirationDate;
 
     @Enumerated(EnumType.STRING)
@@ -63,12 +63,10 @@ public class AutoPayment {
 
         private final String description;
 
-        /**
-         * 사용 가능한 모든 상태 값을 문자열로 반환
-         * @return 예: "ACTIVE, CANCELLED"
-         */
-        public static final String AVAILABLE_VALUES = Arrays.stream(values())
-                .map(Enum::name)
-                .collect(Collectors.joining(", "));
+        public static String getAvailableValues() {
+            return Arrays.stream(values())
+                    .map(Enum::name)
+                    .collect(Collectors.joining(", "));
+        }
     }
 }
