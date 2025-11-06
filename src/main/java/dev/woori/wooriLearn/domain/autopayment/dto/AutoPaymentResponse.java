@@ -35,7 +35,7 @@ public record AutoPaymentResponse(
                 autoPayment.getDesignatedDate(),
                 autoPayment.getStartDate(),
                 autoPayment.getExpirationDate(),
-                autoPayment.getProcessingStatus().getDescription()
+                autoPayment.getProcessingStatus().name()
         );
     }
 }
