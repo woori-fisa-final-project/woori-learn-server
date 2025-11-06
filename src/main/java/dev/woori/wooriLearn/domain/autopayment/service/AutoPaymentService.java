@@ -40,6 +40,14 @@ public class AutoPaymentService {
                 .toList();
     }
 
+    public AutoPaymentResponse getAutoPaymentDetail(Long autoPaymentId) {
+        AutoPayment autoPayment = autoPaymentRepository.findById(autoPaymentId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                        "자동이체 정보를 찾을 수 없습니다. ID: " + autoPaymentId));
+
+        return AutoPaymentResponse.of(autoPayment, autoPayment.getEducationalAccount().getId());
+    }
+
     private AutoPaymentStatus resolveStatus(String status) {
         if (!StringUtils.hasText(status)) {
             return AutoPaymentStatus.ACTIVE;
