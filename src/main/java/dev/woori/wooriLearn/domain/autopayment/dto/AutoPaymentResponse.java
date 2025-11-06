@@ -21,10 +21,17 @@ public record AutoPaymentResponse(
         LocalDate expirationDate,
         String processingStatus
 ) {
-    public static AutoPaymentResponse of(AutoPayment autoPayment) {
+    /**
+     * AutoPayment 엔티티로부터 Response DTO 생성
+     *
+     * @param autoPayment 자동이체 엔티티
+     * @param educationalAccountId 교육계좌 ID (명시적 전달로 fetch join 의존성 제거)
+     * @return AutoPaymentResponse
+     */
+    public static AutoPaymentResponse of(AutoPayment autoPayment, Long educationalAccountId) {
         return new AutoPaymentResponse(
                 autoPayment.getId(),
-                autoPayment.getEducationalAccount().getId(),
+                educationalAccountId,
                 autoPayment.getDepositNumber(),
                 autoPayment.getDepositBankCode(),
                 autoPayment.getAmount(),
@@ -36,5 +43,16 @@ public record AutoPaymentResponse(
                 autoPayment.getExpirationDate(),
                 autoPayment.getProcessingStatus().name()
         );
+    }
+
+    /**
+     * AutoPayment 엔티티로부터 Response DTO 생성 (편의 메소드)
+     * 주의: educationalAccount가 fetch join으로 로드되어 있어야 합니다.
+     *
+     * @param autoPayment 자동이체 엔티티 (educationalAccount가 로드된 상태)
+     * @return AutoPaymentResponse
+     */
+    public static AutoPaymentResponse of(AutoPayment autoPayment) {
+        return of(autoPayment, autoPayment.getEducationalAccount().getId());
     }
 }
