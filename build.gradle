@@ -46,6 +46,8 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    annotationProcessor 'org.hibernate:hibernate-jpamodelgen:6.2.7.Final'
 }
 
 tasks.named('test') {
