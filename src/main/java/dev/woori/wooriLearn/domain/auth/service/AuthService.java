@@ -3,6 +3,7 @@ package dev.woori.wooriLearn.domain.auth.service;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.config.jwt.JwtUtil;
+import dev.woori.wooriLearn.config.security.Encoder;
 import dev.woori.wooriLearn.domain.auth.dto.*;
 import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
 import dev.woori.wooriLearn.domain.auth.repository.RefreshTokenRepository;
@@ -12,11 +13,9 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.MessageDigest;
 import java.time.Instant;
 
 @Slf4j
@@ -26,7 +25,7 @@ import java.time.Instant;
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final Encoder encoder;
     private final JwtUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
 
@@ -43,7 +42,7 @@ public class AuthService {
 
         Users user = Users.builder()
                 .userId(signupReqDto.userId())
-                .password(passwordEncoder.encode(signupReqDto.password()))
+                .password(encoder.encode(signupReqDto.password()))
                 .nickname(signupReqDto.nickname())
                 .points(0) // 초기 설정, 이후 수정 가능
                 .build();
@@ -64,7 +63,7 @@ public class AuthService {
         Users user = userRepository.findByUserId(loginReqDto.userId())
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "존재하지 않는 회원입니다."));
 
-        if(!passwordEncoder.matches(loginReqDto.password(), user.getPassword())){
+        if(!encoder.matches(loginReqDto.password(), user.getPassword())){
             throw new CommonException(ErrorCode.UNAUTHORIZED, "비밀번호가 일치하지 않습니다.");
         }
 
@@ -95,8 +94,7 @@ public class AuthService {
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "토큰이 존재하지 않습니다."));
 
         // 토큰 일치 여부 검증
-        if(!MessageDigest.isEqual
-                (token.getToken().getBytes(), refreshReqDto.refreshToken().getBytes())){
+        if(!encoder.matches(refreshReqDto.refreshToken(), token.getToken())){
             throw new CommonException(ErrorCode.UNAUTHORIZED, "토큰이 일치하지 않습니다.");
         }
 
@@ -126,12 +124,12 @@ public class AuthService {
         // 없다면 만들어서 저장
         RefreshToken token = refreshTokenRepository.findByUsername(username)
                 .map(entity -> {
-                    entity.updateToken(refreshToken, refreshTokenExpiration);
+                    entity.updateToken(encoder.encode(refreshToken), refreshTokenExpiration);
                     return entity;
                 })
                 .orElseGet(() -> RefreshToken.builder()
                         .username(username)
-                        .token(refreshToken)
+                        .token(encoder.encode(refreshToken))
                         .expiration(refreshTokenExpiration)
                         .build());
         refreshTokenRepository.save(token);
