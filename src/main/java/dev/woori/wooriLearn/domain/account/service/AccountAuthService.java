@@ -1,5 +1,7 @@
 package dev.woori.wooriLearn.domain.account.service;
 
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.account.dto.AccountAuthDto;
 import dev.woori.wooriLearn.domain.account.entity.AccountAuth;
 import dev.woori.wooriLearn.domain.account.repository.AccountAuthRepository;
@@ -68,7 +70,7 @@ public class AccountAuthService {
     public AccountAuthDto.VerifyResponse verify(String userId, AccountAuthDto.VerifyRequest req) {
         // 1) 최근 발급 레코드 조회
         AccountAuth row = accountAuthRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("인증요청 이력이 없습니다."));
+                .orElseThrow(() -> new CommonException(ErrorCode.INVALID_REQUEST, "인증요청 이력이 없습니다."));
 
         // 2) 코드 비교
         boolean ok = row.getAuthCode().equals(req.getCode());

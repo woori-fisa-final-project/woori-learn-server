@@ -1,5 +1,7 @@
 package dev.woori.wooriLearn.domain.account.controller;
 
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.account.dto.AccountAuthDto;
 import dev.woori.wooriLearn.domain.account.service.AccountAuthService;
 import jakarta.validation.Valid;
@@ -60,6 +62,6 @@ public class AccountAuthController {
         if (headerUserId != null && !headerUserId.isBlank()) return headerUserId;
         if (principal instanceof org.springframework.security.core.userdetails.UserDetails ud) return ud.getUsername();
         if (principal instanceof String s && !"anonymousUser".equals(s)) return s;        // 기본 String principal
-        throw new IllegalArgumentException("사용자 식별이 필요합니다. (로그인 또는 X-USER-ID 헤더)");
+        throw new CommonException(ErrorCode.UNAUTHORIZED, "사용자 식별이 필요합니다. (로그인 필요)");
     }
 }
