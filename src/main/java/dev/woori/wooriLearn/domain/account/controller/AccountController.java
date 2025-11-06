@@ -27,10 +27,10 @@ public class AccountController {
 
     /*
         postman
-        : [GET] /accounts/list/{userId}
+        => [GET] /accounts/list/{userId}
         => 특정 사용자 {userId}의 모든 교육용 계좌를 조회
 
-        @parm userID : 사용자 고유 ID
+        @param userID : 사용자 고유 ID
         @return : 계좌목록 (계좌명, 계좌번호, 잔액)
      */
     @GetMapping("/list/{userId}")

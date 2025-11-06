@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public class AccountService {
 
     // 의존성 주입 대상
-    private final AccountRepository accountListRepository;
+    private final AccountRepository accountRepository;
 
     /*
         사용자 ID를 통해 계좌 목록 조회
@@ -30,13 +30,13 @@ public class AccountService {
      */
     public List<AccountDto> getAccountByUserId(long userId) {
 
-        boolean exists = accountListRepository.existsByUserId(userId);
-        if (!exists){
-            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "해당 사용자의 계좌를 찾을 수 없습니다.");
-        }
-
         // Repository 호출을 통해 educationl_account 테이블에 user_id가 일치하는 계좌 엔티티 목록 조회
-        List<EducationalAccount> accounts = accountListRepository.findByUserId(userId);
+        List<EducationalAccount> accounts = accountRepository.findByUserId(userId);
+
+        // 사용자 ID가 없으면 404 응답 처리
+        if(accounts.isEmpty()){
+           throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "해당 사용자의 계좌를 찾을 수 없습니다.");
+        }
 
         // 엔티티 -> Dto로 변환
         // 컨트롤러와 클라이언트에 필요한 필드만 노출하기 위해 DTO 매핑
