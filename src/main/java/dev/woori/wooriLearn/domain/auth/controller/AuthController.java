@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.Principal;
+
 @Slf4j
 @RestController
 @RequestMapping("/auth")
@@ -41,7 +43,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<BaseResponse<?>> logout(@RequestBody LogoutReqDto logoutReqDto) {
-        return ApiResponse.success(SuccessCode.OK, authService.logout(logoutReqDto));
+    public ResponseEntity<BaseResponse<?>> logout(Principal principal) {
+        return ApiResponse.success(SuccessCode.OK, authService.logout(principal.getName()));
     }
 }

@@ -16,6 +16,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.MessageDigest;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -110,7 +112,7 @@ public class AuthService {
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "토큰이 존재하지 않습니다."));
 
         // 토큰 일치 여부 검증
-        if(!java.security.MessageDigest.isEqual
+        if(!MessageDigest.isEqual
                 (token.getToken().getBytes(), refreshReqDto.refreshToken().getBytes())){
             throw new CommonException(ErrorCode.CONFLICT, "토큰이 일치하지 않습니다.");
         }
@@ -121,12 +123,12 @@ public class AuthService {
 
     /**
      * 사용자의 요청을 받아서 로그아웃 처리 - db에서 refresh token 삭제
-     * @param logoutReqDto 사용자 id
+     * @param username 사용자 id
      * @return 결과 메시지
      */
     @Transactional
-    public String logout(LogoutReqDto logoutReqDto) {
-        refreshTokenRepository.deleteByUsername(logoutReqDto.userId());
+    public String logout(String username) {
+        refreshTokenRepository.deleteByUsername(username);
         return "로그아웃되었습니다.";
     }
 }
