@@ -21,11 +21,10 @@ public record AutoPaymentResponse(
         LocalDate expirationDate,
         String processingStatus
 ) {
-
-    public static AutoPaymentResponse of(AutoPayment autoPayment) {
+    public static AutoPaymentResponse of(AutoPayment autoPayment, Long educationalAccountId) {
         return new AutoPaymentResponse(
                 autoPayment.getId(),
-                autoPayment.getEducationalAccount().getId(),
+                educationalAccountId,
                 autoPayment.getDepositNumber(),
                 autoPayment.getDepositBankCode(),
                 autoPayment.getAmount(),
@@ -35,7 +34,7 @@ public record AutoPaymentResponse(
                 autoPayment.getDesignatedDate(),
                 autoPayment.getStartDate(),
                 autoPayment.getExpirationDate(),
-                autoPayment.getProcessingStatus().getDescription()
+                autoPayment.getProcessingStatus().name()
         );
     }
 }
