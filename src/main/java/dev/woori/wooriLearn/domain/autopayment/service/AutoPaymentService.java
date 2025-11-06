@@ -39,7 +39,7 @@ public class AutoPaymentService {
         List<AutoPayment> autoPayments = autoPaymentRepository.findAll(spec);
 
         return autoPayments.stream()
-                .map(autoPayment -> AutoPaymentResponse.of(autoPayment))
+                .map(AutoPaymentResponse::of)
                 .toList();
     }
 

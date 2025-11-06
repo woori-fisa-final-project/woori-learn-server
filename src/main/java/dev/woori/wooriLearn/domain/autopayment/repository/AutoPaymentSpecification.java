@@ -26,15 +26,4 @@ public class AutoPaymentSpecification {
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.equal(root.get(AutoPayment_.processingStatus), status);
     }
-
-    // 향후 확장을 위한 예시 메소드들
-    public static Specification<AutoPayment> amountGreaterThan(Integer amount) {
-        return (root, query, criteriaBuilder) ->
-                criteriaBuilder.greaterThan(root.get(AutoPayment_.amount), amount);
-    }
-
-    public static Specification<AutoPayment> designatedDateBetween(Integer startDay, Integer endDay) {
-        return (root, query, criteriaBuilder) ->
-                criteriaBuilder.between(root.get(AutoPayment_.designatedDate), startDay, endDay);
-    }
 }
