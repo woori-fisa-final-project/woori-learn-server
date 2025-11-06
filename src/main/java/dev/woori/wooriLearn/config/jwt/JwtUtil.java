@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.Base64;
 import java.util.Date;
 
 import static java.time.Instant.now;
@@ -47,6 +48,8 @@ public class JwtUtil {
                     .parseClaimsJws(token);
             return true;
         } catch (Exception e) {
+            System.out.println("[JwtUtil] Token validation failed: " + e.getClass().getSimpleName());
+            System.out.println("[JwtUtil] Message: " + e.getMessage());
             return false;
         }
     }
@@ -59,9 +62,9 @@ public class JwtUtil {
         return generateToken(username, refreshTokenExpiration);
     }
 
-    public TokenInfo generateToken(String username, long expirationMilis){
+    public TokenInfo generateToken(String username, long expirationMillis){
         Instant now = Instant.now();
-        Instant expiration = now.plusMillis(expirationMilis);
+        Instant expiration = now.plusMillis(expirationMillis);
 
         String token = Jwts.builder()
                 .setHeaderParam(Header.TYPE, Header.JWT_TYPE)

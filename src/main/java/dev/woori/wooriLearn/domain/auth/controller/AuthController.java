@@ -4,7 +4,6 @@ package dev.woori.wooriLearn.domain.auth.controller;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
-import dev.woori.wooriLearn.domain.auth.dto.LogoutReqDto;
 import dev.woori.wooriLearn.domain.auth.dto.RefreshReqDto;
 import dev.woori.wooriLearn.domain.auth.dto.SignupReqDto;
 import dev.woori.wooriLearn.domain.auth.service.AuthService;
