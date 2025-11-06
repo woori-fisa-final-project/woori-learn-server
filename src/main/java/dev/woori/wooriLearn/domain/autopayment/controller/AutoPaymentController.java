@@ -17,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/auto-payment")
 @RequiredArgsConstructor
+@org.springframework.validation.annotation.Validated
 public class AutoPaymentController {
 
     private final AutoPaymentService autoPaymentService;
