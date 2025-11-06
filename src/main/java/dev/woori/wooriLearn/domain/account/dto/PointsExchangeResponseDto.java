@@ -1,6 +1,6 @@
 package dev.woori.wooriLearn.domain.account.dto;
 
-import dev.woori.wooriLearn.domain.account.entity.PointsExchangeStatus;
+import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -12,7 +12,7 @@ public class PointsExchangeResponseDto {
     private Long requestId;
     private Long userId;
     private Integer exchangeAmount;
-    private PointsExchangeStatus status;
+    private PointsStatus status;
     private String requestDate;
     private String message;
     private LocalDateTime processedDate;

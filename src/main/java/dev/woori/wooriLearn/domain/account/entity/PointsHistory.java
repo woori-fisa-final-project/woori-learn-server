@@ -1,6 +1,6 @@
 package dev.woori.wooriLearn.domain.account.entity;
 
-import dev.woori.wooriLearn.domain.account.entity.PointsExchangeStatus;
+import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import jakarta.persistence.*;
 import lombok.*;
@@ -26,34 +26,40 @@ public class PointsHistory {
     private Users user;
 
     @CreatedDate
-    @Column(name = "payment_date", updatable = false, nullable = false)
-    private LocalDateTime paymentDate;
+    @Column(name = "created_at", updatable = false, nullable = false)
+    private LocalDateTime createdAt;
 
-    @Column(name = "payment_amount", nullable = false)
-    private Integer paymentAmount;
+    // 적립/출금 공통 금액
+    @Column(name = "amount", nullable = false)
+    private Integer amount;
 
+    // DEPOSIT or WITHDRAW
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false, length = 20)
+    private PointsHistoryType type;
+
+    // 처리 상태 (적립은 항상 SUCCESS)
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private PointsExchangeStatus status;
+    private PointsStatus status;
 
-    @Column(name = "processed_date")
-    private LocalDateTime processedDate;
+    // 환전일 때만 사용
+    @Column(name = "processed_at")
+    private LocalDateTime processedAt;
 
+    // 환전 실패 사유 (적립에는 null)
     @Column(name = "fail_reason")
     private String failReason;
 
-    // ✅ Setter 필요한 것만 열기
-    public void setStatus(PointsExchangeStatus status) {
-        this.status = status;
+    public void markSuccess() {
+        this.status = PointsStatus.SUCCESS;
+        this.processedAt = LocalDateTime.now();
     }
 
-    public void setProcessedDate(LocalDateTime processedDate) {
-        this.processedDate = processedDate;
+    public void markFailed(String reason) {
+        this.status = PointsStatus.FAILED;
+        this.failReason = reason;
+        this.processedAt = LocalDateTime.now();
     }
-
-    public void setFailReason(String failReason) {
-        this.failReason = failReason;
-    }
-
 
 }

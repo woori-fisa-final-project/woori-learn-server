@@ -31,10 +31,13 @@ public class Users extends BaseEntity {
     @Column(nullable = false)
     private Integer version = 0;
 
-
-
-    // ✅ 포인트 수정용 Setter
+    /* 포인트 전체값 변경 */
     public void setPoints(Integer points) {
         this.points = points;
+    }
+
+    /* 포인트 증가 */
+    public void addPoints(Integer amount) {
+        this.points += amount;
     }
 }

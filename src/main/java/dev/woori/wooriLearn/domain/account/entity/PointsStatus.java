@@ -1,5 +1,5 @@
 package dev.woori.wooriLearn.domain.account.entity;
 
-public enum PointsExchangeStatus {
+public enum PointsStatus {
     APPLY, SUCCESS, FAILED
 }
