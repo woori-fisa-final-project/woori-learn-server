@@ -55,7 +55,7 @@ public class AutoPaymentService {
             return AutoPaymentStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new CommonException(ErrorCode.INVALID_REQUEST,
-                    "유효하지 않은 상태 값입니다. (사용 가능: " + AutoPaymentStatus.getAvailableValues() + ")");
+                    "유효하지 않은 상태 값입니다. (사용 가능: " + AutoPaymentStatus.AVAILABLE_VALUES + ")");
         }
     }
 }
