@@ -67,10 +67,11 @@ public class AutoPayment {
          * 사용 가능한 모든 상태 값을 문자열로 반환
          * @return 예: "ACTIVE, CANCELLED"
          */
+        private static final String AVAILABLE_VALUES = Arrays.stream(values())
+                .map(Enum::name)
+                .collect(Collectors.joining(", "));
         public static String getAvailableValues() {
-            return Arrays.stream(values())
-                    .map(Enum::name)
-                    .collect(Collectors.joining(", "));
+            return AVAILABLE_VALUES;
         }
     }
 }
