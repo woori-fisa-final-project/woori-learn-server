@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.MessageDigest;
+import java.time.Instant;
 
 @Slf4j
 @Service
@@ -67,25 +68,7 @@ public class AuthService {
             throw new CommonException(ErrorCode.UNAUTHORIZED, "비밀번호가 일치하지 않습니다.");
         }
 
-        // jwt 토큰 저장 로직
-        String accessToken = jwtUtil.generateAccessToken(loginReqDto.userId());
-        String refreshToken = jwtUtil.generateRefreshToken(loginReqDto.userId());
-
-        // 이전 토큰이 있다면 유효기간 갱신
-        // 없다면 만들어서 저장
-        RefreshToken token = refreshTokenRepository.findByUsername(loginReqDto.userId())
-                .map(entity -> {
-                    entity.updateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
-                    return entity;
-                })
-                .orElseGet(() -> RefreshToken.builder()
-                        .username(loginReqDto.userId())
-                        .token(refreshToken)
-                        .expiration(jwtUtil.getRefreshTokenExpiration())
-                        .build());
-        refreshTokenRepository.save(token);
-
-        return new LoginResDto(accessToken, refreshToken);
+        return generateAndSaveToken(loginReqDto.userId());
     }
 
     /**
@@ -93,14 +76,14 @@ public class AuthService {
      * @param refreshReqDto 사용자의 refresh token
      * @return access token
      */
-    @Transactional(readOnly = true)
-    public String refresh(RefreshReqDto refreshReqDto) {
+    @Transactional
+    public LoginResDto refresh(RefreshReqDto refreshReqDto) {
         String refreshToken = refreshReqDto.refreshToken();
-        String userName;
+        String username;
 
         // 토큰 만료 및 유효성 검증
         try {
-            userName = jwtUtil.getUsername(refreshToken);
+            username = jwtUtil.getUsername(refreshToken);
         } catch (ExpiredJwtException e) {
             throw new CommonException(ErrorCode.TOKEN_EXPIRED, "토큰이 만료되었습니다.");
         } catch (JwtException | IllegalArgumentException e) {
@@ -108,7 +91,7 @@ public class AuthService {
         }
 
         // 토큰 존재 여부 검증
-        RefreshToken token = refreshTokenRepository.findByUsername(userName)
+        RefreshToken token = refreshTokenRepository.findByUsername(username)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "토큰이 존재하지 않습니다."));
 
         // 토큰 일치 여부 검증
@@ -117,8 +100,8 @@ public class AuthService {
             throw new CommonException(ErrorCode.UNAUTHORIZED, "토큰이 일치하지 않습니다.");
         }
 
-        // 검증 끝나면 access token 생성해서 return
-        return jwtUtil.generateAccessToken(userName);
+        // 검증 끝나면 access token/refresh token 생성해서 return
+        return generateAndSaveToken(username);
     }
 
     /**
@@ -130,5 +113,29 @@ public class AuthService {
     public String logout(String username) {
         refreshTokenRepository.deleteByUsername(username);
         return "로그아웃되었습니다.";
+    }
+
+    public LoginResDto generateAndSaveToken(String username){
+        // jwt 토큰 저장 로직
+        String accessToken = jwtUtil.generateAccessToken(username);
+        var refreshTokenInfo = jwtUtil.generateRefreshToken(username);
+        String refreshToken = refreshTokenInfo.token();
+        Instant refreshTokenExpiration = refreshTokenInfo.expiration();
+
+        // 이전 토큰이 있다면 유효기간 갱신
+        // 없다면 만들어서 저장
+        RefreshToken token = refreshTokenRepository.findByUsername(username)
+                .map(entity -> {
+                    entity.updateToken(refreshToken, refreshTokenExpiration);
+                    return entity;
+                })
+                .orElseGet(() -> RefreshToken.builder()
+                        .username(username)
+                        .token(refreshToken)
+                        .expiration(refreshTokenExpiration)
+                        .build());
+        refreshTokenRepository.save(token);
+
+        return new LoginResDto(accessToken, refreshToken);
     }
 }
