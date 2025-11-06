@@ -55,10 +55,5 @@ public class PointsHistory {
         this.failReason = failReason;
     }
 
-    @PrePersist
-    protected void onCreate() {
-        if (this.paymentDate == null) {
-            this.paymentDate = LocalDateTime.now();
-        }
-    }
+
 }

@@ -135,7 +135,9 @@ public class PointsExchangeService {
             throw new RuntimeException("이미 처리된 요청입니다.");
         }
 
-        Users user = history.getUser();
+        // ✅ User row에 DB 락 걸림 (동시성 차단)
+        Users user = usersRepository.findByIdForUpdate(history.getUser().getId());
+
         int amount = history.getPaymentAmount();
 
         if (user.getPoints() < amount) {
@@ -154,6 +156,7 @@ public class PointsExchangeService {
                     .build();
         }
 
+        // ✅ 락이 유지된 상태에서 안전하게 차감
         user.setPoints(user.getPoints() - amount);
         history.setStatus(PointsExchangeStatus.SUCCESS);
         history.setProcessedDate(LocalDateTime.now());
@@ -170,5 +173,6 @@ public class PointsExchangeService {
                 .processedDate(history.getProcessedDate())
                 .build();
     }
+
 
 }

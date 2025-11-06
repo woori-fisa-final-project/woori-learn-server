@@ -27,6 +27,10 @@ public class Users extends BaseEntity {
     @Column(nullable = false)
     private Integer points;
 
+    @Version
+    private Integer version;
+
+
     // ✅ 포인트 수정용 Setter
     public void setPoints(Integer points) {
         this.points = points;
