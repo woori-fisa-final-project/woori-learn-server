@@ -40,11 +40,11 @@ public class AccountAuthServiceTest {
         when(externalAuthClient.requestOtp(anyString(), anyString(), anyString()))
                 .thenReturn("123456");
 
-        AccountAuthReqDto req = AccountAuthReqDto.builder()
-                .name("김철수")
-                .phoneNum("01022222222")
-                .birthdate("040101-3")
-                .build();
+        AccountAuthReqDto req = new AccountAuthReqDto(
+                "김철수",
+                "01022222222",
+                "040101-3"
+        );
 
         // when
         service.request(userId, req);
@@ -68,8 +68,11 @@ public class AccountAuthServiceTest {
         when(externalAuthClient.requestOtp(anyString(), anyString(), anyString()))
                 .thenReturn("654321");
 
-        AccountAuthReqDto req = AccountAuthReqDto.builder()
-                .name("김철수").phoneNum("01022222222").birthdate("040101-3").build();
+        AccountAuthReqDto req = new AccountAuthReqDto(
+                "김철수",
+                "01022222222",
+                "040101-3"
+        );
 
         // when
         service.request(userId, req);
@@ -89,8 +92,7 @@ public class AccountAuthServiceTest {
         AccountAuth row = AccountAuth.builder().userId(userId).authCode("777777").build();
         when(repository.findByUserId(userId)).thenReturn(Optional.of(row));
 
-        AccountAuthVerifyReqDto req = AccountAuthVerifyReqDto.builder()
-                .code("777777").build();
+        AccountAuthVerifyReqDto req = new AccountAuthVerifyReqDto("777777");
 
         // when
         service.verify(userId, req);
@@ -107,8 +109,7 @@ public class AccountAuthServiceTest {
         AccountAuth row = AccountAuth.builder().userId(userId).authCode("111111").build();
         when(repository.findByUserId(userId)).thenReturn(Optional.of(row));
 
-        AccountAuthVerifyReqDto req = AccountAuthVerifyReqDto.builder()
-                .code("000000").build();
+        AccountAuthVerifyReqDto req = new AccountAuthVerifyReqDto("000000");
 
         // when & then
         CommonException ex = assertThrows(CommonException.class, () -> service.verify(userId, req));
