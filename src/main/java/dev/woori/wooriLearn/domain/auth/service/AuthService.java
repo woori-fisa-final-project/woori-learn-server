@@ -7,6 +7,7 @@ import dev.woori.wooriLearn.config.security.Encoder;
 import dev.woori.wooriLearn.domain.auth.dto.*;
 import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
 import dev.woori.wooriLearn.domain.auth.repository.RefreshTokenRepository;
+import dev.woori.wooriLearn.domain.user.entity.Role;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -44,7 +45,7 @@ public class AuthService {
             throw new CommonException(ErrorCode.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다.");
         }
 
-        return generateAndSaveToken(loginReqDto.userId());
+        return generateAndSaveToken(loginReqDto.userId(), user.getRole());
     }
 
     /**
@@ -55,10 +56,12 @@ public class AuthService {
     public LoginResDto refresh(RefreshReqDto refreshReqDto) {
         String refreshToken = refreshReqDto.refreshToken();
         String username;
+        Role role;
 
         // 토큰 만료 및 유효성 검증
         try {
             username = jwtUtil.getUsername(refreshToken);
+            role = jwtUtil.getRole(refreshToken);
         } catch (ExpiredJwtException e) {
             throw new CommonException(ErrorCode.TOKEN_EXPIRED, "토큰이 만료되었습니다.");
         } catch (JwtException | IllegalArgumentException e) {
@@ -75,7 +78,7 @@ public class AuthService {
         }
 
         // 검증 끝나면 access token/refresh token 생성해서 return
-        return generateAndSaveToken(username);
+        return generateAndSaveToken(username, role);
     }
 
     /**
@@ -88,10 +91,10 @@ public class AuthService {
         return "로그아웃되었습니다.";
     }
 
-    public LoginResDto generateAndSaveToken(String username){
+    public LoginResDto generateAndSaveToken(String username, Role role){
         // jwt 토큰 저장 로직
-        String accessToken = jwtUtil.generateAccessToken(username);
-        var refreshTokenInfo = jwtUtil.generateRefreshToken(username);
+        String accessToken = jwtUtil.generateAccessToken(username, role);
+        var refreshTokenInfo = jwtUtil.generateRefreshToken(username, role);
         String refreshToken = refreshTokenInfo.token();
         Instant refreshTokenExpiration = refreshTokenInfo.expiration();
 
