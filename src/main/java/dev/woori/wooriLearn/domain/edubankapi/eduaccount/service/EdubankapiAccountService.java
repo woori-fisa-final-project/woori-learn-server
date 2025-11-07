@@ -84,7 +84,7 @@ public class EdubankapiAccountService {
                     if ("ALL".equalsIgnoreCase(type)) return true;
                     if ("DEPOSIT".equalsIgnoreCase(type)) return h.getAmount() > 0;
                     if ("WITHDRAW".equalsIgnoreCase(type)) return h.getAmount() < 0;
-                    return true;
+                    return false;           // all, deposit, withdraw 이외의 값이 들어오면 예외처리
                 })
                 .limit(30)
                 .map(EdubankapiTransactionHistoryDto::from)
