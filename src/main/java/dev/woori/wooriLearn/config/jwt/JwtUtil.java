@@ -1,5 +1,7 @@
 package dev.woori.wooriLearn.config.jwt;
 
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.user.entity.Role;
 import io.jsonwebtoken.Header;
 import io.jsonwebtoken.Jwts;
@@ -44,7 +46,11 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody()
                 .get("role", String.class);
-        return Role.valueOf(role);
+        try{
+            return Role.valueOf(role);
+        }catch (IllegalArgumentException e){
+            throw new CommonException(ErrorCode.INVALID_REQUEST);
+        }
     }
 
     public boolean validateToken(String token) {
