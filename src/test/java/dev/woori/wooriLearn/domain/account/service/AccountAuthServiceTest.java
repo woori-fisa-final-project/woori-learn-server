@@ -119,7 +119,7 @@ public class AccountAuthServiceTest {
 
     @Test
     @DisplayName("인증 번호 요청 이력이 없으면 예외 처리")
-    void verify_whenNoRow_throwIllegalArgumentException() {
+    void verify_whenNoRow_throwsCommonException() {
         when(repository.findByUserId(anyString())).thenReturn(Optional.empty());
         assertThrows(CommonException.class,
                 () -> service.verify("U1", new AccountAuthDto.VerifyRequest("123456")));
