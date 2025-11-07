@@ -46,7 +46,7 @@ public class AccountAuthService {
     public void request(String userId, AccountAuthReqDto req) {
         // 1) 외부 인증 서버 호출
         String code = externalAuthClient.requestOtp(
-                req.getName(), req.getBirthdate(), req.getPhoneNum()
+                req.name(), req.birthdate(), req.phoneNum()
         );
 
         // 2) upsert: userId가 있으면 authCode 갱신, 없으면 새 레코드 생성
@@ -76,7 +76,7 @@ public class AccountAuthService {
                 .orElseThrow(() -> new CommonException(ErrorCode.INVALID_REQUEST, "인증요청 이력이 없습니다."));
 
         // 2) 코드 비교
-        if (!constantTimeEquals(row.getAuthCode(), req.getCode())) {
+        if (!constantTimeEquals(row.getAuthCode(), req.code())) {
             // 틀리면 예외 -> 전역 예외 핸들러에서 400 반환
             throw new CommonException(ErrorCode.INVALID_REQUEST, "인증번호가 일치하지 않습니다.");
         }
