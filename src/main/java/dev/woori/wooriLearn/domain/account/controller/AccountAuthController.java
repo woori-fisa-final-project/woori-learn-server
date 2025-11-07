@@ -2,7 +2,11 @@ package dev.woori.wooriLearn.domain.account.controller;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.domain.account.dto.AccountAuthDto;
+import dev.woori.wooriLearn.config.response.ApiResponse;
+import dev.woori.wooriLearn.config.response.BaseResponse;
+import dev.woori.wooriLearn.config.response.SuccessCode;
+import dev.woori.wooriLearn.domain.account.dto.AccountAuthReqDto;
+import dev.woori.wooriLearn.domain.account.dto.AccountAuthVerifyReqDto;
 import dev.woori.wooriLearn.domain.account.service.AccountAuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,12 +37,13 @@ public class AccountAuthController {
      */
     @PostMapping("/auth")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<AccountAuthDto.Response> request(
-            // Security의 인증 주체에서 userId만 뽑아 사용 (예: username = userId)
-            @AuthenticationPrincipal(expression = "username") String userId,
-            @Valid @RequestBody AccountAuthDto.Request req
+    public ResponseEntity<BaseResponse<?>> request(
+            @AuthenticationPrincipal Object principal,
+            @Valid @RequestBody AccountAuthReqDto req
     ) {
-        return ResponseEntity.ok(service.request(userId, req));
+        String userId = extractUserId(principal);
+        service.request(userId, req);
+        return ApiResponse.success(SuccessCode.OK);
     }
 
     /**
@@ -51,10 +56,19 @@ public class AccountAuthController {
      */
     @PostMapping("/auth/verify")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<AccountAuthDto.VerifyResponse> verify(
-            @AuthenticationPrincipal(expression = "username") String userId,
-            @Valid @RequestBody AccountAuthDto.VerifyRequest req
+    public ResponseEntity<BaseResponse<?>> verify(
+            @AuthenticationPrincipal Object principal,
+            @Valid @RequestBody AccountAuthVerifyReqDto req
     ) {
-        return ResponseEntity.ok(service.verify(userId, req));
+        String userId = extractUserId(principal);
+        service.verify(userId, req);
+        return ApiResponse.success(SuccessCode.OK);
+    }
+
+    private String extractUserId(Object principal) {
+        if (principal instanceof org.springframework.security.core.userdetails.UserDetails ud) return ud.getUsername();
+        if (principal instanceof java.security.Principal p) return p.getName();
+        if (principal instanceof String s && !"anonymousUser".equals(s)) return s;
+        throw new CommonException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
     }
 }
