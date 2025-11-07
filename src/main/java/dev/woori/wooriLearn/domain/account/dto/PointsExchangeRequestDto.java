@@ -6,8 +6,6 @@ import lombok.Getter;
 @Getter
 public class PointsExchangeRequestDto {
 
-    @JsonProperty("db_id")   // JSON → Java 매핑 유지
-    private Long dbId;
 
 
     private Integer exchangeAmount;

@@ -31,12 +31,14 @@ public class PointsExchangeController {
 //    }
     @PostMapping("")
     public ResponseEntity<PointsExchangeResponseDto> requestExchange(
-            @RequestBody PointsExchangeRequestDto dto
+            @RequestBody PointsExchangeRequestDto dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        Long userId = dto.getDbId();  // 로그인 없이 userId 사용
+        Long userId = userDetails.getId(); // ✅ 로그인된 사용자 ID
         PointsExchangeResponseDto response = pointsExchangeService.requestExchange(userId, dto);
         return ResponseEntity.ok(response);
     }
+
 
     /** 특정 사용자 환전 내역 조회 (로그인 기능 없을 때 테스트용) */
     @GetMapping("/{userId}")

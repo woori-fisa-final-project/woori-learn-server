@@ -1,5 +1,6 @@
 package dev.woori.wooriLearn.domain.account.service;
 
+import dev.woori.wooriLearn.config.exception.*;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.entity.Account;
@@ -15,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.security.InvalidParameterException;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -24,6 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PointsExchangeService {
 
+    private final Clock clock;
     private final PointsHistoryRepository pointsHistoryRepository;
     private final UsersRepository usersRepository;
     private final AccountRepository accountRepository;
@@ -32,22 +36,22 @@ public class PointsExchangeService {
     @Transactional
     public PointsExchangeResponseDto requestExchange(Long userId, PointsExchangeRequestDto dto) {
 
-        Users user = usersRepository.findById(dto.getDbId())
-                .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
 
         Account account = accountRepository.findByAccountNumber(dto.getAccountNum())
-                .orElseThrow(() -> new IllegalArgumentException("계좌가 존재하지 않습니다."));
+                .orElseThrow(() -> new AccountNotFoundException(dto.getAccountNum()));
 
         if (!account.getUser().getId().equals(user.getId())) {
-            throw new IllegalArgumentException("사용자 소유의 계좌가 아닙니다.");
+            throw new ForbiddenException("해당 계좌는 사용자의 소유가 아닙니다.");
         }
 
         PointsHistory history = pointsHistoryRepository.save(
                 PointsHistory.builder()
                         .user(user)
                         .amount(dto.getExchangeAmount())
-                        .type(PointsHistoryType.WITHDRAW)       // ✅ 새 필드
-                        .status(PointsStatus.APPLY)             // ✅ 신청 상태
+                        .type(PointsHistoryType.WITHDRAW)
+                        .status(PointsStatus.APPLY)
                         .build()
         );
 
@@ -56,7 +60,7 @@ public class PointsExchangeService {
                 .userId(user.getId())
                 .exchangeAmount(history.getAmount())
                 .status(history.getStatus())
-                .requestDate(history.getCreatedAt().toString())    // ✅ paymentDate → createdAt
+                .requestDate(String.valueOf(history.getCreatedAt()))
                 .message("현금화 요청이 정상적으로 접수되었습니다.")
                 .build();
     }
@@ -69,51 +73,25 @@ public class PointsExchangeService {
             String status,
             String sort
     ) {
-        LocalDateTime start = null;
-        if (startDate != null && !startDate.isEmpty()) {
-            try {
-                start = LocalDate.parse(startDate).atStartOfDay();
-            } catch (DateTimeParseException e) {
-                throw new IllegalArgumentException("startDate 형식이 잘못되었습니다. 예: 2025-11-01");
-            }
-        }
+        LocalDateTime start = parseStartDate(startDate);
+        LocalDateTime end = parseEndDate(endDate);
 
-        LocalDateTime end = null;
-        if (endDate != null && !endDate.isEmpty()) {
-            try {
-                end = LocalDate.parse(endDate).atTime(23, 59, 59);
-            } catch (DateTimeParseException e) {
-                throw new IllegalArgumentException("endDate 형식이 잘못되었습니다. 예: 2025-11-30");
-            }
-        }
-
-
-        PointsStatus statusEnum = null;
-
-        if (!status.equalsIgnoreCase("ALL")) {
-            try {
-                statusEnum = PointsStatus.valueOf(status.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("잘못된 status 값입니다. 가능한 값: ALL / APPLY / SUCCESS / FAILED");
-            }
-        }
-
+        PointsStatus statusEnum = parseStatus(status);
         Sort sortOption = sort.equalsIgnoreCase("ASC") ?
                 Sort.by("createdAt").ascending() :
                 Sort.by("createdAt").descending();
 
         List<PointsHistory> list = pointsHistoryRepository.findByFilters(
-                userId, statusEnum, start, end, sortOption
+                userId, PointsHistoryType.WITHDRAW, statusEnum, start, end, sortOption
         );
 
         return list.stream()
-                .filter(h -> h.getType() == PointsHistoryType.WITHDRAW)  // ✅ 출금 기록만 필터링
                 .map(h -> PointsExchangeResponseDto.builder()
                         .requestId(h.getId())
                         .userId(h.getUser().getId())
                         .exchangeAmount(h.getAmount())
                         .status(h.getStatus())
-                        .requestDate(h.getCreatedAt().toString())
+                        .requestDate(String.valueOf(h.getCreatedAt()))
                         .processedDate(h.getProcessedAt())
                         .message(h.getStatus().toString())
                         .build()
@@ -123,21 +101,21 @@ public class PointsExchangeService {
     /* ✅ 출금 승인/처리 */
     @Transactional
     public PointsExchangeResponseDto approveExchange(Long requestId) {
+
         PointsHistory history = pointsHistoryRepository.findById(requestId)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("해당 요청이 존재하지 않습니다."));
+                .orElseThrow(() -> new PointsRequestNotFoundException(requestId));
 
         if (history.getStatus() != PointsStatus.APPLY) {
-            throw new RuntimeException("이미 처리된 요청입니다.");
+            throw new InvalidStateException("이미 처리된 요청입니다.");
         }
 
         Users user = usersRepository.findByIdForUpdate(history.getUser().getId())
-                .orElseThrow(() -> new RuntimeException("유저가 존재하지 않습니다."));
+                .orElseThrow(() -> new UserNotFoundException(history.getUser().getId()));
 
         int amount = history.getAmount();
 
-        /* ✅ 포인트 부족 */
         if (user.getPoints() < amount) {
-            history.markFailed("포인트가 부족하여 실패했습니다.");
+            history.markFailed("포인트 부족", LocalDateTime.now(clock));
             return PointsExchangeResponseDto.builder()
                     .requestId(requestId)
                     .userId(user.getId())
@@ -148,11 +126,8 @@ public class PointsExchangeService {
                     .build();
         }
 
-        /* ✅ SUCCESS */
-        user.setPoints(user.getPoints() - amount);
-
-
-        history.markSuccess();
+        user.subtractPoints(amount);
+        history.markSuccess(LocalDateTime.now(clock));
 
         return PointsExchangeResponseDto.builder()
                 .requestId(requestId)
@@ -162,5 +137,33 @@ public class PointsExchangeService {
                 .message("정상적으로 처리되었습니다.")
                 .processedDate(history.getProcessedAt())
                 .build();
+    }
+
+    /* ✅ 날짜 검증 함수 분리 */
+    private LocalDateTime parseStartDate(String date) {
+        if (date == null || date.isEmpty()) return null;
+        try {
+            return LocalDate.parse(date).atStartOfDay();
+        } catch (DateTimeParseException e) {
+            throw new InvalidParameterException("startDate 형식이 잘못되었습니다. 예: 2025-11-01");
+        }
+    }
+
+    private LocalDateTime parseEndDate(String date) {
+        if (date == null || date.isEmpty()) return null;
+        try {
+            return LocalDate.parse(date).atTime(23, 59, 59);
+        } catch (DateTimeParseException e) {
+            throw new InvalidParameterException("endDate 형식이 잘못되었습니다. 예: 2025-11-30");
+        }
+    }
+
+    private PointsStatus parseStatus(String status) {
+        if (status == null || status.equalsIgnoreCase("ALL")) return null;
+        try {
+            return PointsStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidParameterException("잘못된 status 값입니다. 가능한 값: ALL / APPLY / SUCCESS / FAILED");
+        }
     }
 }
