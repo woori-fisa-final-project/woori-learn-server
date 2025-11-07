@@ -44,7 +44,6 @@ public class AccountAuthDto {
         private String phoneNum;
 
         @ValidBirthdate(minAgeYears = 14)
-        @Pattern(regexp="^\\d{7}$", message="생년월일은 YYMMDDG 형식(하이픈 없이 7자리)이어야 합니다.")
         private String birthdate;
 
         // 클라이언트가 하이픈/공백 등을 섞어 보내더라도 서버에서 비숫자를 제거하여 숫자만 남김.
@@ -78,6 +77,7 @@ public class AccountAuthDto {
     @AllArgsConstructor
     @Builder
     public static class VerifyRequest {
+        @NotBlank(message = "인증번호를 입력해주세요.")
         @Pattern(regexp = "^\\d{6}$")
         private String code;
     }

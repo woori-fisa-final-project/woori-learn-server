@@ -73,7 +73,8 @@ public class AccountAuthService {
                 .orElseThrow(() -> new CommonException(ErrorCode.INVALID_REQUEST, "인증요청 이력이 없습니다."));
 
         // 2) 코드 비교
-        boolean ok = row.getAuthCode().equals(req.getCode());
+        boolean ok = req.getCode() != null && java.security.MessageDigest.isEqual(row.getAuthCode().getBytes(), req.getCode().getBytes());
+
         // 3) 성공 시 레코드 삭제
         if (ok) {
             accountAuthRepository.deleteByUserId(userId);

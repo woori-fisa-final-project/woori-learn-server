@@ -7,6 +7,7 @@ import dev.woori.wooriLearn.domain.account.service.AccountAuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,12 +32,15 @@ public class AccountAuthController {
      * 3) 서비스로 위임 -> 외부 인증 서버 호출 -> OTP 수신/DB upsert -> 응답 반환
      */
     @PostMapping("/auth")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AccountAuthDto.Response> request(
-            @AuthenticationPrincipal Object principal,
-            @RequestHeader(value = "X-USER-ID", required = false) String headerUserId,
+            // Security의 인증 주체에서 userId만 뽑아 사용 (예: username = userId)
+            @AuthenticationPrincipal(expression = "username") String userId,
             @Valid @RequestBody AccountAuthDto.Request req
     ) {
-        String userId = resolveUserId(principal, headerUserId);
+        if (userId == null || userId.isBlank()) {
+            throw new CommonException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
         return ResponseEntity.ok(service.request(userId, req));
     }
 
@@ -49,19 +53,14 @@ public class AccountAuthController {
      * 3) 서비스로 위임 -> DB에 저장된 OTP와 비교 -> 성공 시 레코드 삭제, 결과 반환
      */
     @PostMapping("/auth/verify")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AccountAuthDto.VerifyResponse> verify(
-            @AuthenticationPrincipal Object principal,
-            @RequestHeader(value = "X-USER-ID", required = false) String headerUserId,
+            @AuthenticationPrincipal(expression = "username") String userId,
             @Valid @RequestBody AccountAuthDto.VerifyRequest req
     ) {
-        String userId = resolveUserId(principal, headerUserId);
+        if (userId == null || userId.isBlank()) {
+            throw new CommonException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
         return ResponseEntity.ok(service.verify(userId, req));
-    }
-
-    private String resolveUserId(Object principal, String headerUserId) {
-        if (headerUserId != null && !headerUserId.isBlank()) return headerUserId;
-        if (principal instanceof org.springframework.security.core.userdetails.UserDetails ud) return ud.getUsername();
-        if (principal instanceof String s && !"anonymousUser".equals(s)) return s;        // 기본 String principal
-        throw new CommonException(ErrorCode.UNAUTHORIZED, "사용자 식별이 필요합니다. (로그인 필요)");
     }
 }
