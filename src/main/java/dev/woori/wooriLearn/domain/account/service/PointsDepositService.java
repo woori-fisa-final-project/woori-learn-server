@@ -13,8 +13,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import static dev.woori.wooriLearn.domain.account.entity.PointsStatus.SUCCESS;
-
 @Service
 @RequiredArgsConstructor
 public class PointsDepositService {
@@ -25,30 +23,29 @@ public class PointsDepositService {
     @Transactional
     public PointsDepositResponseDto depositPoints(PointsDepositRequestDto dto) {
 
-        Users user = usersRepository.findByIdForUpdate(dto.getUserId())
-                .orElseThrow(() -> new UserNotFoundException(dto.getUserId()));
-
+        Users user = usersRepository.findByIdForUpdate(dto.userId())
+                .orElseThrow(() -> new UserNotFoundException(dto.userId()));
 
         // 1) 포인트 증가
-        user.addPoints(dto.getAmount());
-
+        user.addPoints(dto.amount());
 
         // 2) 내역 저장
         PointsHistory history = pointsHistoryRepository.save(
                 PointsHistory.builder()
                         .user(user)
-                        .amount(dto.getAmount())
+                        .amount(dto.amount())
                         .type(PointsHistoryType.DEPOSIT)
-                        .status(SUCCESS)
+                        .status(PointsStatus.SUCCESS)
                         .build()
         );
 
+        // 3) 응답 반환
         return PointsDepositResponseDto.builder()
                 .userId(user.getId())
-                .addedPoint(dto.getAmount())
+                .addedPoint(dto.amount())
                 .currentBalance(user.getPoints())
-                .status(SUCCESS)
-                .message(dto.getReason() != null ? dto.getReason() : "포인트 적립 완료")
+                .status(PointsStatus.SUCCESS)
+                .message(dto.reason() != null ? dto.reason() : "포인트 적립 완료")
                 .depositDate(history.getCreatedAt())
                 .build();
     }

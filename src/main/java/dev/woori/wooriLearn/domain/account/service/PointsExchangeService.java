@@ -39,8 +39,8 @@ public class PointsExchangeService {
         Users user = usersRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
-        Account account = accountRepository.findByAccountNumber(dto.getAccountNum())
-                .orElseThrow(() -> new AccountNotFoundException(dto.getAccountNum()));
+        Account account = accountRepository.findByAccountNumber(dto.accountNum())
+                .orElseThrow(() -> new AccountNotFoundException(dto.accountNum()));
 
         if (!account.getUser().getId().equals(user.getId())) {
             throw new ForbiddenException("해당 계좌는 사용자의 소유가 아닙니다.");
@@ -49,11 +49,12 @@ public class PointsExchangeService {
         PointsHistory history = pointsHistoryRepository.save(
                 PointsHistory.builder()
                         .user(user)
-                        .amount(dto.getExchangeAmount())
+                        .amount(dto.exchangeAmount())
                         .type(PointsHistoryType.WITHDRAW)
                         .status(PointsStatus.APPLY)
                         .build()
         );
+
 
         return PointsExchangeResponseDto.builder()
                 .requestId(history.getId())
