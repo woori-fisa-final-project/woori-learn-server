@@ -46,7 +46,7 @@ public class PointsDepositService {
                 .currentBalance(user.getPoints())
                 .status(PointsStatus.SUCCESS)
                 .message(dto.reason() != null ? dto.reason() : "포인트 적립 완료")
-                .depositDate(history.getCreatedAt())
+                .createdAt(history.getCreatedAt())
                 .build();
     }
 }

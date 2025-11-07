@@ -11,5 +11,5 @@ public record PointsDepositResponseDto(
         Integer currentBalance,
         PointsStatus status,
         String message,
-        LocalDateTime depositDate
+        LocalDateTime createdAt
 ) {}

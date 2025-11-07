@@ -11,7 +11,7 @@ public record PointsExchangeResponseDto(
         Long userId,
         Integer exchangeAmount,
         PointsStatus status,
-        String requestDate,
+        LocalDateTime  requestDate,
         String message,
         LocalDateTime processedDate
 ) {}
