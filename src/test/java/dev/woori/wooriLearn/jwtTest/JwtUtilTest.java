@@ -1,6 +1,7 @@
 package dev.woori.wooriLearn.jwtTest;
 
 import dev.woori.wooriLearn.config.jwt.JwtUtil;
+import dev.woori.wooriLearn.domain.user.entity.Role;
 import io.jsonwebtoken.ExpiredJwtException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,7 +35,7 @@ public class JwtUtilTest {
         String username = "testUser";
 
         // when
-        String token = jwtUtil.generateAccessToken(username);
+        String token = jwtUtil.generateAccessToken(username, Role.ROLE_USER);
 
         // then
         assertThat(token).isNotBlank();
@@ -49,7 +50,7 @@ public class JwtUtilTest {
         String username = "testUser";
 
         // when
-        var tokenInfo = jwtUtil.generateRefreshToken(username);
+        var tokenInfo = jwtUtil.generateRefreshToken(username, Role.ROLE_USER);
 
         // then
         assertThat(tokenInfo.token()).isNotBlank();
@@ -60,7 +61,7 @@ public class JwtUtilTest {
     @DisplayName("잘못된 서명 키로 서명된 토큰은 유효하지 않다")
     void invalidSignatureTokenShouldFailValidation() {
         // given
-        String validToken = jwtUtil.generateAccessToken("user1");
+        String validToken = jwtUtil.generateAccessToken("user1", Role.ROLE_USER);
 
         // 다른 키로 새 util 생성
         String otherKey = Base64.getEncoder().encodeToString("different-secret-key-1234567890".getBytes(StandardCharsets.UTF_8));
@@ -78,7 +79,7 @@ public class JwtUtilTest {
     void expiredTokenShouldFailValidation() {
         // given
         long expiredMillis = -1000L; // 이미 만료된 시간
-        var tokenInfo = jwtUtil.generateToken("user1", expiredMillis);
+        var tokenInfo = jwtUtil.generateToken("user1", Role.ROLE_USER, expiredMillis);
 
         // when
         boolean isValid = jwtUtil.validateToken(tokenInfo.token());
@@ -91,7 +92,7 @@ public class JwtUtilTest {
     @DisplayName("만료된 토큰을 파싱하면 ExpiredJwtException이 발생한다")
     void getUsername_ShouldThrowExpiredJwtException_WhenTokenExpired() {
         // given
-        var tokenInfo = jwtUtil.generateToken("expiredUser", -1000L);
+        var tokenInfo = jwtUtil.generateToken("expiredUser", Role.ROLE_USER, -1000L);
 
         // then
         assertThatThrownBy(() -> jwtUtil.getUsername(tokenInfo.token()))

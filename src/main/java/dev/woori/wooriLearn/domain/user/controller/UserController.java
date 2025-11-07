@@ -23,6 +23,7 @@ public class UserController {
 
     @PostMapping("/signup")
     public ResponseEntity<BaseResponse<?>> signup(@RequestBody SignupReqDto signupReqDto) {
-        return ApiResponse.success(SuccessCode.CREATED, userService.signup(signupReqDto));
+        userService.signup(signupReqDto);
+        return ApiResponse.success(SuccessCode.CREATED);
     }
 }
