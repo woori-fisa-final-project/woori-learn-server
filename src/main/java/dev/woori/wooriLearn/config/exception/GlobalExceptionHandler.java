@@ -21,7 +21,7 @@ public class GlobalExceptionHandler {
                 request.getMethod(),
                 request.getRequestURI(),
                 ex.getMessage());
-        return ApiResponse.failure(ex.getErrorCode());
+        return ApiResponse.failure(ex.getErrorCode(), ex.getMessage());
     }
 
     // @Valid를 통한 유효성 검증 실패 시
@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
                 request.getMethod(),
                 request.getRequestURI(),
                 ex.getMessage());
-        return ApiResponse.failure(errorCode, ex.getMessage());
+        return ApiResponse.failure(errorCode);
     }
 
 }
