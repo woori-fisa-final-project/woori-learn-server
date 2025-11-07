@@ -1,7 +1,7 @@
-package dev.woori.wooriLearn.domain.autopayment.dto;
+package dev.woori.wooriLearn.domain.edubankapi.autopayment.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import dev.woori.wooriLearn.domain.edubankapi.entity.AutoPayment;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
 
 import java.time.LocalDate;
 

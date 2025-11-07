@@ -1,11 +1,11 @@
-package dev.woori.wooriLearn.domain.autopayment.service;
+package dev.woori.wooriLearn.domain.edubankapi.autopayment.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.domain.autopayment.dto.AutoPaymentResponse;
-import dev.woori.wooriLearn.domain.autopayment.repository.AutoPaymentRepository;
-import dev.woori.wooriLearn.domain.edubankapi.entity.AutoPayment;
-import dev.woori.wooriLearn.domain.edubankapi.entity.AutoPayment.AutoPaymentStatus;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentResponse;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.repository.AutoPaymentRepository;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment.AutoPaymentStatus;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

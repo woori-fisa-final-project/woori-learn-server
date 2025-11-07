@@ -1,7 +1,7 @@
-package dev.woori.wooriLearn.domain.autopayment.repository;
+package dev.woori.wooriLearn.domain.edubankapi.autopayment.repository;
 
-import dev.woori.wooriLearn.domain.edubankapi.entity.AutoPayment;
-import dev.woori.wooriLearn.domain.edubankapi.entity.AutoPayment.AutoPaymentStatus;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment.AutoPaymentStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
