@@ -25,13 +25,15 @@ public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
 
-    @Value("${spring.profiles.active:prod}") // 기본값 prod
-    private String activeProfile;
-
     // 인증 없이도 접근 가능한 엔드포인트 목록
     private static final List<String> whiteList = List.of(
             "/auth/login", // 로그인
             "/auth/signup" // 회원가입
+    );
+
+    // 관리자만 접근 가능한 엔드포인트 목록
+    private static final List<String> adminList = List.of(
+            "/admin/*"
     );
 
     // 개발 모드에서는 인증 적용 x
@@ -54,6 +56,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(whiteList.toArray(new String[0])).permitAll()
+                        .requestMatchers(adminList.toArray(new String[0])).hasRole("ADMIN")
                         .anyRequest().authenticated()) // 나머지는 JWT 필요
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

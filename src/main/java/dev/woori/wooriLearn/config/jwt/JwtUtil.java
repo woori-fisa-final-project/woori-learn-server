@@ -1,5 +1,8 @@
 package dev.woori.wooriLearn.config.jwt;
 
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.user.entity.Role;
 import io.jsonwebtoken.Header;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -33,7 +36,21 @@ public class JwtUtil {
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
-                .get("username", String.class);
+                .getSubject();
+    }
+
+    public Role getRole(String token) {
+        String role = Jwts.parserBuilder()
+                .setSigningKey(secretKey)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("role", String.class);
+        try{
+            return Role.valueOf(role);
+        }catch (IllegalArgumentException e){
+            throw new CommonException(ErrorCode.INVALID_REQUEST);
+        }
     }
 
     public boolean validateToken(String token) {
@@ -49,21 +66,22 @@ public class JwtUtil {
         }
     }
 
-    public String generateAccessToken(String username) {
-        return generateToken(username, accessTokenExpiration).token();
+    public String generateAccessToken(String username, Role role) {
+        return generateToken(username, role, accessTokenExpiration).token();
     }
 
-    public TokenInfo generateRefreshToken(String username) {
-        return generateToken(username, refreshTokenExpiration);
+    public TokenInfo generateRefreshToken(String username, Role role) {
+        return generateToken(username, role, refreshTokenExpiration);
     }
 
-    public TokenInfo generateToken(String username, long expirationMillis){
+    public TokenInfo generateToken(String username, Role role, long expirationMillis){
         Instant now = Instant.now();
         Instant expiration = now.plusMillis(expirationMillis);
 
         String token = Jwts.builder()
                 .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
-                .claim("username", username)
+                .setSubject(username)
+                .claim("role", role)
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(expiration))
                 .signWith(secretKey)
