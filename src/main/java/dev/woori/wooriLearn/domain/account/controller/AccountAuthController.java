@@ -38,9 +38,6 @@ public class AccountAuthController {
             @AuthenticationPrincipal(expression = "username") String userId,
             @Valid @RequestBody AccountAuthDto.Request req
     ) {
-        if (userId == null || userId.isBlank()) {
-            throw new CommonException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
-        }
         return ResponseEntity.ok(service.request(userId, req));
     }
 
@@ -58,9 +55,6 @@ public class AccountAuthController {
             @AuthenticationPrincipal(expression = "username") String userId,
             @Valid @RequestBody AccountAuthDto.VerifyRequest req
     ) {
-        if (userId == null || userId.isBlank()) {
-            throw new CommonException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
-        }
         return ResponseEntity.ok(service.verify(userId, req));
     }
 }

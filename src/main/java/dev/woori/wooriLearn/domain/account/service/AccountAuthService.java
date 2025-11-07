@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * 본인 인증(OTP) 발급/검증 비즈니스 로직을 담당하는 서비스.
  *
@@ -73,7 +75,7 @@ public class AccountAuthService {
                 .orElseThrow(() -> new CommonException(ErrorCode.INVALID_REQUEST, "인증요청 이력이 없습니다."));
 
         // 2) 코드 비교
-        boolean ok = req.getCode() != null && java.security.MessageDigest.isEqual(row.getAuthCode().getBytes(), req.getCode().getBytes());
+        boolean ok = req.getCode() != null && java.security.MessageDigest.isEqual(row.getAuthCode().getBytes(StandardCharsets.UTF_8), req.getCode().getBytes(StandardCharsets.UTF_8));
 
         // 3) 성공 시 레코드 삭제
         if (ok) {
