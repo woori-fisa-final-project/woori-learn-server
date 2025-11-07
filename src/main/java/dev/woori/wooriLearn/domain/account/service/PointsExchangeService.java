@@ -16,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.security.InvalidParameterException;
+import dev.woori.wooriLearn.config.exception.InvalidParameterException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
