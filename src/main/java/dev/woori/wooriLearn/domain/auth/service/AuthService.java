@@ -32,29 +32,6 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
 
     /**
-     * id와 비밀번호, 사용자 이름을 입력받아 회원가입을 진행합니다.
-     * @param signupReqDto id / pw / 이름
-     * @return 회원가입 완료 안내문구
-     */
-    public String signup(SignupReqDto signupReqDto) {
-        if(userRepository.existsByUserId(signupReqDto.userId())){
-            throw new CommonException(ErrorCode.CONFLICT);
-        }
-
-        Users user = Users.builder()
-                .userId(signupReqDto.userId())
-                .password(passwordEncoder.encode(signupReqDto.password()))
-                .nickname(signupReqDto.nickname())
-                .points(0) // 초기 설정, 이후 수정 가능
-                .build();
-
-        userRepository.save(user);
-        // TODO: 회원가입 이후 기본 포인트를 지급한다 하면 포인트 내역 추가 로직 필요
-
-        return "회원가입이 완료되었습니다.";
-    }
-
-    /**
      * id와 pw를 확인 후 사용자임이 확인되면 jwt 토큰을 발급합니다.
      * @param loginReqDto 로그인 입력값 - id / pw
      * @return loginResDto - access token / refresh token
