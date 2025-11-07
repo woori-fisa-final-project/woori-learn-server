@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @Service
@@ -68,13 +69,24 @@ public class PointsExchangeService {
             String status,
             String sort
     ) {
-        LocalDateTime start = (startDate != null && !startDate.isEmpty())
-                ? LocalDate.parse(startDate).atStartOfDay()
-                : null;
+        LocalDateTime start = null;
+        if (startDate != null && !startDate.isEmpty()) {
+            try {
+                start = LocalDate.parse(startDate).atStartOfDay();
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException("startDate 형식이 잘못되었습니다. 예: 2025-11-01");
+            }
+        }
 
-        LocalDateTime end = (endDate != null && !endDate.isEmpty())
-                ? LocalDate.parse(endDate).atTime(23, 59, 59)
-                : null;
+        LocalDateTime end = null;
+        if (endDate != null && !endDate.isEmpty()) {
+            try {
+                end = LocalDate.parse(endDate).atTime(23, 59, 59);
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException("endDate 형식이 잘못되었습니다. 예: 2025-11-30");
+            }
+        }
+
 
         PointsStatus statusEnum = null;
 
