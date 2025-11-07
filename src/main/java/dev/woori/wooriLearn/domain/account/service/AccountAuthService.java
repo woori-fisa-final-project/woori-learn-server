@@ -78,7 +78,7 @@ public class AccountAuthService {
         // 2) 코드 비교
         if (!constantTimeEquals(row.getAuthCode(), req.code())) {
             // 틀리면 예외 -> 전역 예외 핸들러에서 400 반환
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "인증번호가 일치하지 않습니다.");
+            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "인증번호가 일치하지 않습니다.");
         }
 
         // 3) 성공 시 레코드 삭제
