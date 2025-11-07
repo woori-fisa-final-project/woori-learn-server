@@ -14,6 +14,8 @@ import lombok.*;
 @Builder
 public class AccountAuth {
 
+    public static final String AUTH_CODE_REGEX = "^\\d{6}$";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -27,7 +29,7 @@ public class AccountAuth {
 
     /** 인증번호 업데이트(의도된 경로로만 상태 변경) */
     public void updateAuthCode(String newCode) {
-        if (newCode == null || !newCode.matches("\\d{6}")) {
+        if (newCode == null || !newCode.matches(AUTH_CODE_REGEX)) {
             throw new IllegalArgumentException("authCode는 6자리 숫자여야 합니다.");
         }
         this.authCode = newCode;
