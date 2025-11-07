@@ -3,12 +3,10 @@ package dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository;
 
 import dev.woori.wooriLearn.domain.edubankapi.entity.TransactionHistory;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Repository
 public interface EdubankapiTransactionHistoryRepository extends JpaRepository<TransactionHistory, Long> {
 
     /**
@@ -23,7 +21,7 @@ public interface EdubankapiTransactionHistoryRepository extends JpaRepository<Tr
 
     // JPA가 메서드 이름을 해석해서 자동으로 쿼리를 만드는데
     // 그 네이밍 규칙에 맞춰서 변수명을 쓰니까 이렇게 길어졌습니다.
-    List<TransactionHistory> findByAccount_IdAndTransactionDateBetweenOrderByTransactionDateDesc
+    List<TransactionHistory> findByAccountIdAndTransactionDateBetweenOrderByTransactionDateDesc
     (
             Long accountId,
             LocalDateTime startDate,

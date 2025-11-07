@@ -57,20 +57,24 @@ public class EdubankapiAccountService {
 
         // 시작일 계산
         LocalDateTime start;
-        if (period == null || period.isBlank()) {
-            start = end.minusMonths(1);
+        if (startDate != null) {
+            start = startDate.atStartOfDay();
         } else {
-            switch (period.toUpperCase()) {
-                case "3M" -> start = end.minusMonths(3);
-                case "6M" -> start = end.minusMonths(6);
-                case "1Y" -> start = end.minusYears(1);
-                default -> start = end.minusMonths(1);
+            if (period == null || period.isBlank()) {
+                start = end.minusMonths(1);
+            } else {
+                switch (period.toUpperCase()) {
+                    case "3M" -> start = end.minusMonths(3);
+                    case "6M" -> start = end.minusMonths(6);
+                    case "1Y" -> start = end.minusYears(1);
+                    default -> start = end.minusMonths(1);
+                }
             }
         }
 
         // DB 조회
         List<TransactionHistory> histories =
-                edubankapiTransactionHistoryRepository.findByAccount_IdAndTransactionDateBetweenOrderByTransactionDateDesc(
+                edubankapiTransactionHistoryRepository.findByAccountIdAndTransactionDateBetweenOrderByTransactionDateDesc(
                         accountId, start, end
                 );
 
