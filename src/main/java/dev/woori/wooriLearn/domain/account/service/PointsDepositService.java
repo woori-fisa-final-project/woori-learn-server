@@ -1,5 +1,6 @@
 package dev.woori.wooriLearn.domain.account.service;
 
+import dev.woori.wooriLearn.config.exception.UserNotFoundException;
 import dev.woori.wooriLearn.domain.account.dto.PointsDepositRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsDepositResponseDto;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
@@ -12,6 +13,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import static dev.woori.wooriLearn.domain.account.entity.PointsStatus.SUCCESS;
+
 @Service
 @RequiredArgsConstructor
 public class PointsDepositService {
@@ -23,7 +26,8 @@ public class PointsDepositService {
     public PointsDepositResponseDto depositPoints(PointsDepositRequestDto dto) {
 
         Users user = usersRepository.findByIdForUpdate(dto.getUserId())
-                .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
+                .orElseThrow(() -> new UserNotFoundException(dto.getUserId()));
+
 
         // 1) 포인트 증가
         user.addPoints(dto.getAmount());
@@ -35,7 +39,7 @@ public class PointsDepositService {
                         .user(user)
                         .amount(dto.getAmount())
                         .type(PointsHistoryType.DEPOSIT)
-                        .status(PointsStatus.SUCCESS)
+                        .status(SUCCESS)
                         .build()
         );
 
@@ -43,7 +47,7 @@ public class PointsDepositService {
                 .userId(user.getId())
                 .addedPoint(dto.getAmount())
                 .currentBalance(user.getPoints())
-                .status("SUCCESS")
+                .status(SUCCESS)
                 .message(dto.getReason() != null ? dto.getReason() : "포인트 적립 완료")
                 .depositDate(history.getCreatedAt())
                 .build();

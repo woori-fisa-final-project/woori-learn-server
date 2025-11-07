@@ -1,6 +1,5 @@
 package dev.woori.wooriLearn.domain.account.entity;
 
-import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import jakarta.persistence.*;
 import lombok.*;
@@ -51,15 +50,16 @@ public class PointsHistory {
     @Column(name = "fail_reason")
     private String failReason;
 
-    public void markSuccess() {
+    public void markSuccess(LocalDateTime processedAt) {
         this.status = PointsStatus.SUCCESS;
-        this.processedAt = LocalDateTime.now();
+        this.processedAt = processedAt;
     }
 
-    public void markFailed(String reason) {
+
+    public void markFailed(String reason, LocalDateTime processedAt) {
         this.status = PointsStatus.FAILED;
         this.failReason = reason;
-        this.processedAt = LocalDateTime.now();
+        this.processedAt = processedAt;
     }
 
 }

@@ -40,4 +40,20 @@ public class Users extends BaseEntity {
     public void addPoints(Integer amount) {
         this.points += amount;
     }
+    /* 포인트 차감 */
+    public void subtractPoints(Integer amount) {
+        this.points -= amount;
+    }
+    @Column(nullable = false)
+    private boolean accountNonExpired = true;
+
+    @Column(nullable = false)
+    private boolean accountNonLocked = true;
+
+    @Column(nullable = false)
+    private boolean credentialsNonExpired = true;
+
+    @Column(nullable = false)
+    private boolean enabled = true;
+
 }
