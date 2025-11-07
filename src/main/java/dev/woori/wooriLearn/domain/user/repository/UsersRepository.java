@@ -8,8 +8,10 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
+
 public interface UsersRepository extends JpaRepository<Users, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM Users u WHERE u.id = :id")
-    Users findByIdForUpdate(@Param("id") Long id);
+    Optional<Users> findByIdForUpdate(@Param("id") Long id);
 }

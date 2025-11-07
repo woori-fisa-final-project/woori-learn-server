@@ -22,7 +22,7 @@ public class PointsDepositService {
     @Transactional
     public PointsDepositResponseDto depositPoints(PointsDepositRequestDto dto) {
 
-        Users user = usersRepository.findById(dto.getUserId())
+        Users user = usersRepository.findByIdForUpdate(dto.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
 
         // 1) 포인트 증가
