@@ -1,5 +1,6 @@
-package dev.woori.wooriLearn.domain.edubankapi.entity;
+package dev.woori.wooriLearn.domain.edubankapi.autopayment.entity;
 
+import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import jakarta.persistence.*;
 import lombok.*;
 
