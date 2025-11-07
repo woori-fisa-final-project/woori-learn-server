@@ -61,7 +61,7 @@ public class PointsExchangeService {
                 .userId(user.getId())
                 .exchangeAmount(history.getAmount())
                 .status(history.getStatus())
-                .requestDate(String.valueOf(history.getCreatedAt()))
+                .requestDate(history.getCreatedAt())
                 .message("현금화 요청이 정상적으로 접수되었습니다.")
                 .build();
     }
@@ -92,7 +92,7 @@ public class PointsExchangeService {
                         .userId(h.getUser().getId())
                         .exchangeAmount(h.getAmount())
                         .status(h.getStatus())
-                        .requestDate(String.valueOf(h.getCreatedAt()))
+                        .requestDate(h.getCreatedAt())
                         .processedDate(h.getProcessedAt())
                         .message(h.getStatus().toString())
                         .build()

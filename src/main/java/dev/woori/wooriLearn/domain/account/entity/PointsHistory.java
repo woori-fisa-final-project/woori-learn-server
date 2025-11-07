@@ -1,9 +1,10 @@
 package dev.woori.wooriLearn.domain.account.entity;
 
+import dev.woori.wooriLearn.config.BaseEntity;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -13,8 +14,8 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@EntityListeners(org.springframework.data.jpa.domain.support.AuditingEntityListener.class)
-public class PointsHistory {
+@EntityListeners(AuditingEntityListener.class)
+public class PointsHistory extends BaseEntity {  // ✅ 추가됨
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,29 +25,20 @@ public class PointsHistory {
     @JoinColumn(name = "user_id", nullable = false)
     private Users user;
 
-    @CreatedDate
-    @Column(name = "created_at", updatable = false, nullable = false)
-    private LocalDateTime createdAt;
-
-    // 적립/출금 공통 금액
     @Column(name = "amount", nullable = false)
     private Integer amount;
 
-    // DEPOSIT or WITHDRAW
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 20)
     private PointsHistoryType type;
 
-    // 처리 상태 (적립은 항상 SUCCESS)
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private PointsStatus status;
 
-    // 환전일 때만 사용
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
 
-    // 환전 실패 사유 (적립에는 null)
     @Column(name = "fail_reason")
     private String failReason;
 
@@ -55,11 +47,9 @@ public class PointsHistory {
         this.processedAt = processedAt;
     }
 
-
     public void markFailed(String reason, LocalDateTime processedAt) {
         this.status = PointsStatus.FAILED;
         this.failReason = reason;
         this.processedAt = processedAt;
     }
-
 }
