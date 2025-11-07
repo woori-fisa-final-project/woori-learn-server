@@ -124,7 +124,7 @@ public class PointsExchangeService {
     @Transactional
     public PointsExchangeResponseDto approveExchange(Long requestId) {
         PointsHistory history = pointsHistoryRepository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("해당 요청이 존재하지 않습니다."));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("해당 요청이 존재하지 않습니다."));
 
         if (history.getStatus() != PointsStatus.APPLY) {
             throw new RuntimeException("이미 처리된 요청입니다.");
