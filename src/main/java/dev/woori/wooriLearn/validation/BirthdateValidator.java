@@ -55,7 +55,7 @@ public class BirthdateValidator implements ConstraintValidator<ValidBirthdate, S
         }
 
         // 오늘 날짜
-        LocalDate today = LocalDate.now(ZoneId.systemDefault());
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
         if (!allowFuture && birth.isAfter(today)) return false;
 
         // 만 나이 계산
