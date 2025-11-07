@@ -25,7 +25,6 @@ public class AccountAuthDtoTest {
     void request_valid_afterNormalization() {
         AccountAuthReqDto req = new AccountAuthReqDto(
                 "U1",
-                "pass",
                 "김철수",
                 "010-2222-2222",
                 "04-01-01-3"
@@ -45,7 +44,6 @@ public class AccountAuthDtoTest {
     void request_invalid_phone_prefix() {
         AccountAuthReqDto req = new AccountAuthReqDto(
                 "U1",
-                "pass",
                 "김철수",
                 "02-1234-5678",
                 "0401013"
@@ -62,7 +60,6 @@ public class AccountAuthDtoTest {
     void request_invalid_birth_pattern_length() {
         AccountAuthReqDto req = new AccountAuthReqDto(
                 "U1",
-                "pass",
                 "김철수",
                 "01022223333",
                 "040101" // 6자리
@@ -78,7 +75,6 @@ public class AccountAuthDtoTest {
     void request_invalid_birth_impossible_date() {
         AccountAuthReqDto req = new AccountAuthReqDto(
                 "U1",
-                "pass",
                 "김철수",
                 "01022223333",
                 "0433313"
@@ -93,7 +89,6 @@ public class AccountAuthDtoTest {
     void request_invalid_birth_too_young() {
         AccountAuthReqDto req = new AccountAuthReqDto(
                 "U1",
-                "pass",
                 "김철수",
                 "01022223333",
                 "2402013"

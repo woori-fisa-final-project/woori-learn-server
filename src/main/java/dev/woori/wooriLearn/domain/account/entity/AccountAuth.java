@@ -1,5 +1,7 @@
 package dev.woori.wooriLearn.domain.account.entity;
 
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,7 +32,7 @@ public class AccountAuth {
     /** 인증번호 업데이트(의도된 경로로만 상태 변경) */
     public void updateAuthCode(String newCode) {
         if (newCode == null || !newCode.matches(AUTH_CODE_REGEX)) {
-            throw new IllegalArgumentException("authCode는 6자리 숫자여야 합니다.");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "authCode는 6자리 숫자여야 합니다.");
         }
         this.authCode = newCode;
     }
