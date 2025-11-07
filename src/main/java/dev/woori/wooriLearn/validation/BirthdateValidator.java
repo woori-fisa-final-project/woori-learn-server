@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
  */
 public class BirthdateValidator implements ConstraintValidator<ValidBirthdate, String> {
 
+    private static final ZoneId SEOUL_ZONE_ID = ZoneId.of("Asia/Seoul");
+
     // YYMMDDG 패턴: (YY)(MM)(DD)(성별코드 1~4)
     private static final Pattern P = Pattern.compile("^(\\d{2})(\\d{2})(\\d{2})([1-4])$");
     private boolean allowFuture;
@@ -55,7 +57,7 @@ public class BirthdateValidator implements ConstraintValidator<ValidBirthdate, S
         }
 
         // 오늘 날짜
-        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        LocalDate today = LocalDate.now(SEOUL_ZONE_ID);
         if (!allowFuture && birth.isAfter(today)) return false;
 
         // 만 나이 계산

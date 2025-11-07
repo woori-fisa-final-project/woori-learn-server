@@ -39,11 +39,15 @@ public class AccountAuthReqDto {
 
     // 클라이언트가 하이픈/공백 등을 섞어 보내더라도 서버에서 비숫자를 제거하여 숫자만 남김.
     public void setPhoneNum(String phoneNum) {
-        this.phoneNum = (phoneNum == null) ? null : phoneNum.replaceAll("\\D", "");
+        this.phoneNum = sanitize(phoneNum);
     }
 
     // 클라이언트가 하이픈/공백 등을 섞어 보내더라도 서버에서 비숫자를 제거하여 숫자만 남김.
     public void setBirthdate(String birthdate) {
-        this.birthdate = (birthdate == null) ? null : birthdate.replaceAll("\\D", "");
+        this.birthdate = sanitize(birthdate);
+    }
+
+    private String sanitize(String input) {
+        return (input == null) ? null : input.replaceAll("\\D", "");
     }
 }
