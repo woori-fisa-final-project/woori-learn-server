@@ -29,19 +29,20 @@ public class PointsExchangeController {
 //        PointsExchangeResponseDto response = pointsExchangeService.requestExchange(userId, dto);
 //        return ResponseEntity.ok(response);
 //    }
-    @PostMapping("")
+    @PostMapping("{userId}")
     public ResponseEntity<PointsExchangeResponseDto> requestExchange(
             @RequestBody PointsExchangeRequestDto dto,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        Long userId = userDetails.getId(); // ✅ 로그인된 사용자 ID
+        Long userId = 1L;//테스트용
+//        Long userId = userDetails.getId(); //  로그인된 사용자 ID
         PointsExchangeResponseDto response = pointsExchangeService.requestExchange(userId, dto);
         return ResponseEntity.ok(response);
     }
 
 
     /** 특정 사용자 환전 내역 조회 (로그인 기능 없을 때 테스트용) */
-    @GetMapping("/{userId}")
+    @GetMapping("/{userId}")//
     public ResponseEntity<List<PointsExchangeResponseDto>> getHistory(
             @PathVariable Long userId,
             @RequestParam(required = false) String startDate,     // yyyy-MM-dd
