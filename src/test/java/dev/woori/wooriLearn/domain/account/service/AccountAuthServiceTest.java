@@ -42,7 +42,6 @@ public class AccountAuthServiceTest {
 
         AccountAuthReqDto req = new AccountAuthReqDto(
                 userId,
-                "pass",
                 "김철수",
                 "01022222222",
                 "040101-3"
@@ -72,7 +71,6 @@ public class AccountAuthServiceTest {
 
         AccountAuthReqDto req = new AccountAuthReqDto(
                 userId,
-                "pass",
                 "김철수",
                 "01022222222",
                 "040101-3"
