@@ -1,7 +1,9 @@
 package dev.woori.wooriLearn.domain.account.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
-import dev.woori.wooriLearn.domain.account.dto.AccountAuthDto;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.account.dto.AccountAuthReqDto;
+import dev.woori.wooriLearn.domain.account.dto.AccountAuthVerifyReqDto;
 import dev.woori.wooriLearn.domain.account.entity.AccountAuth;
 import dev.woori.wooriLearn.domain.account.repository.AccountAuthRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,25 +32,24 @@ public class AccountAuthServiceTest {
     void setUp() { MockitoAnnotations.openMocks(this); }
 
     @Test
-    @DisplayName("기존 레코드가 없으면 신규 생섬 후 SENT 반환")
-    void request_whenNoExistingRow_createsNewAndSaves_returnsSENT() {
+    @DisplayName("기존 레코드가 없으면 신규 생섬")
+    void request_whenNoExistingRow_createsNewAndSaves() {
         // given
         String userId = "U1";
         when(repository.findByUserId(userId)).thenReturn(Optional.empty());
         when(externalAuthClient.requestOtp(anyString(), anyString(), anyString()))
                 .thenReturn("123456");
 
-        AccountAuthDto.Request req = AccountAuthDto.Request.builder()
+        AccountAuthReqDto req = AccountAuthReqDto.builder()
                 .name("김철수")
                 .phoneNum("01022222222")
                 .birthdate("040101-3")
                 .build();
 
         // when
-        AccountAuthDto.Response resp = service.request(userId, req);
+        service.request(userId, req);
 
         // then
-        assertThat(resp.getMessage()).isEqualTo("SENT");
         ArgumentCaptor<AccountAuth> captor = ArgumentCaptor.forClass(AccountAuth.class);
         verify(repository).save(captor.capture());
         AccountAuth saved = captor.getValue();
@@ -57,7 +58,7 @@ public class AccountAuthServiceTest {
     }
 
     @Test
-    @DisplayName("기존 레코드가 있으면 덮어쓰기 후 SENT 반환")
+    @DisplayName("기존 레코드가 있으면 덮어쓰기")
     void request_whenExistingRow_updatesCode() {
         // given
         String userId = "U1";
@@ -67,53 +68,51 @@ public class AccountAuthServiceTest {
         when(externalAuthClient.requestOtp(anyString(), anyString(), anyString()))
                 .thenReturn("654321");
 
-        AccountAuthDto.Request req = AccountAuthDto.Request.builder()
+        AccountAuthReqDto req = AccountAuthReqDto.builder()
                 .name("김철수").phoneNum("01022222222").birthdate("040101-3").build();
 
         // when
-        AccountAuthDto.Response resp = service.request(userId, req);
+        service.request(userId, req);
 
         // then
-        assertThat(resp.getMessage()).isEqualTo("SENT");
         assertThat(existing.getAuthCode()).isEqualTo("654321");
-        verify(repository).save(existing);
+        verify(repository).findByUserId("U1");
+        verify(externalAuthClient).requestOtp(anyString(), anyString(), anyString());
+        verify(repository, never()).save(any(AccountAuth.class));
     }
 
     @Test
-    @DisplayName("인증 코드 일치 시 true 반환 및 레코드 삭제")
-    void verify_whenCodeMatches_returnsTrue_andDeletesRow() {
+    @DisplayName("인증 코드 일치 시 레코드 삭제")
+    void verify_whenCodeMatches_andDeletesRow() {
         // given
         String userId = "U1";
         AccountAuth row = AccountAuth.builder().userId(userId).authCode("777777").build();
         when(repository.findByUserId(userId)).thenReturn(Optional.of(row));
 
-        AccountAuthDto.VerifyRequest req = AccountAuthDto.VerifyRequest.builder()
+        AccountAuthVerifyReqDto req = AccountAuthVerifyReqDto.builder()
                 .code("777777").build();
 
         // when
-        AccountAuthDto.VerifyResponse resp = service.verify(userId, req);
+        service.verify(userId, req);
 
         // then
-        assertThat(resp.isVerified()).isTrue();
         verify(repository).deleteByUserId(userId);
     }
 
     @Test
-    @DisplayName("인증 코드 불일치 시 false 반환 및 레코드 유지")
-    void verify_whenCodeNotMatch_returnsFalse_andNotDelete() {
+    @DisplayName("인증 코드 불일치 시 CommonException(400)")
+    void verify_whenCodeNotMatch_andNotDelete() {
         // given
         String userId = "U1";
         AccountAuth row = AccountAuth.builder().userId(userId).authCode("111111").build();
         when(repository.findByUserId(userId)).thenReturn(Optional.of(row));
 
-        AccountAuthDto.VerifyRequest req = AccountAuthDto.VerifyRequest.builder()
+        AccountAuthVerifyReqDto req = AccountAuthVerifyReqDto.builder()
                 .code("000000").build();
 
-        // when
-        AccountAuthDto.VerifyResponse resp = service.verify(userId, req);
-
-        // then
-        assertThat(resp.isVerified()).isFalse();
+        // when & then
+        CommonException ex = assertThrows(CommonException.class, () -> service.verify(userId, req));
+        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
         verify(repository, never()).deleteByUserId(anyString());
     }
 
@@ -122,6 +121,6 @@ public class AccountAuthServiceTest {
     void verify_whenNoRow_throwsCommonException() {
         when(repository.findByUserId(anyString())).thenReturn(Optional.empty());
         assertThrows(CommonException.class,
-                () -> service.verify("U1", new AccountAuthDto.VerifyRequest("123456")));
+                () -> service.verify("U1", new AccountAuthVerifyReqDto("123456")));
     }
 }
