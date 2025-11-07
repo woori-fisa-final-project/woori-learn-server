@@ -42,7 +42,7 @@ public class JwtUtil {
         return Jwts.builder()
                 .claim("username", username)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 1)) // 2시간
+                .setExpiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 1)) // 1시간
                 .signWith(secretKey)
                 .compact();
     }

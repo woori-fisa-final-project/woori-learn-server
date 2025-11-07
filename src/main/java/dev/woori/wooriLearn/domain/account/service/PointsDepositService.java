@@ -27,7 +27,7 @@ public class PointsDepositService {
 
         // 1) 포인트 증가
         user.addPoints(dto.getAmount());
-        usersRepository.save(user);
+
 
         // 2) 내역 저장
         PointsHistory history = pointsHistoryRepository.save(

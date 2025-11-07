@@ -94,12 +94,7 @@ public class PointsExchangeService {
             try {
                 statusEnum = PointsStatus.valueOf(status.toUpperCase());
             } catch (IllegalArgumentException e) {
-                return List.of(
-                        PointsExchangeResponseDto.builder()
-                                .userId(userId)
-                                .message("잘못된 status 값입니다. 가능한 값: ALL / APPLY / SUCCESS / FAILED")
-                                .build()
-                );
+                throw new IllegalArgumentException("잘못된 status 값입니다. 가능한 값: ALL / APPLY / SUCCESS / FAILED");
             }
         }
 
@@ -135,7 +130,7 @@ public class PointsExchangeService {
             throw new RuntimeException("이미 처리된 요청입니다.");
         }
 
-        Users user = usersRepository.findById(history.getUser().getId())
+        Users user = usersRepository.findByIdForUpdate(history.getUser().getId())
                 .orElseThrow(() -> new RuntimeException("유저가 존재하지 않습니다."));
 
         int amount = history.getAmount();
@@ -155,7 +150,7 @@ public class PointsExchangeService {
 
         /* ✅ SUCCESS */
         user.setPoints(user.getPoints() - amount);
-        usersRepository.save(user);
+
 
         history.markSuccess();
 
