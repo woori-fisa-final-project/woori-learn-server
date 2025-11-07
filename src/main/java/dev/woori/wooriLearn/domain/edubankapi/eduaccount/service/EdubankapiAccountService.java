@@ -2,6 +2,8 @@ package dev.woori.wooriLearn.domain.edubankapi.eduaccount.service;
 
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiAccountDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransactionHistoryDto;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.validation.PeriodType;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.validation.TransactionType;
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.edubankapi.entity.TransactionHistory;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiAccountRepository;
@@ -52,39 +54,41 @@ public class EdubankapiAccountService {
             LocalDate endDate,
             String type
     ) {
-        // 종료일 계산
-        LocalDateTime end = (endDate != null ? endDate : LocalDate.now()).atTime(23, 59, 59);
-
-        // 시작일 계산
-        LocalDateTime start;
-        if (startDate != null) {
-            start = startDate.atStartOfDay();
-        } else {
-            if (period == null || period.isBlank()) {
-                start = end.minusMonths(1);
-            } else {
-                switch (period.toUpperCase()) {
-                    case "3M" -> start = end.minusMonths(3);
-                    case "6M" -> start = end.minusMonths(6);
-                    case "1Y" -> start = end.minusYears(1);
-                    default -> start = end.minusMonths(1);
-                }
-            }
+        // 1. Enum 변환 시 유효성 검사
+        PeriodType periodType = null;
+        if (period != null && !period.isBlank()) {
+            periodType = PeriodType.from(period); // 잘못된 값이면 예외 발생
         }
 
-        // DB 조회
+        TransactionType transactionType = TransactionType.from(
+                type != null ? type : "ALL" // null이면 기본 ALL
+        );
+
+        // 2. 조회 기간 계산
+        LocalDateTime end = (endDate != null ? endDate : LocalDate.now()).atTime(23, 59, 59);
+        LocalDateTime start;
+
+        if (startDate != null) {
+            start = startDate.atStartOfDay();
+        } else if (periodType != null) {
+            if (periodType == PeriodType.ONE_YEAR) start = end.minusYears(1);
+            else start = end.minusMonths(periodType.getMonths());
+        } else {
+            start = end.minusMonths(1);
+        }
+
+        // 3. DB 조회
         List<TransactionHistory> histories =
-                edubankapiTransactionHistoryRepository.findByAccountIdAndTransactionDateBetweenOrderByTransactionDateDesc(
+                edubankapiTransactionHistoryRepository.findTransactionsByAccountIdAndDateRange(
                         accountId, start, end
                 );
 
-        // 거래구분 필터링
+        // 4. 거래 유형 필터링
         return histories.stream()
-                .filter(h -> {
-                    if ("ALL".equalsIgnoreCase(type)) return true;
-                    if ("DEPOSIT".equalsIgnoreCase(type)) return h.getAmount() > 0;
-                    if ("WITHDRAW".equalsIgnoreCase(type)) return h.getAmount() < 0;
-                    return false;           // all, deposit, withdraw 이외의 값이 들어오면 예외처리
+                .filter(h -> switch (transactionType) {
+                    case ALL -> true;
+                    case DEPOSIT -> h.getAmount() > 0;
+                    case WITHDRAW -> h.getAmount() < 0;
                 })
                 .limit(30)
                 .map(EdubankapiTransactionHistoryDto::from)
