@@ -1,11 +1,11 @@
-package dev.woori.wooriLearn.domain.autopayment.controller;
+package dev.woori.wooriLearn.domain.edubankapi.autopayment.controller;
 
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 
-import dev.woori.wooriLearn.domain.autopayment.dto.AutoPaymentResponse;
-import dev.woori.wooriLearn.domain.autopayment.service.AutoPaymentService;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentResponse;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.service.AutoPaymentService;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
