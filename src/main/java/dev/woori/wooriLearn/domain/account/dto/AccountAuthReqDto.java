@@ -11,6 +11,11 @@ import jakarta.validation.constraints.Pattern;
  * - phoneNum, birthdate는 생성자에서 비숫자 제거 후 검증.
  */
 public record AccountAuthReqDto(
+
+        @NotBlank(message = "userId를 입력하세요.")
+        String userId,
+        String password,
+
         @NotBlank
         String name,
 
@@ -23,7 +28,6 @@ public record AccountAuthReqDto(
         @ValidBirthdate(minAgeYears = 14)
         String birthdate
 ) {
-    // Compact constructor: 역직렬화 직후, 검증 전에 실행됨
     public AccountAuthReqDto {
         phoneNum  = sanitize(phoneNum);
         birthdate = sanitize(birthdate);

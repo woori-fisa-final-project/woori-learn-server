@@ -41,6 +41,8 @@ public class AccountAuthServiceTest {
                 .thenReturn("123456");
 
         AccountAuthReqDto req = new AccountAuthReqDto(
+                userId,
+                "pass",
                 "김철수",
                 "01022222222",
                 "040101-3"
@@ -69,6 +71,8 @@ public class AccountAuthServiceTest {
                 .thenReturn("654321");
 
         AccountAuthReqDto req = new AccountAuthReqDto(
+                userId,
+                "pass",
                 "김철수",
                 "01022222222",
                 "040101-3"
@@ -92,7 +96,7 @@ public class AccountAuthServiceTest {
         AccountAuth row = AccountAuth.builder().userId(userId).authCode("777777").build();
         when(repository.findByUserId(userId)).thenReturn(Optional.of(row));
 
-        AccountAuthVerifyReqDto req = new AccountAuthVerifyReqDto("777777");
+        AccountAuthVerifyReqDto req = new AccountAuthVerifyReqDto("U1", "777777");
 
         // when
         service.verify(userId, req);
@@ -102,14 +106,14 @@ public class AccountAuthServiceTest {
     }
 
     @Test
-    @DisplayName("인증 코드 불일치 시 CommonException(400)")
+    @DisplayName("인증 코드 불일치 시 에러")
     void verify_whenCodeNotMatch_andNotDelete() {
         // given
         String userId = "U1";
         AccountAuth row = AccountAuth.builder().userId(userId).authCode("111111").build();
         when(repository.findByUserId(userId)).thenReturn(Optional.of(row));
 
-        AccountAuthVerifyReqDto req = new AccountAuthVerifyReqDto("000000");
+        AccountAuthVerifyReqDto req = new AccountAuthVerifyReqDto("U1", "000000");
 
         // when & then
         CommonException ex = assertThrows(CommonException.class, () -> service.verify(userId, req));
@@ -122,6 +126,6 @@ public class AccountAuthServiceTest {
     void verify_whenNoRow_throwsCommonException() {
         when(repository.findByUserId(anyString())).thenReturn(Optional.empty());
         assertThrows(CommonException.class,
-                () -> service.verify("U1", new AccountAuthVerifyReqDto("123456")));
+                () -> service.verify("U1", new AccountAuthVerifyReqDto("U1", "123456")));
     }
 }

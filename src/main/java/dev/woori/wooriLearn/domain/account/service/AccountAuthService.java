@@ -73,12 +73,12 @@ public class AccountAuthService {
     public void verify(String userId, AccountAuthVerifyReqDto req) {
         // 1) 최근 발급 레코드 조회
         AccountAuth row = accountAuthRepository.findByUserId(userId)
-                .orElseThrow(() -> new CommonException(ErrorCode.INVALID_REQUEST, "인증요청 이력이 없습니다."));
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "인증요청 이력이 없습니다."));
 
         // 2) 코드 비교
         if (!constantTimeEquals(row.getAuthCode(), req.code())) {
             // 틀리면 예외 -> 전역 예외 핸들러에서 400 반환
-            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "인증번호가 일치하지 않습니다.");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "인증번호가 일치하지 않습니다.");
         }
 
         // 3) 성공 시 레코드 삭제

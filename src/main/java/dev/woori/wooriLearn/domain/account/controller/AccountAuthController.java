@@ -1,7 +1,5 @@
 package dev.woori.wooriLearn.domain.account.controller;
 
-import dev.woori.wooriLearn.config.exception.CommonException;
-import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
@@ -36,13 +34,10 @@ public class AccountAuthController {
      * 3) 서비스로 위임 -> 외부 인증 서버 호출 -> OTP 수신/DB upsert -> 응답 반환
      */
     @PostMapping("/auth")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BaseResponse<?>> request(
-            @AuthenticationPrincipal Object principal,
             @Valid @RequestBody AccountAuthReqDto req
     ) {
-        String userId = extractUserId(principal);
-        service.request(userId, req);
+        service.request(req.userId(), req);
         return ApiResponse.success(SuccessCode.OK);
     }
 
@@ -55,20 +50,10 @@ public class AccountAuthController {
      * 3) 서비스로 위임 -> DB에 저장된 OTP와 비교 -> 성공 시 레코드 삭제, 결과 반환
      */
     @PostMapping("/auth/verify")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BaseResponse<?>> verify(
-            @AuthenticationPrincipal Object principal,
             @Valid @RequestBody AccountAuthVerifyReqDto req
     ) {
-        String userId = extractUserId(principal);
-        service.verify(userId, req);
+        service.verify(req.userId(), req);
         return ApiResponse.success(SuccessCode.OK);
-    }
-
-    private String extractUserId(Object principal) {
-        if (principal instanceof org.springframework.security.core.userdetails.UserDetails ud) return ud.getUsername();
-        if (principal instanceof java.security.Principal p) return p.getName();
-        if (principal instanceof String s && !"anonymousUser".equals(s)) return s;
-        throw new CommonException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
     }
 }
