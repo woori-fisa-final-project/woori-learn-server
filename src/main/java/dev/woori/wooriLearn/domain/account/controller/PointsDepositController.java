@@ -1,7 +1,9 @@
 package dev.woori.wooriLearn.domain.account.controller;
 
+import dev.woori.wooriLearn.config.response.ApiResponse;
+import dev.woori.wooriLearn.config.response.BaseResponse;
+import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.account.dto.PointsDepositRequestDto;
-import dev.woori.wooriLearn.domain.account.dto.PointsDepositResponseDto;
 import dev.woori.wooriLearn.domain.account.service.PointsDepositService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +20,9 @@ public class PointsDepositController {
     private final PointsDepositService pointsDepositService;
 
     @PostMapping("")
-    public ResponseEntity<PointsDepositResponseDto> deposit(
+    public ResponseEntity<BaseResponse<?>> deposit(
             @RequestBody PointsDepositRequestDto dto
     ) {
-        return ResponseEntity.ok(pointsDepositService.depositPoints(dto));
+        return ApiResponse.success(SuccessCode.CREATED, pointsDepositService.depositPoints(dto));
     }
 }

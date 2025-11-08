@@ -6,7 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.apache.tomcat.websocket.Constants;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,15 +27,15 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // 헤더에서 authorization 토큰 가져오기
-        String accessToken = request.getHeader(Constants.AUTHORIZATION_HEADER_NAME);
+
+        String accessToken = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (accessToken != null && accessToken.startsWith(BEARER)) {
-            String token = accessToken.substring(BEARER.length()); // 순수 토큰값만 가져오기
+            String token = accessToken.substring(BEARER.length()); // ?�수 ?�큰값만 가?�오�?
             if (jwtUtil.validateToken(token)) {
                 String username = jwtUtil.getUsername(token);
 
-                // Authentication 객체 생성 (권한은 USER로 예시)
+                // Authentication 객체 ?�성 (권한?� USER�??�시)
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(username, null,
                                 List.of(new SimpleGrantedAuthority("ROLE_USER")));
@@ -47,3 +47,4 @@ public class JwtFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
+
