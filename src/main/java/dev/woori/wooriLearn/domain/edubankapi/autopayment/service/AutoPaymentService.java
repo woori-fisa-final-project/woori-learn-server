@@ -1,0 +1,66 @@
+package dev.woori.wooriLearn.domain.edubankapi.autopayment.service;
+
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentResponse;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.repository.AutoPaymentRepository;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment.AutoPaymentStatus;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+@Transactional(readOnly = true)
+public class AutoPaymentService {
+
+    private final AutoPaymentRepository autoPaymentRepository;
+    private static final String ALL_STATUS = "ALL";
+
+    public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status) {
+        List<AutoPayment> autoPayments;
+
+        if (ALL_STATUS.equalsIgnoreCase(status)) {
+            autoPayments = autoPaymentRepository.findByEducationalAccountId(educationalAccountId);
+        } else {
+            AutoPaymentStatus paymentStatus = resolveStatus(status);
+            autoPayments = autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
+                    educationalAccountId, paymentStatus);
+        }
+
+        return autoPayments.stream()
+                .map(autoPayment -> AutoPaymentResponse.of(autoPayment, educationalAccountId))
+                .toList();
+    }
+
+    public AutoPaymentResponse getAutoPaymentDetail(Long autoPaymentId) {
+        AutoPayment autoPayment = autoPaymentRepository.findById(autoPaymentId)
+                .orElseThrow(() -> {
+                    log.error("자동이체 정보 조회 실패 - ID: {}", autoPaymentId);
+                    return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                            "자동이체 정보를 찾을 수 없습니다.");
+                });
+
+        return AutoPaymentResponse.of(autoPayment, autoPayment.getEducationalAccount().getId());
+    }
+
+    private AutoPaymentStatus resolveStatus(String status) {
+        if (!StringUtils.hasText(status)) {
+            return AutoPaymentStatus.ACTIVE;
+        }
+
+        try {
+            return AutoPaymentStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST,
+                    "유효하지 않은 상태 값입니다. (사용 가능: " + AutoPaymentStatus.getAvailableValues() + ")");
+        }
+    }
+}

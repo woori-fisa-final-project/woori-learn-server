@@ -15,7 +15,7 @@ public class Users extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id", nullable = false, unique = true)
     private String userId;
 
     @Column(nullable = false)
@@ -27,23 +27,23 @@ public class Users extends BaseEntity {
     @Column(nullable = false)
     private Integer points;
 
+    /** ✅ feat/#21 에서 추가된 부분 **/
     @Version
     @Column(nullable = false)
     private Integer version = 0;
 
-    /* 포인트 전체값 변경 */
     public void setPoints(Integer points) {
         this.points = points;
     }
 
-    /* 포인트 증가 */
     public void addPoints(Integer amount) {
         this.points += amount;
     }
-    /* 포인트 차감 */
+
     public void subtractPoints(Integer amount) {
         this.points -= amount;
     }
+
     @Column(nullable = false)
     private boolean accountNonExpired = true;
 
@@ -56,4 +56,8 @@ public class Users extends BaseEntity {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    /** ✅ develop 쪽 추가된 Role 필드 **/
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role;
 }

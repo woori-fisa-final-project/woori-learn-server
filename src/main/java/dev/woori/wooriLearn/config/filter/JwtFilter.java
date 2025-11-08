@@ -1,6 +1,7 @@
 package dev.woori.wooriLearn.config.filter;
 
 import dev.woori.wooriLearn.config.jwt.JwtUtil;
+import dev.woori.wooriLearn.domain.user.entity.Role;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,17 +29,21 @@ public class JwtFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
 
+        // 헤더에서 authorization 토큰 가져오기
         String accessToken = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (accessToken != null && accessToken.startsWith(BEARER)) {
             String token = accessToken.substring(BEARER.length()); // ?�수 ?�큰값만 가?�오�?
             if (jwtUtil.validateToken(token)) {
                 String username = jwtUtil.getUsername(token);
+                Role role = jwtUtil.getRole(token);
 
-                // Authentication 객체 ?�성 (권한?� USER�??�시)
+
+                // Authentication 객체 생성
+
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(username, null,
-                                List.of(new SimpleGrantedAuthority("ROLE_USER")));
+                                List.of(new SimpleGrantedAuthority(role.name())));
 
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
