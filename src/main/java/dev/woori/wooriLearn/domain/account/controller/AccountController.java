@@ -44,5 +44,4 @@ public class AccountController {
         return ApiResponse.success(SuccessCode.OK, accounts);
     }
 
-
 }
