@@ -18,7 +18,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
-        long startTime = System.currentTimeMillis();
+        long startTime = System.nanoTime();
 
         try{
             log.info("REQUEST [{}][{}]", request.getMethod(), request.getRequestURI());
@@ -26,7 +26,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         }catch(Exception e){
             throw e;
         }finally{
-            long duration = System.currentTimeMillis() - startTime;
+            long duration = (System.nanoTime() - startTime) / 1_000_000;
             log.info("RESPONSE [{}] [{}] returned {} ({} ms)",
                     request.getMethod(), request.getRequestURI(), response.getStatus(), duration);
         }
