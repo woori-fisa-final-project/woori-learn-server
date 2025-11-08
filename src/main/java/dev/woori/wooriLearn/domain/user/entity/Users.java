@@ -2,13 +2,11 @@ package dev.woori.wooriLearn.domain.user.entity;
 
 import dev.woori.wooriLearn.config.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Builder
+@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class Users extends BaseEntity {
@@ -16,7 +14,7 @@ public class Users extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id", nullable = false, unique = true)
     private String userId;
 
     @Column(nullable = false)
@@ -27,4 +25,8 @@ public class Users extends BaseEntity {
 
     @Column(nullable = false)
     private Integer points;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role;
 }
