@@ -1,6 +1,7 @@
 package dev.woori.wooriLearn.domain.user.entity;
 
 import dev.woori.wooriLearn.config.BaseEntity;
+import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -14,11 +15,9 @@ public class Users extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false, unique = true)
-    private String userId;
-
-    @Column(nullable = false)
-    private String password;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "auth_user_id")
+    private AuthUsers authUser;
 
     @Column(nullable = false)
     private String nickname;
@@ -26,7 +25,4 @@ public class Users extends BaseEntity {
     @Column(nullable = false)
     private Integer points;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role;
 }

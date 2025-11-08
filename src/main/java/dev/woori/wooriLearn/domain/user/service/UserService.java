@@ -2,6 +2,8 @@ package dev.woori.wooriLearn.domain.user.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
+import dev.woori.wooriLearn.domain.auth.repository.AuthUserRepository;
 import dev.woori.wooriLearn.domain.user.dto.SignupReqDto;
 import dev.woori.wooriLearn.domain.user.entity.Role;
 import dev.woori.wooriLearn.domain.user.entity.Users;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final AuthUserRepository authUserRepository;
     private final PasswordEncoder passwordEncoder;
 
     /**
@@ -26,18 +29,23 @@ public class UserService {
      * @param signupReqDto id / pw / 이름
      */
     public void signup(SignupReqDto signupReqDto) {
-        if(userRepository.existsByUserId(signupReqDto.userId())){
+        if(authUserRepository.existsByUserId(signupReqDto.userId())){
             throw new CommonException(ErrorCode.CONFLICT);
         }
 
-        Users user = Users.builder()
+        AuthUsers authUser = AuthUsers.builder()
                 .userId(signupReqDto.userId())
                 .password(passwordEncoder.encode(signupReqDto.password()))
-                .nickname(signupReqDto.nickname())
                 .role(Role.ROLE_USER)
-                .points(0) // 초기 설정, 이후 수정 가능
                 .build();
 
+        Users user = Users.builder()
+                .authUser(authUser)
+                .nickname(signupReqDto.nickname())
+                .points(0)
+                .build();
+
+        authUserRepository.save(authUser);
         userRepository.save(user);
         // TODO: 회원가입 이후 기본 포인트를 지급한다 하면 포인트 내역 추가 로직 필요
     }

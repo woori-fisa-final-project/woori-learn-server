@@ -5,10 +5,11 @@ import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.config.jwt.JwtUtil;
 import dev.woori.wooriLearn.config.security.Encoder;
 import dev.woori.wooriLearn.domain.auth.dto.*;
+import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
+import dev.woori.wooriLearn.domain.auth.repository.AuthUserRepository;
 import dev.woori.wooriLearn.domain.auth.repository.RefreshTokenRepository;
 import dev.woori.wooriLearn.domain.user.entity.Role;
-import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -27,6 +28,7 @@ import java.time.Instant;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final AuthUserRepository authUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final Encoder encoder;
     private final JwtUtil jwtUtil;
@@ -38,7 +40,7 @@ public class AuthService {
      * @return loginResDto - access token / refresh token
      */
     public LoginResDto login(LoginReqDto loginReqDto) {
-        Users user = userRepository.findByUserId(loginReqDto.userId())
+        AuthUsers user = authUserRepository.findByUserId(loginReqDto.userId())
                 .orElseThrow(() -> new CommonException(ErrorCode.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다."));
 
         if(!passwordEncoder.matches(loginReqDto.password(), user.getPassword())){
