@@ -72,6 +72,10 @@ public class AutoPaymentService {
         // 2. 계좌 비밀번호 검증
         validateAccountPassword(educationalAccount, request.accountPassword());
 
+        if (request.startDate().isAfter(request.expirationDate())) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "시작일은 만료일보다 이전이어야 합니다.");
+        }
+
         // 3. 자동이체 엔티티 생성
         AutoPayment autoPayment = AutoPayment.builder()
                 .educationalAccount(educationalAccount)

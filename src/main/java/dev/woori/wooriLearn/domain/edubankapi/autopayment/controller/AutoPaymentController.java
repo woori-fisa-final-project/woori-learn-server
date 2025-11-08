@@ -58,6 +58,6 @@ public class AutoPaymentController {
 
         AutoPaymentResponse response = autoPaymentService.createAutoPayment(request);
 
-        return ApiResponse.success(SuccessCode.OK, response);
+        return ApiResponse.success(SuccessCode.CREATED, response);
     }
 }
