@@ -12,8 +12,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.Map;
-
 /**
  * 외부 인증 서버에 OTP 발급을 요청하는 REST 클라이언트 구현체.
  * <p>

@@ -82,7 +82,7 @@ public class AccountAuthService {
         }
 
         // 3) 성공 시 레코드 삭제
-            accountAuthRepository.deleteByUserId(userId);
+        accountAuthRepository.deleteByUserId(userId);
     }
 
     private static boolean constantTimeEquals(String a, String b) {
