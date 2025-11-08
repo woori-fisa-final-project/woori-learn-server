@@ -21,10 +21,10 @@ public class PointsDepositService {
     private final PointsHistoryRepository pointsHistoryRepository;
 
     @Transactional
-    public PointsDepositResponseDto depositPoints(PointsDepositRequestDto dto) {
+    public PointsDepositResponseDto depositPoints(Long userId, PointsDepositRequestDto dto) {
 
-        Users user = usersRepository.findByIdForUpdate(dto.userId())
-                .orElseThrow(() -> new UserNotFoundException(dto.userId()));
+        Users user = usersRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
 
         // 1) 포인트 증가
         user.addPoints(dto.amount());
