@@ -32,7 +32,7 @@ public class PointsExchangeService {
     private final UsersRepository usersRepository;
     private final AccountRepository accountRepository;
 
-    /* ✅ 출금 신청 */
+    /* 출금 신청 */
     @Transactional
     public PointsExchangeResponseDto requestExchange(Long userId, PointsExchangeRequestDto dto) {
 
@@ -66,7 +66,7 @@ public class PointsExchangeService {
                 .build();
     }
 
-    /* ✅ 출금 내역 조회 */
+    /*  출금 내역 조회 */
     public List<PointsExchangeResponseDto> getHistory(
             Long userId,
             String startDate,

@@ -1,13 +1,14 @@
 package dev.woori.wooriLearn.domain.account.controller;
 
-import dev.woori.wooriLearn.config.CustomUserDetails;
+import dev.woori.wooriLearn.config.response.ApiResponse;
+import dev.woori.wooriLearn.config.response.BaseResponse;
+import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,60 +20,33 @@ public class PointsExchangeController {
 
     private final PointsExchangeService pointsExchangeService;
 
-//    /** 포인트 환전 신청(로그인 구현 전 개발용) */
-//    @PostMapping("")
-//    public ResponseEntity<PointsExchangeResponseDto> requestExchange(
-//            @AuthenticationPrincipal CustomUserDetails principal,
-//            @RequestBody PointsExchangeRequestDto dto) {
-//
-//        Long userId = principal.getId();
-//        PointsExchangeResponseDto response = pointsExchangeService.requestExchange(userId, dto);
-//        return ResponseEntity.ok(response);
-//    }
-    @PostMapping("{userId}")
-    public ResponseEntity<PointsExchangeResponseDto> requestExchange(
-            @RequestBody PointsExchangeRequestDto dto,
-            @AuthenticationPrincipal CustomUserDetails userDetails
+    @PostMapping("/{userId}")
+    public ResponseEntity<BaseResponse<?>> requestExchange(
+            @PathVariable Long userId,
+            @RequestBody PointsExchangeRequestDto dto
     ) {
-        Long userId = 1L;//테스트용
-//        Long userId = userDetails.getId(); //  로그인된 사용자 ID
         PointsExchangeResponseDto response = pointsExchangeService.requestExchange(userId, dto);
-        return ResponseEntity.ok(response);
+        return ApiResponse.success(SuccessCode.CREATED, response);
     }
 
-
-    /** 특정 사용자 환전 내역 조회 (로그인 기능 없을 때 테스트용) */
-    @GetMapping("/{userId}")//
-    public ResponseEntity<List<PointsExchangeResponseDto>> getHistory(
+    @GetMapping("/{userId}")
+    public ResponseEntity<BaseResponse<?>> getHistory(
             @PathVariable Long userId,
-            @RequestParam(required = false) String startDate,     // yyyy-MM-dd
-            @RequestParam(required = false) String endDate,       // yyyy-MM-dd
-            @RequestParam(required = false, defaultValue = "ALL") String status, //ALL/APPLY/SUCCESS/FAILED
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false, defaultValue = "ALL") String status,
             @RequestParam(required = false, defaultValue = "DESC") String sort
     ) {
         List<PointsExchangeResponseDto> history = pointsExchangeService
                 .getHistory(userId, startDate, endDate, status, sort);
-
-        return ResponseEntity.ok(history);
+        return ApiResponse.success(SuccessCode.OK, history);
     }
 
-    /** 환전 승인(관리자용) */
     @PatchMapping("/{requestId}/approve")
-    public ResponseEntity<PointsExchangeResponseDto> approveExchange(
+    public ResponseEntity<BaseResponse<?>> approveExchange(
             @PathVariable Long requestId
     ) {
         PointsExchangeResponseDto response = pointsExchangeService.approveExchange(requestId);
-        return ResponseEntity.ok(response);
+        return ApiResponse.success(SuccessCode.OK, response);
     }
-
-    // /** 로그인한 사용자 본인 환전 내역 조회 */ (로그인 구현 후 적용 예정)
-    // @GetMapping("/me")
-    // public ResponseEntity<List<PointsExchangeResponseDto>> getMyHistory(
-    //         @AuthenticationPrincipal CustomUserDetails principal) {
-    //
-    //     Long userId = principal.getId();
-    //     List<PointsExchangeResponseDto> history = pointsExchangeService.getHistory(userId);
-    //     return ResponseEntity.ok(history);
-    // }
-
 }

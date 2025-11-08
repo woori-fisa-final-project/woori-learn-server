@@ -1,6 +1,7 @@
 package dev.woori.wooriLearn.config;
 
 import dev.woori.wooriLearn.config.filter.JwtFilter;
+import dev.woori.wooriLearn.config.jwt.JwtAuthenticationEntryPoint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -19,6 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Value("${spring.profiles.active:prod}") // 기본값 prod
     private String activeProfile;
@@ -26,25 +28,25 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
 
-        // 개발 단계에서는 인증 x
-        if(activeProfile.equals("dev")){
+        // 개발 환경에서는 인증 x
+        if (activeProfile.equals("dev")) {
             return httpSecurity
                     .csrf(AbstractHttpConfigurer::disable)
-                    .authorizeHttpRequests(auth -> auth
-                            .anyRequest().permitAll())
+                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                    .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                     .build();
         }
 
         return httpSecurity
-                .csrf(AbstractHttpConfigurer::disable) // API 테스트용, 실제 서비스면 토큰 기반 CSRF 설정 필요
-                .sessionManagement(sessionManagementConfigurer ->
-                        sessionManagementConfigurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 사용 안함
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll() // 로그인, 회원가입 등 허용
-                        .anyRequest().authenticated()) // 나머지는 JWT 필요
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .anyRequest().authenticated())
+                .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
-
 }
+
