@@ -21,13 +21,8 @@ public class AutoPayment {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-<<<<<<< HEAD:src/main/java/dev/woori/wooriLearn/domain/edubankapi/entity/AutoPayment.java
-    @JoinColumn(name = "exchange_account_id", nullable = false)
-    private EducationalAccount exchangeAccount;
-=======
     @JoinColumn(name = "educational_account_id", nullable = false)
     private EducationalAccount educationalAccount;
->>>>>>> develop:src/main/java/dev/woori/wooriLearn/domain/edubankapi/autopayment/entity/AutoPayment.java
 
     @Column(name = "deposit_number", nullable = false, length = 20)
     private String depositNumber;
