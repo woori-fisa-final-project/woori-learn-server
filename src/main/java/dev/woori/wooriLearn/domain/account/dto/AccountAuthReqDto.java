@@ -12,9 +12,6 @@ import jakarta.validation.constraints.Pattern;
  */
 public record AccountAuthReqDto(
 
-        @NotBlank(message = "userId를 입력하세요.")
-        String userId,
-
         @NotBlank
         String name,
 
