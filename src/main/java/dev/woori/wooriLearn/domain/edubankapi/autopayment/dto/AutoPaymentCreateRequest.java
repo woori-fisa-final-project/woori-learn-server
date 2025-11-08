@@ -34,6 +34,12 @@ public record AutoPaymentCreateRequest(
         @Positive(message = "이체 주기는 양수여야 합니다.")
         Integer transferCycle,
 
+        /**
+         * 지정일 처리 정책:
+         * - 1~31일 중 선택 가능
+         * - 해당 월에 지정일이 없는 경우 해당 월의 마지막 날에 자동 실행
+         * - 예: 31일 지정 → 2월에는 28일(윤년 29일), 4월/6월/9월/11월은 30일에 실행
+         */
         @NotNull(message = "지정일은 필수입니다.")
         @Min(value = 1, message = "지정일은 1일 이상이어야 합니다.")
         @Max(value = 31, message = "지정일은 31일 이하여야 합니다.")
@@ -43,6 +49,7 @@ public record AutoPaymentCreateRequest(
         @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate startDate,
 
+        @NotNull(message = "만료일은 필수입니다.")
         @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate expirationDate,
 

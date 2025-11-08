@@ -7,7 +7,6 @@ import dev.woori.wooriLearn.domain.account.dto.AccountAuthVerifyReqDto;
 import dev.woori.wooriLearn.domain.account.entity.AccountAuth;
 import dev.woori.wooriLearn.domain.account.repository.AccountAuthRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
