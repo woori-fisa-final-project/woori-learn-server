@@ -7,7 +7,9 @@ import dev.woori.wooriLearn.config.security.Encoder;
 import dev.woori.wooriLearn.domain.auth.dto.*;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
+import dev.woori.wooriLearn.domain.auth.repository.AuthUserPort;
 import dev.woori.wooriLearn.domain.auth.repository.AuthUserRepository;
+import dev.woori.wooriLearn.domain.auth.repository.RefreshTokenPort;
 import dev.woori.wooriLearn.domain.auth.repository.RefreshTokenRepository;
 import dev.woori.wooriLearn.domain.user.entity.Role;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
@@ -27,12 +29,11 @@ import java.time.Instant;
 @Transactional
 public class AuthService {
 
-    private final UserRepository userRepository;
-    private final AuthUserRepository authUserRepository;
+    private final AuthUserPort authUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final Encoder encoder;
     private final JwtUtil jwtUtil;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenPort refreshTokenRepository;
 
     /**
      * id와 pw를 확인 후 사용자임이 확인되면 jwt 토큰을 발급합니다.

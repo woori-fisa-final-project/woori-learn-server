@@ -3,6 +3,7 @@ package dev.woori.wooriLearn.domain.user.service;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
+import dev.woori.wooriLearn.domain.auth.repository.AuthUserPort;
 import dev.woori.wooriLearn.domain.auth.repository.AuthUserRepository;
 import dev.woori.wooriLearn.domain.user.dto.SignupReqDto;
 import dev.woori.wooriLearn.domain.user.entity.Role;
@@ -21,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final AuthUserRepository authUserRepository;
+    private final AuthUserPort authUserRepository;
     private final PasswordEncoder passwordEncoder;
 
     /**
