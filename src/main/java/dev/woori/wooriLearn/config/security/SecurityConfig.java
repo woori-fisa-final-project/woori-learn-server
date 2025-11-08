@@ -3,7 +3,6 @@ package dev.woori.wooriLearn.config.security;
 import dev.woori.wooriLearn.config.filter.JwtFilter;
 import dev.woori.wooriLearn.config.jwt.JwtAuthenticationEntryPoint;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -29,8 +28,8 @@ public class SecurityConfig {
 
     // 인증 없이도 접근 가능한 엔드포인트 목록
     private static final List<String> whiteList = List.of(
-            "/auth/login", // 로그인
-            "/auth/signup" // 회원가입
+            "/auth/login",
+            "/auth/signup"
     );
 
     // 관리자만 접근 가능한 엔드포인트 목록
@@ -38,7 +37,7 @@ public class SecurityConfig {
             "/admin/*"
     );
 
-    // 개발 모드에서는 인증 적용 x
+    /** ✅ dev 환경은 인증 비활성화 */
     @Bean
     @Profile("dev")
     public SecurityFilterChain devFilterChain(HttpSecurity httpSecurity) throws Exception {
@@ -48,38 +47,20 @@ public class SecurityConfig {
                 .build();
     }
 
+    /** ✅ 운영/기타 환경 - JWT 보안 적용 */
     @Bean
     @Profile("!dev")
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-<<<<<<< HEAD:src/main/java/dev/woori/wooriLearn/config/SecurityConfig.java
-
-        // 개발 환경에서는 인증 x
-        if (activeProfile.equals("dev")) {
-            return httpSecurity
-                    .csrf(AbstractHttpConfigurer::disable)
-                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-                    .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
-                    .build();
-        }
-
-=======
->>>>>>> develop:src/main/java/dev/woori/wooriLearn/config/security/SecurityConfig.java
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-<<<<<<< HEAD:src/main/java/dev/woori/wooriLearn/config/SecurityConfig.java
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().authenticated())
-                .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .build();
-    }
-=======
                         .requestMatchers(whiteList.toArray(new String[0])).permitAll()
                         .requestMatchers(adminList.toArray(new String[0])).hasRole("ADMIN")
-                        .anyRequest().authenticated()) // 나머지는 JWT 필요
+                        .anyRequest().authenticated()
+                )
+                .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
@@ -88,7 +69,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
->>>>>>> develop:src/main/java/dev/woori/wooriLearn/config/security/SecurityConfig.java
 }
-
