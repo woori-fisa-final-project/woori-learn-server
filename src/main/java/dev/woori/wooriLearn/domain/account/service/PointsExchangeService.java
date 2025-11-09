@@ -43,6 +43,10 @@ public class PointsExchangeService {
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
+        if (user.getPoints() < dto.exchangeAmount()) {
+            throw new InvalidStateException("포인트가 부족하여 출금 신청을 할 수 없습니다.");
+        }
+
         Account account = accountRepository.findByAccountNumber(dto.accountNum())
                 .orElseThrow(() -> new AccountNotFoundException(dto.accountNum()));
 
@@ -103,7 +107,7 @@ public class PointsExchangeService {
                 ).toList();
     }
 
-    /* ✅ 출금 승인/처리 */
+    /* 출금 승인/처리 */
     @Transactional
     public PointsExchangeResponseDto approveExchange(Long requestId) {
 
@@ -144,7 +148,7 @@ public class PointsExchangeService {
                 .build();
     }
 
-    /* ✅ 날짜 검증 함수 분리 */
+    /*  날짜 검증 함수 분리 */
     private LocalDateTime parseStartDate(String date) {
         if (date == null || date.isEmpty()) return null;
         try {
