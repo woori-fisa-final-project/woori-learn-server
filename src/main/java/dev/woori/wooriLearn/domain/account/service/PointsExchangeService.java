@@ -82,7 +82,7 @@ public class PointsExchangeService {
             case APPLY -> PointsStatus.APPLY;
             case SUCCESS -> PointsStatus.SUCCESS;
             case FAILED -> PointsStatus.FAILED;
-            default -> throw new IllegalArgumentException("Unknown status: " + status);
+            default -> throw new InvalidParameterException("Unknown status: " + status);
         };
     }
 
@@ -97,7 +97,7 @@ public class PointsExchangeService {
         LocalDateTime end = parseEndDate(endDate);
 
         PointsStatus statusEnum = convertStatus(status);
-        Sort sortOption = (sort == null ? SortDirection.DESC : sort).toSort("createdAt");
+        Sort sortOption = sort.toSort("createdAt");
 
         List<PointsHistory> list = pointsHistoryRepository.findByFilters(
                 userId, PointsHistoryType.WITHDRAW, statusEnum, start, end, sortOption
@@ -130,29 +130,26 @@ public class PointsExchangeService {
         Users user = userRepository.findByIdForUpdate(history.getUser().getId())
                 .orElseThrow(() -> new UserNotFoundException(history.getUser().getId()));
 
+
+
         int amount = history.getAmount();
+        String message;
 
-        if (user.getPoints() < amount) {
+        try {
+            user.subtractPoints(amount);
+            history.markSuccess(LocalDateTime.now(clock));
+            message = "정상적으로 처리되었습니다.";
+        } catch (InvalidStateException e) {
             history.markFailed("INSUFFICIENT_POINTS", LocalDateTime.now(clock));
-            return PointsExchangeResponseDto.builder()
-                    .requestId(requestId)
-                    .userId(user.getId())
-                    .exchangeAmount(amount)
-                    .status(PointsStatus.FAILED)
-                    .message("포인트가 부족하여 실패했습니다.")
-                    .processedDate(history.getProcessedAt())
-                    .build();
+            message = "포인트가 부족하여 실패했습니다.";
         }
-
-        user.subtractPoints(amount);
-        history.markSuccess(LocalDateTime.now(clock));
 
         return PointsExchangeResponseDto.builder()
                 .requestId(requestId)
                 .userId(user.getId())
                 .exchangeAmount(amount)
-                .status(PointsStatus.SUCCESS)
-                .message("정상적으로 처리되었습니다.")
+                .status(history.getStatus())
+                .message(message)
                 .processedDate(history.getProcessedAt())
                 .build();
     }
