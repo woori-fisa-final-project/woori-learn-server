@@ -1,15 +1,12 @@
 package dev.woori.wooriLearn.domain.account.controller;
 
-import dev.woori.wooriLearn.config.exception.CommonException;
-import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.config.security.CurrentUserResolver;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
-import dev.woori.wooriLearn.domain.user.entity.Users;
-import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,14 +21,14 @@ import java.util.List;
 public class PointsExchangeController {
 
     private final PointsExchangeService pointsExchangeService;
-    private final UserRepository userRepository;
+    private final CurrentUserResolver currentUserResolver;
 
     @PostMapping("")
     public ResponseEntity<BaseResponse<?>> requestExchange(
             @AuthenticationPrincipal Object principal,
             @RequestBody PointsExchangeRequestDto dto
     ) {
-        Long userId = getUserIdFromPrincipal(principal);
+        Long userId = currentUserResolver.requireUserId(principal);
         PointsExchangeResponseDto response = pointsExchangeService.requestExchange(userId, dto);
         return ApiResponse.success(SuccessCode.CREATED, response);
     }
@@ -44,31 +41,11 @@ public class PointsExchangeController {
             @RequestParam(required = false, defaultValue = "ALL") String status,
             @RequestParam(required = false, defaultValue = "DESC") String sort
     ) {
-        Long userId = getUserIdFromPrincipal(principal);
+        Long userId = currentUserResolver.requireUserId(principal);
         List<PointsExchangeResponseDto> history = pointsExchangeService
                 .getHistory(userId, startDate, endDate, status, sort);
         return ApiResponse.success(SuccessCode.OK, history);
     }
 
-    @PatchMapping("/{requestId}/approve")
-    public ResponseEntity<BaseResponse<?>> approveExchange(
-            @PathVariable Long requestId
-    ) {
-        PointsExchangeResponseDto response = pointsExchangeService.approveExchange(requestId);
-        return ApiResponse.success(SuccessCode.OK, response);
-    }
-
-    private Long getUserIdFromPrincipal(Object principal) {
-        String username = extractUsername(principal);
-        Users user = userRepository.findByUserId(username)
-                .orElseThrow(() -> new CommonException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다."));
-        return user.getId();
-    }
-
-    private String extractUsername(Object principal) {
-        if (principal instanceof org.springframework.security.core.userdetails.UserDetails ud) return ud.getUsername();
-        if (principal instanceof java.security.Principal p) return p.getName();
-        if (principal instanceof String s && !"anonymousUser".equals(s)) return s;
-        throw new CommonException(ErrorCode.UNAUTHORIZED, "로그인이 필요합니다.");
-    }
+    // 관리자 승인 엔드포인트는 /admin 경로로 이동되었습니다.
 }
