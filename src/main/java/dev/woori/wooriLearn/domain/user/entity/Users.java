@@ -1,6 +1,8 @@
 package dev.woori.wooriLearn.domain.user.entity;
 
 import dev.woori.wooriLearn.config.BaseEntity;
+import dev.woori.wooriLearn.config.exception.InvalidParameterException;
+import dev.woori.wooriLearn.config.exception.InvalidStateException;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -37,17 +39,17 @@ public class Users extends BaseEntity {
 
     public void addPoints(Integer amount) {
         if (amount == null || amount <= 0) {
-            throw new dev.woori.wooriLearn.config.exception.InvalidParameterException("포인트 증액은 양수여야 합니다.");
+            throw new InvalidParameterException("포인트 증액은 양수여야 합니다.");
         }
         this.points += amount;
     }
 
     public void subtractPoints(Integer amount) {
         if (amount == null || amount <= 0) {
-            throw new dev.woori.wooriLearn.config.exception.InvalidParameterException("포인트 차감은 양수여야 합니다.");
+            throw new InvalidParameterException("포인트 차감은 양수여야 합니다.");
         }
         if (this.points < amount) {
-            throw new dev.woori.wooriLearn.config.exception.InvalidStateException("포인트가 부족합니다.");
+            throw new InvalidStateException("포인트가 부족합니다.");
         }
         this.points -= amount;
     }

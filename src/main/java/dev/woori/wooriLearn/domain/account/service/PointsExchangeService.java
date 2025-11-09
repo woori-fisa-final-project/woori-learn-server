@@ -19,6 +19,8 @@ import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
+import dev.woori.wooriLearn.common.SortDirection;
+import dev.woori.wooriLearn.common.HistoryStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -36,7 +38,7 @@ public class PointsExchangeService {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
 
-    /* 출금 신청 */
+    /* 출금 요청 */
     @Transactional
     public PointsExchangeResponseDto requestExchange(Long userId, PointsExchangeRequestDto dto) {
 
@@ -44,14 +46,14 @@ public class PointsExchangeService {
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
         if (user.getPoints() < dto.exchangeAmount()) {
-            throw new InvalidStateException("포인트가 부족하여 출금 신청을 할 수 없습니다.");
+            throw new InvalidStateException("포인트가 부족하여 출금 요청을 처리할 수 없습니다.");
         }
 
         Account account = accountRepository.findByAccountNumber(dto.accountNum())
                 .orElseThrow(() -> new AccountNotFoundException(dto.accountNum()));
 
         if (!account.getUser().getId().equals(user.getId())) {
-            throw new ForbiddenException("해당 계좌는 사용자의 소유가 아닙니다.");
+            throw new ForbiddenException("해당 계좌는 사용자 소유가 아닙니다.");
         }
 
         PointsHistory history = pointsHistoryRepository.save(
@@ -63,32 +65,31 @@ public class PointsExchangeService {
                         .build()
         );
 
-
         return PointsExchangeResponseDto.builder()
                 .requestId(history.getId())
                 .userId(user.getId())
                 .exchangeAmount(history.getAmount())
                 .status(history.getStatus())
                 .requestDate(history.getCreatedAt())
-                .message("현금화 요청이 정상적으로 접수되었습니다.")
+                .message("출금 요청이 정상적으로 접수되었습니다.")
                 .build();
     }
 
-    /*  출금 내역 조회 */
+    /* 출금 내역 조회 */
     public List<PointsExchangeResponseDto> getHistory(
             Long userId,
             String startDate,
             String endDate,
-            String status,
-            String sort
+            HistoryStatus status,
+            SortDirection sort
     ) {
         LocalDateTime start = parseStartDate(startDate);
         LocalDateTime end = parseEndDate(endDate);
 
-        PointsStatus statusEnum = parseStatus(status);
-        Sort sortOption = sort.equalsIgnoreCase("ASC") ?
-                Sort.by("createdAt").ascending() :
-                Sort.by("createdAt").descending();
+        PointsStatus statusEnum = (status == null || status == HistoryStatus.ALL)
+                ? null
+                : PointsStatus.valueOf(status.name());
+        Sort sortOption = (sort == null ? SortDirection.DESC : sort).toSort("createdAt");
 
         List<PointsHistory> list = pointsHistoryRepository.findByFilters(
                 userId, PointsHistoryType.WITHDRAW, statusEnum, start, end, sortOption
@@ -102,16 +103,16 @@ public class PointsExchangeService {
                         .status(h.getStatus())
                         .requestDate(h.getCreatedAt())
                         .processedDate(h.getProcessedAt())
-                        .message(h.getStatus().toString())
+                        .message(mapStatusToMessage(h.getStatus()))
                         .build()
                 ).toList();
     }
 
-    /* 출금 승인/처리 */
+    /* 출금 승인 */
     @Transactional
     public PointsExchangeResponseDto approveExchange(Long requestId) {
 
-        PointsHistory history = pointsHistoryRepository.findById(requestId)
+        PointsHistory history = pointsHistoryRepository.findAndLockById(requestId)
                 .orElseThrow(() -> new PointsRequestNotFoundException(requestId));
 
         if (history.getStatus() != PointsStatus.APPLY) {
@@ -124,7 +125,7 @@ public class PointsExchangeService {
         int amount = history.getAmount();
 
         if (user.getPoints() < amount) {
-            history.markFailed("포인트 부족", LocalDateTime.now(clock));
+            history.markFailed("INSUFFICIENT_POINTS", LocalDateTime.now(clock));
             return PointsExchangeResponseDto.builder()
                     .requestId(requestId)
                     .userId(user.getId())
@@ -148,13 +149,13 @@ public class PointsExchangeService {
                 .build();
     }
 
-    /*  날짜 검증 함수 분리 */
+    /* 날짜 변환 */
     private LocalDateTime parseStartDate(String date) {
         if (date == null || date.isEmpty()) return null;
         try {
             return LocalDate.parse(date).atStartOfDay();
         } catch (DateTimeParseException e) {
-            throw new InvalidParameterException("startDate 형식이 잘못되었습니다. 예: 2025-11-01");
+            throw new InvalidParameterException("startDate 형식이 잘못되었습니다. 예) 2025-11-01");
         }
     }
 
@@ -163,16 +164,15 @@ public class PointsExchangeService {
         try {
             return LocalDate.parse(date).atTime(23, 59, 59);
         } catch (DateTimeParseException e) {
-            throw new InvalidParameterException("endDate 형식이 잘못되었습니다. 예: 2025-11-30");
+            throw new InvalidParameterException("endDate 형식이 잘못되었습니다. 예) 2025-11-30");
         }
     }
 
-    private PointsStatus parseStatus(String status) {
-        if (status == null || status.equalsIgnoreCase("ALL")) return null;
-        try {
-            return PointsStatus.valueOf(status.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new InvalidParameterException("잘못된 status 값입니다. 가능한 값: ALL / APPLY / SUCCESS / FAILED");
-        }
+    private String mapStatusToMessage(PointsStatus status) {
+        return switch (status) {
+            case APPLY -> "출금 요청 처리 중입니다.";
+            case SUCCESS -> "출금이 완료되었습니다.";
+            case FAILED -> "출금 요청에 실패했습니다.";
+        };
     }
 }
