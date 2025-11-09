@@ -8,7 +8,7 @@ import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
-import dev.woori.wooriLearn.domain.user.repository.UsersRepository;
+import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,13 +17,13 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class PointsDepositService {
 
-    private final UsersRepository usersRepository;
+    private final UserRepository userRepository;
     private final PointsHistoryRepository pointsHistoryRepository;
 
     @Transactional
     public PointsDepositResponseDto depositPoints(Long userId, PointsDepositRequestDto dto) {
 
-        Users user = usersRepository.findByIdForUpdate(userId)
+        Users user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
         // 1) 포인트 증가

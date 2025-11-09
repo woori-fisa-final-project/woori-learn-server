@@ -33,7 +33,7 @@ public class JwtFilter extends OncePerRequestFilter {
         String accessToken = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (accessToken != null && accessToken.startsWith(BEARER)) {
-            String token = accessToken.substring(BEARER.length()); // ?�수 ?�큰값만 가?�오�?
+            String token = accessToken.substring(BEARER.length()); // 순수 토큰값만 가져오기
             if (jwtUtil.validateToken(token)) {
                 String username = jwtUtil.getUsername(token);
                 Role role = jwtUtil.getRole(token);

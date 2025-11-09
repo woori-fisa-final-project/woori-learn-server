@@ -32,16 +32,24 @@ public class Users extends BaseEntity {
     @Column(nullable = false)
     private Integer version = 0;
 
-    public void setPoints(Integer points) {
-        this.points = points;
-    }
+    
 
     public void addPoints(Integer amount) {
-        this.points += amount;
+        if (amount == null || amount <= 0) {
+            throw new dev.woori.wooriLearn.config.exception.InvalidParameterException("포인트 증액은 양수여야 합니다.");
+        }
+        this.points = (this.points == null ? 0 : this.points) + amount;
     }
 
     public void subtractPoints(Integer amount) {
-        this.points -= amount;
+        if (amount == null || amount <= 0) {
+            throw new dev.woori.wooriLearn.config.exception.InvalidParameterException("포인트 차감은 양수여야 합니다.");
+        }
+        int current = this.points == null ? 0 : this.points;
+        if (current < amount) {
+            throw new dev.woori.wooriLearn.config.exception.InvalidStateException("포인트가 부족합니다.");
+        }
+        this.points = current - amount;
     }
 
     @Column(nullable = false)

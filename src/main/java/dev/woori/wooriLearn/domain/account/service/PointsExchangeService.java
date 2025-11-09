@@ -1,6 +1,11 @@
 package dev.woori.wooriLearn.domain.account.service;
 
-import dev.woori.wooriLearn.config.exception.*;
+import dev.woori.wooriLearn.config.exception.AccountNotFoundException;
+import dev.woori.wooriLearn.config.exception.ForbiddenException;
+import dev.woori.wooriLearn.config.exception.InvalidParameterException;
+import dev.woori.wooriLearn.config.exception.InvalidStateException;
+import dev.woori.wooriLearn.config.exception.PointsRequestNotFoundException;
+import dev.woori.wooriLearn.config.exception.UserNotFoundException;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.entity.Account;
@@ -10,13 +15,12 @@ import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
-import dev.woori.wooriLearn.domain.user.repository.UsersRepository;
+import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import dev.woori.wooriLearn.config.exception.InvalidParameterException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,14 +33,14 @@ public class PointsExchangeService {
 
     private final Clock clock;
     private final PointsHistoryRepository pointsHistoryRepository;
-    private final UsersRepository usersRepository;
+    private final UserRepository userRepository;
     private final AccountRepository accountRepository;
 
     /* 출금 신청 */
     @Transactional
     public PointsExchangeResponseDto requestExchange(Long userId, PointsExchangeRequestDto dto) {
 
-        Users user = usersRepository.findById(userId)
+        Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
         Account account = accountRepository.findByAccountNumber(dto.accountNum())
@@ -110,7 +114,7 @@ public class PointsExchangeService {
             throw new InvalidStateException("이미 처리된 요청입니다.");
         }
 
-        Users user = usersRepository.findByIdForUpdate(history.getUser().getId())
+        Users user = userRepository.findByIdForUpdate(history.getUser().getId())
                 .orElseThrow(() -> new UserNotFoundException(history.getUser().getId()));
 
         int amount = history.getAmount();

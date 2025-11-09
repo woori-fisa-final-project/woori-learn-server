@@ -10,7 +10,7 @@ import java.util.Optional;
 public interface AccountRepository extends JpaRepository<Account, Long> {
 
     // 유저가 가진 계좌 목록
-    List<Account> findAllByUserId(Long userId);
+    List<Account> findAllByUser_Id(Long userId);
 
     // 계좌번호로 조회 (환전 신청에서 사용)
     Optional<Account> findByAccountNumber(String accountNumber);

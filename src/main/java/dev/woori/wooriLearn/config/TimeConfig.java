@@ -10,6 +10,7 @@ public class TimeConfig {
 
     @Bean
     public Clock clock() {
-        return Clock.systemDefaultZone();  // 또는 systemUTC()
+        return Clock.systemUTC();
     }
+
 }
