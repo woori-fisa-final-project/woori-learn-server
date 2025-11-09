@@ -31,11 +31,6 @@ public class Users extends BaseEntity {
     private Integer points = 0;
 
 
-    @Version
-    @Column(nullable = false)
-    private Integer version = 0;
-
-
 
     public void addPoints(Integer amount) {
         if (amount == null || amount <= 0) {
@@ -66,7 +61,7 @@ public class Users extends BaseEntity {
     @Column(nullable = false)
     private boolean enabled = true;
 
-    /** ✅ develop 쪽 추가된 Role 필드 **/
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;

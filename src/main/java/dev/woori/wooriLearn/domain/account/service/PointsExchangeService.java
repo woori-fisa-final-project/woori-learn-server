@@ -42,7 +42,7 @@ public class PointsExchangeService {
     @Transactional
     public PointsExchangeResponseDto requestExchange(Long userId, PointsExchangeRequestDto dto) {
 
-        Users user = userRepository.findById(userId)
+        Users user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
         if (user.getPoints() < dto.exchangeAmount()) {
@@ -76,6 +76,16 @@ public class PointsExchangeService {
     }
 
     /* 출금 내역 조회 */
+    private PointsStatus convertStatus(HistoryStatus status) {
+        if (status == null || status == HistoryStatus.ALL) return null;
+        return switch (status) {
+            case APPLY -> PointsStatus.APPLY;
+            case SUCCESS -> PointsStatus.SUCCESS;
+            case FAILED -> PointsStatus.FAILED;
+            default -> throw new IllegalArgumentException("Unknown status: " + status);
+        };
+    }
+
     public List<PointsExchangeResponseDto> getHistory(
             Long userId,
             String startDate,
@@ -86,9 +96,7 @@ public class PointsExchangeService {
         LocalDateTime start = parseStartDate(startDate);
         LocalDateTime end = parseEndDate(endDate);
 
-        PointsStatus statusEnum = (status == null || status == HistoryStatus.ALL)
-                ? null
-                : PointsStatus.valueOf(status.name());
+        PointsStatus statusEnum = convertStatus(status);
         Sort sortOption = (sort == null ? SortDirection.DESC : sort).toSort("createdAt");
 
         List<PointsHistory> list = pointsHistoryRepository.findByFilters(
@@ -149,7 +157,7 @@ public class PointsExchangeService {
                 .build();
     }
 
-    /* 날짜 변환 */
+    /* 날짜 파싱 */
     private LocalDateTime parseStartDate(String date) {
         if (date == null || date.isEmpty()) return null;
         try {
