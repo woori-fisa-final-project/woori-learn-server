@@ -39,7 +39,7 @@ public class SecurityConfig {
             "/admin/**"
     );
 
-    /** ✅ dev 환경은 인증 비활성화 */
+    /**  dev 환경은 인증 비활성화 */
     @Bean
     @Profile("dev")
     public SecurityFilterChain devFilterChain(HttpSecurity httpSecurity) throws Exception {
@@ -49,7 +49,7 @@ public class SecurityConfig {
                 .build();
     }
 
-    /** ✅ 운영/기타 환경 - JWT 보안 적용 */
+    /**  운영/기타 환경 - JWT 보안 적용 */
     @Bean
     @Profile("!dev")
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {

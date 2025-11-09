@@ -6,10 +6,13 @@ import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Long> {
 
@@ -30,5 +33,8 @@ public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Lo
             Sort sort
     );
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT h FROM PointsHistory h WHERE h.id = :id")
+    Optional<PointsHistory> findAndLockById(@Param("id") Long id);
 
 }

@@ -4,6 +4,8 @@ import dev.woori.wooriLearn.config.security.CurrentUserResolver;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
+import dev.woori.wooriLearn.common.SortDirection;
+import dev.woori.wooriLearn.common.HistoryStatus;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
@@ -38,8 +40,8 @@ public class PointsExchangeController {
             @AuthenticationPrincipal Object principal,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
-            @RequestParam(required = false, defaultValue = "ALL") String status,
-            @RequestParam(required = false, defaultValue = "DESC") String sort
+            @RequestParam(required = false, defaultValue = "ALL") HistoryStatus status,
+            @RequestParam(required = false, defaultValue = "DESC") SortDirection sort
     ) {
         Long userId = currentUserResolver.requireUserId(principal);
         List<PointsExchangeResponseDto> history = pointsExchangeService
@@ -47,5 +49,5 @@ public class PointsExchangeController {
         return ApiResponse.success(SuccessCode.OK, history);
     }
 
-    // 관리자 승인 엔드포인트는 /admin 경로로 이동되었습니다.
+
 }
