@@ -1,7 +1,7 @@
 package dev.woori.wooriLearn.domain.account.dto;
 
 public record PointsExchangeRequestDto(
-        Integer exchangeAmount,
-        String accountNum,
-        String bankCode
+        @jakarta.validation.constraints.NotNull @jakarta.validation.constraints.Positive Integer exchangeAmount,
+        @jakarta.validation.constraints.NotBlank String accountNum,
+        @jakarta.validation.constraints.NotBlank String bankCode
 ) {}
