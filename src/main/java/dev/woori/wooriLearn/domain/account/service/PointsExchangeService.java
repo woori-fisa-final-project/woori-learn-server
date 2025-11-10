@@ -41,18 +41,15 @@ public class PointsExchangeService {
         Users user = userRepository.findByUserIdForUpdate(username)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
-        // 금액 유효성: null/0/음수 거부
         if (dto.exchangeAmount() == null || dto.exchangeAmount() <= 0) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "교환 요청 금액은 0보다 커야 합니다.");
         }
-        // 사전 포인트 비교 (UI 친화적 오류 메시지 제공 목적)
         if (user.getPoints() < dto.exchangeAmount()) {
             throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족하여 출금 요청을 처리할 수 없습니다.");
         }
 
         Account account = accountRepository.findByAccountNumber(dto.accountNum())
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "계좌를 찾을 수 없습니다. accountNum=" + dto.accountNum()));
-
         if (!account.getUser().getId().equals(user.getId())) {
             throw new CommonException(ErrorCode.FORBIDDEN, "해당 계좌의 소유자가 아닙니다.");
         }
@@ -121,18 +118,30 @@ public class PointsExchangeService {
                 ).toList();
     }
 
-    // 출금 승인
+    // 출금 승인: Users → History 순서로 락
     @Transactional
     public PointsExchangeResponseDto approveExchange(Long requestId) {
-        PointsHistory history = pointsHistoryRepository.findAndLockById(requestId)
+        // 비잠금으로 우선 조회
+        PointsHistory history = pointsHistoryRepository.findById(requestId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 요청을 찾을 수 없습니다. requestId=" + requestId));
+
+        // Early check: not APPLY -> CONFLICT (avoid extra locks)
+        if (history.getStatus() != PointsStatus.APPLY) {
+            throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다.");
+        }
+
+        // Users 먼저 잠금 (lambda 캡처 변수는 final/유사-final 이어야 하므로 userId 보관)
+        Long userId = history.getUser().getId();
+        Users user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. Id=" + userId));
+
+        // 이후 History 잠금
+        history = pointsHistoryRepository.findAndLockById(requestId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 요청을 찾을 수 없습니다. requestId=" + requestId));
 
         if (history.getStatus() != PointsStatus.APPLY) {
             throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다.");
         }
-
-        Users user = userRepository.findByIdForUpdate(history.getUser().getId())
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. Id=" + history.getUser().getId()));
 
         int amount = history.getAmount();
         String message;
@@ -185,7 +194,7 @@ public class PointsExchangeService {
             case APPLY -> "출금 요청 처리 중입니다.";
             case SUCCESS -> "출금이 완료되었습니다.";
             case FAILED -> "출금 요청이 실패했습니다.";
+            default -> throw new CommonException(ErrorCode.INVALID_REQUEST, "Unknown status: " + status);
         };
     }
 }
-
