@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.edubackapi.autopayment.service;
+package dev.woori.wooriLearn.domain.edubankapi.autopayment.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
@@ -7,7 +7,6 @@ import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentRespons
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment.AutoPaymentStatus;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.repository.AutoPaymentRepository;
-import dev.woori.wooriLearn.domain.edubankapi.autopayment.service.AutoPaymentService;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiAccountRepository;
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.user.entity.Users;
@@ -71,7 +70,7 @@ class AutoPaymentServiceTest {
                 1L, "020", "110-123-456789", 50000,
                 "홍길동", "월세", 1, 5,
                 LocalDate.of(2025, 1, 1),
-                LocalDate.of(2025, 12, 31),
+                LocalDate.of(2025, 12, 31),  // ✅ null 아님
                 "1234"
         );
 
@@ -86,7 +85,7 @@ class AutoPaymentServiceTest {
                 .transferCycle(1)
                 .designatedDate(5)
                 .startDate(LocalDate.of(2025, 1, 1))
-                .expirationDate(LocalDate.of(2025, 12, 31))
+                .expirationDate(LocalDate.of(2025, 12, 31))  // ✅ null 아님
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
     }
@@ -109,10 +108,57 @@ class AutoPaymentServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.amount()).isEqualTo(50000);
-        assertThat(response.processingStatus()).isEqualTo("ACTIVE");  // ✅ String
+        assertThat(response.processingStatus()).isEqualTo("ACTIVE");
+        assertThat(response.startDate()).isEqualTo(LocalDate.of(2025, 1, 1));
+        assertThat(response.expirationDate()).isEqualTo(LocalDate.of(2025, 12, 31));
 
         verify(edubankapiAccountRepository).findById(1L);
         verify(passwordEncoder).matches("1234", mockAccount.getAccountPassword());
+        verify(autoPaymentRepository).save(any(AutoPayment.class));
+    }
+
+    @Test
+    @DisplayName("자동이체 등록 성공 - 시작일과 만료일이 같은 날")
+    void createAutoPayment_Success_SameDate() {
+        // given
+        LocalDate sameDate = LocalDate.of(2025, 1, 1);
+        AutoPaymentCreateRequest sameDateRequest = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 50000,
+                "홍길동", "월세", 1, 5,
+                sameDate, sameDate,  // 같은 날
+                "1234"
+        );
+
+        AutoPayment sameDateAutoPayment = AutoPayment.builder()
+                .id(2L)
+                .educationalAccount(mockAccount)
+                .depositNumber("110-123-456789")
+                .depositBankCode("020")
+                .amount(50000)
+                .counterpartyName("홍길동")
+                .displayName("월세")
+                .transferCycle(1)
+                .designatedDate(5)
+                .startDate(sameDate)
+                .expirationDate(sameDate)
+                .processingStatus(AutoPaymentStatus.ACTIVE)
+                .build();
+
+        given(edubankapiAccountRepository.findById(anyLong()))
+                .willReturn(Optional.of(mockAccount));
+        given(passwordEncoder.matches(anyString(), anyString()))
+                .willReturn(true);
+        given(autoPaymentRepository.save(any(AutoPayment.class)))
+                .willReturn(sameDateAutoPayment);
+
+        // when
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(sameDateRequest);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.startDate()).isEqualTo(sameDate);
+        assertThat(response.expirationDate()).isEqualTo(sameDate);
+
         verify(autoPaymentRepository).save(any(AutoPayment.class));
     }
 
@@ -123,16 +169,18 @@ class AutoPaymentServiceTest {
         given(edubankapiAccountRepository.findById(anyLong()))
                 .willReturn(Optional.empty());
 
-        // when & then
-        assertThatThrownBy(() -> autoPaymentService.createAutoPayment(validRequest))
-                .isInstanceOf(CommonException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
+        // when
+        CommonException exception = catchThrowableOfType(
+                () -> autoPaymentService.createAutoPayment(validRequest),
+                CommonException.class
+        );
 
-        assertThatThrownBy(() -> autoPaymentService.createAutoPayment(validRequest))
-                .hasMessageContaining("교육용 계좌를 찾을 수 없습니다");
+        // then
+        assertThat(exception).isNotNull();
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
+        assertThat(exception.getMessage()).contains("교육용 계좌를 찾을 수 없습니다");
 
-        verify(edubankapiAccountRepository, times(2)).findById(1L);
+        verify(edubankapiAccountRepository).findById(1L);
         verify(passwordEncoder, never()).matches(anyString(), anyString());
         verify(autoPaymentRepository, never()).save(any());
     }
@@ -146,17 +194,19 @@ class AutoPaymentServiceTest {
         given(passwordEncoder.matches(anyString(), anyString()))
                 .willReturn(false);
 
-        // when & then
-        assertThatThrownBy(() -> autoPaymentService.createAutoPayment(validRequest))
-                .isInstanceOf(CommonException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.UNAUTHORIZED);
+        // when
+        CommonException exception = catchThrowableOfType(
+                () -> autoPaymentService.createAutoPayment(validRequest),
+                CommonException.class
+        );
 
-        assertThatThrownBy(() -> autoPaymentService.createAutoPayment(validRequest))
-                .hasMessageContaining("계좌 비밀번호가 일치하지 않습니다");
+        // then
+        assertThat(exception).isNotNull();
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+        assertThat(exception.getMessage()).contains("계좌 비밀번호가 일치하지 않습니다");
 
-        verify(edubankapiAccountRepository, times(2)).findById(1L);
-        verify(passwordEncoder, times(2)).matches("1234", mockAccount.getAccountPassword());
+        verify(edubankapiAccountRepository).findById(1L);
+        verify(passwordEncoder).matches("1234", mockAccount.getAccountPassword());
         verify(autoPaymentRepository, never()).save(any());
     }
 
@@ -223,28 +273,32 @@ class AutoPaymentServiceTest {
         given(autoPaymentRepository.findById(anyLong()))
                 .willReturn(Optional.empty());
 
-        // when & then
-        assertThatThrownBy(() -> autoPaymentService.getAutoPaymentDetail(1L))
-                .isInstanceOf(CommonException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
+        // when
+        CommonException exception = catchThrowableOfType(
+                () -> autoPaymentService.getAutoPaymentDetail(1L),
+                CommonException.class
+        );
 
-        assertThatThrownBy(() -> autoPaymentService.getAutoPaymentDetail(1L))
-                .hasMessageContaining("자동이체 정보를 찾을 수 없습니다");
+        // then
+        assertThat(exception).isNotNull();
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
+        assertThat(exception.getMessage()).contains("자동이체 정보를 찾을 수 없습니다");
 
-        verify(autoPaymentRepository, times(2)).findById(1L);
+        verify(autoPaymentRepository).findById(1L);
     }
 
     @Test
     @DisplayName("상태 변환 실패 - 잘못된 상태값 (INVALID_REQUEST)")
     void resolveStatus_Invalid() {
-        // when & then
-        assertThatThrownBy(() -> autoPaymentService.getAutoPaymentList(1L, "INVALID_STATUS"))
-                .isInstanceOf(CommonException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.INVALID_REQUEST);
+        // when
+        CommonException exception = catchThrowableOfType(
+                () -> autoPaymentService.getAutoPaymentList(1L, "INVALID_STATUS"),
+                CommonException.class
+        );
 
-        assertThatThrownBy(() -> autoPaymentService.getAutoPaymentList(1L, "INVALID_STATUS"))
-                .hasMessageContaining("유효하지 않은 상태 값입니다");
+        // then
+        assertThat(exception).isNotNull();
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+        assertThat(exception.getMessage()).contains("유효하지 않은 상태 값입니다");
     }
 }

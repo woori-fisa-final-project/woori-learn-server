@@ -5,6 +5,14 @@ import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
 
+/**
+ * 자동이체 등록 요청 DTO
+ *
+ * 지정일 처리 정책:
+ * - 1~31일 중 선택 가능
+ * - 해당 월에 지정일이 없는 경우 해당 월의 마지막 날에 자동 실행
+ * - 예: 31일 지정 → 2월에는 28일(윤년 29일), 4월/6월/9월/11월은 30일에 실행
+ */
 public record AutoPaymentCreateRequest(
         @NotNull(message = "교육용 계좌 ID는 필수입니다.")
         @Positive(message = "교육용 계좌 ID는 양수여야 합니다.")
@@ -34,12 +42,6 @@ public record AutoPaymentCreateRequest(
         @Positive(message = "이체 주기는 양수여야 합니다.")
         Integer transferCycle,
 
-        /**
-         * 지정일 처리 정책:
-         * - 1~31일 중 선택 가능
-         * - 해당 월에 지정일이 없는 경우 해당 월의 마지막 날에 자동 실행
-         * - 예: 31일 지정 → 2월에는 28일(윤년 29일), 4월/6월/9월/11월은 30일에 실행
-         */
         @NotNull(message = "지정일은 필수입니다.")
         @Min(value = 1, message = "지정일은 1일 이상이어야 합니다.")
         @Max(value = 31, message = "지정일은 31일 이하여야 합니다.")
@@ -57,4 +59,18 @@ public record AutoPaymentCreateRequest(
         @Size(min = 4, max = 4, message = "계좌 비밀번호는 4자리여야 합니다.")
         String accountPassword
 ) {
+    /**
+     * 만료일 유효성 검증
+     * - expirationDate는 startDate 이후여야 함
+     */
+    @AssertTrue(message = "만료일은 시작일 이후여야 합니다.")
+    private boolean isExpirationDateValid() {
+
+        if (startDate == null || expirationDate == null) {
+            return true;
+        }
+
+        // expirationDate는 startDate보다 이후이거나 같아야 함
+        return !expirationDate.isBefore(startDate);
+    }
 }
