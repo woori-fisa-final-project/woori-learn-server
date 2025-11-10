@@ -60,23 +60,12 @@ public class AutoPaymentService {
 
     @Transactional
     public AutoPaymentResponse createAutoPayment(AutoPaymentCreateRequest request) {
-        // 1. 교육용 계좌 조회
-        EducationalAccount educationalAccount = edubankapiAccountRepository
-                .findById(request.educationalAccountId())
-                .orElseThrow(() -> {
-                    log.error("교육용 계좌 조회 실패 - ID: {}", request.educationalAccountId());
-                    return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
-                            "교육용 계좌를 찾을 수 없습니다.");
-                });
-
-        // 2. 계좌 비밀번호 검증
-        validateAccountPassword(educationalAccount, request.accountPassword());
-
-        if (request.startDate().isAfter(request.expirationDate())) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "시작일은 만료일보다 이전이어야 합니다.");
-        }
-
-        // 3. 자동이체 엔티티 생성
+        // 1. 교육용 계좌 조회 및 검증
+        EducationalAccount educationalAccount = findAndValidateAccount(
+                request.educationalAccountId(),
+                request.accountPassword()
+        );
+        // 2. 자동이체 엔티티 생성
         AutoPayment autoPayment = AutoPayment.builder()
                 .educationalAccount(educationalAccount)
                 .depositNumber(request.depositNumber())
@@ -91,13 +80,25 @@ public class AutoPaymentService {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        // 4. 저장
+        // 3. 저장
         AutoPayment savedAutoPayment = autoPaymentRepository.save(autoPayment);
 
         log.info("자동이체 등록 완료 - ID: {}, 교육용계좌ID: {}",
                 savedAutoPayment.getId(), request.educationalAccountId());
 
         return AutoPaymentResponse.of(savedAutoPayment, request.educationalAccountId());
+    }
+
+    private EducationalAccount findAndValidateAccount(Long accountId, String password) {
+        EducationalAccount account = edubankapiAccountRepository.findById(accountId)
+                .orElseThrow(() -> {
+                    log.error("교육용 계좌 조회 실패 - ID: {}", accountId);
+                    return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                            "교육용 계좌를 찾을 수 없습니다.");
+                });
+
+        validateAccountPassword(account, password);
+        return account;
     }
 
     private void validateAccountPassword(EducationalAccount account, String inputPassword) {

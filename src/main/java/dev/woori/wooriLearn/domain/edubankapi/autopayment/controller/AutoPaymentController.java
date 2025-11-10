@@ -19,7 +19,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/auto-payment")
+@RequestMapping("/education/auto-payment")
 @RequiredArgsConstructor
 @Validated
 public class AutoPaymentController {
