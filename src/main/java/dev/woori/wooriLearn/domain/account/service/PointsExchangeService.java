@@ -14,7 +14,7 @@ import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -36,7 +36,7 @@ public class PointsExchangeService {
     private final AccountRepository accountRepository;
 
 
-    /* 출금 요청 */
+    /* 출금 신청 */
     @Transactional
     public PointsExchangeResponseDto requestExchange(String username, PointsExchangeRequestDto dto) {
 
@@ -45,13 +45,13 @@ public class PointsExchangeService {
         Users user = userRepository.findByUserIdForUpdate(username)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
-        // 금액 유효성 먼저 검증 (null/비양수)
+        // 금액 유효성 먼저 검증(null/비양수)
         if (dto.exchangeAmount() == null || dto.exchangeAmount() <= 0) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "교환 요청 금액은 0보다 커야 합니다.");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "교환 신청 금액은 0보다 커야 합니다");
         }
-        // 이후 잔액 비교로 충족 여부 확인
+        // 사후 잔액 비교: 충족 여부 확인
         if (user.getPoints() < dto.exchangeAmount()) {
-            throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족하여 출금 요청을 처리할 수 없습니다.");
+            throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족하여 출금 신청을 처리할 수 없습니다.");
         }
 
         Account account = accountRepository.findByAccountNumber(dto.accountNum())
@@ -76,7 +76,7 @@ public class PointsExchangeService {
                 .exchangeAmount(history.getAmount())
                 .status(history.getStatus())
                 .requestDate(history.getCreatedAt())
-                .message("출금 요청이 정상적으로 접수되었습니다.")
+                .message("출금 신청이 정상적으로 접수되었습니다")
                 .build();
     }
 
@@ -133,7 +133,7 @@ public class PointsExchangeService {
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 요청을 찾을 수 없습니다. requestId=" + requestId));
 
         if (history.getStatus() != PointsStatus.APPLY) {
-            throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다.");
+            throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다");
         }
 
         Users user = userRepository.findByIdForUpdate(history.getUser().getId())
@@ -142,18 +142,13 @@ public class PointsExchangeService {
         int amount = history.getAmount();
         String message;
 
-        try {
+        if (user.getPoints() < amount) {
+            history.markFailed(INSUFFICIENT_POINTS_FAIL_REASON, LocalDateTime.now(clock));
+            message = "포인트가 부족하여 실패했습니다.";
+        } else {
             user.subtractPoints(amount);
             history.markSuccess(LocalDateTime.now(clock));
             message = "정상적으로 처리되었습니다.";
-        } catch (CommonException e) {
-            if (e.getErrorCode() == ErrorCode.CONFLICT) {
-                history.markFailed(INSUFFICIENT_POINTS_FAIL_REASON, LocalDateTime.now(clock));
-                message = "포인트가 부족하여 실패했습니다.";
-            } else {
-                history.markFailed(PROCESSING_ERROR_FAIL_REASON, LocalDateTime.now(clock));
-                message = "요청 처리 중 오류가 발생했습니다.";
-            }
         }
 
         return PointsExchangeResponseDto.builder()
@@ -172,7 +167,7 @@ public class PointsExchangeService {
         try {
             return LocalDate.parse(date).atStartOfDay();
         } catch (DateTimeParseException e) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "startDate 형식이 잘못되었습니다. 예) 2025-11-01");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "startDate 형식을 잘못 입력했습니다. 예) 2025-11-01");
         }
     }
 
@@ -181,15 +176,16 @@ public class PointsExchangeService {
         try {
             return LocalDate.parse(date).atTime(23, 59, 59);
         } catch (DateTimeParseException e) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "endDate 형식이 잘못되었습니다. 예) 2025-11-30");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "endDate 형식을 잘못 입력했습니다. 예) 2025-11-30");
         }
     }
 
     private String mapStatusToMessage(PointsStatus status) {
         return switch (status) {
-            case APPLY -> "출금 요청 처리 중입니다.";
-            case SUCCESS -> "출금이 완료되었습니다.";
-            case FAILED -> "출금 요청이 실패했습니다.";
+            case APPLY -> "출금 신청 처리 중입니다.";
+            case SUCCESS -> "출금이 완료되었습니다";
+            case FAILED -> "출금 신청이 실패했습니다.";
         };
     }
 }
+
