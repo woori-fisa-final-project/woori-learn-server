@@ -136,17 +136,17 @@ public class PointsExchangeService {
 
         int amount = history.getAmount();
         String message;
-
+        LocalDateTime processedAt = LocalDateTime.now(clock);
         try {
             user.subtractPoints(amount);
-            history.markSuccess(LocalDateTime.now(clock));
+            history.markSuccess(processedAt);
             message = "정상적으로 처리되었습니다.";
         } catch (CommonException e) {
             if (e.getErrorCode() == ErrorCode.CONFLICT) {
-                history.markFailed(INSUFFICIENT_POINTS_FAIL_REASON, LocalDateTime.now(clock));
+                history.markFailed(INSUFFICIENT_POINTS_FAIL_REASON, processedAt);
                 message = "포인트가 부족하여 실패했습니다.";
             } else {
-                history.markFailed(PROCESSING_ERROR_FAIL_REASON, LocalDateTime.now(clock));
+                history.markFailed(PROCESSING_ERROR_FAIL_REASON, processedAt);
                 message = "요청 처리 중 오류가 발생하여 실패했습니다.";
             }
         }
