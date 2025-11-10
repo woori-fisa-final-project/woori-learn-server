@@ -1,6 +1,8 @@
-package dev.woori.wooriLearn.domain.auth.repository;
+package dev.woori.wooriLearn.domain.auth.adapter;
 
 import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
+import dev.woori.wooriLearn.domain.auth.port.RefreshTokenPort;
+import dev.woori.wooriLearn.domain.auth.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 

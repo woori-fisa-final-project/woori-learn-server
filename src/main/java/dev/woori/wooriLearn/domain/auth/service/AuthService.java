@@ -2,17 +2,15 @@ package dev.woori.wooriLearn.domain.auth.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.config.jwt.JwtUtil;
+import dev.woori.wooriLearn.domain.auth.jwt.JwtIssuer;
+import dev.woori.wooriLearn.config.jwt.JwtValidator;
 import dev.woori.wooriLearn.config.security.Encoder;
 import dev.woori.wooriLearn.domain.auth.dto.*;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
-import dev.woori.wooriLearn.domain.auth.repository.AuthUserPort;
-import dev.woori.wooriLearn.domain.auth.repository.AuthUserRepository;
-import dev.woori.wooriLearn.domain.auth.repository.RefreshTokenPort;
-import dev.woori.wooriLearn.domain.auth.repository.RefreshTokenRepository;
+import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
+import dev.woori.wooriLearn.domain.auth.port.RefreshTokenPort;
 import dev.woori.wooriLearn.domain.user.entity.Role;
-import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +30,8 @@ public class AuthService {
     private final AuthUserPort authUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final Encoder encoder;
-    private final JwtUtil jwtUtil;
+    private final JwtIssuer jwtIssuer;
+    private final JwtValidator jwtValidator;
     private final RefreshTokenPort refreshTokenRepository;
 
     /**
@@ -63,8 +62,8 @@ public class AuthService {
 
         // 토큰 만료 및 유효성 검증
         try {
-            username = jwtUtil.getUsername(refreshToken);
-            role = jwtUtil.getRole(refreshToken);
+            username = jwtValidator.getUsername(refreshToken);
+            role = jwtValidator.getRole(refreshToken);
         } catch (ExpiredJwtException e) {
             throw new CommonException(ErrorCode.TOKEN_EXPIRED, "토큰이 만료되었습니다.");
         } catch (JwtException | IllegalArgumentException e) {
@@ -96,8 +95,8 @@ public class AuthService {
 
     public LoginResDto generateAndSaveToken(String username, Role role){
         // jwt 토큰 저장 로직
-        String accessToken = jwtUtil.generateAccessToken(username, role);
-        var refreshTokenInfo = jwtUtil.generateRefreshToken(username, role);
+        String accessToken = jwtIssuer.generateAccessToken(username, role);
+        var refreshTokenInfo = jwtIssuer.generateRefreshToken(username, role);
         String refreshToken = refreshTokenInfo.token();
         Instant refreshTokenExpiration = refreshTokenInfo.expiration();
 

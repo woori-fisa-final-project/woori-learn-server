@@ -1,6 +1,7 @@
 package dev.woori.wooriLearn.jwtTest;
 
-import dev.woori.wooriLearn.config.jwt.JwtUtil;
+import dev.woori.wooriLearn.domain.auth.jwt.JwtIssuer;
+import dev.woori.wooriLearn.config.jwt.JwtValidator;
 import dev.woori.wooriLearn.domain.user.entity.Role;
 import io.jsonwebtoken.ExpiredJwtException;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,16 +17,18 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 public class JwtUtilTest {
-    private JwtUtil jwtUtil;
+    private JwtIssuer jwtIssuer;
+    private JwtValidator jwtValidator;
 
     // 테스트용 키
     private final String secretKey = Base64.getEncoder().encodeToString("this-is-a-test-secret-key-1234567890".getBytes(StandardCharsets.UTF_8));
 
     @BeforeEach
     void setUp() {
-        jwtUtil = new JwtUtil(secretKey);
-        ReflectionTestUtils.setField(jwtUtil, "accessTokenExpiration", 3600000);
-        ReflectionTestUtils.setField(jwtUtil, "refreshTokenExpiration", 604800000);
+        jwtIssuer = new JwtIssuer(secretKey);
+        jwtValidator = new JwtValidator(secretKey);
+        ReflectionTestUtils.setField(jwtIssuer, "accessTokenExpiration", 3600000);
+        ReflectionTestUtils.setField(jwtIssuer, "refreshTokenExpiration", 604800000);
     }
 
     @Test
@@ -35,12 +38,12 @@ public class JwtUtilTest {
         String username = "testUser";
 
         // when
-        String token = jwtUtil.generateAccessToken(username, Role.ROLE_USER);
+        String token = jwtIssuer.generateAccessToken(username, Role.ROLE_USER);
 
         // then
         assertThat(token).isNotBlank();
-        assertThat(jwtUtil.validateToken(token)).isTrue();
-        assertThat(jwtUtil.getUsername(token)).isEqualTo(username);
+        assertThat(jwtValidator.validateToken(token)).isTrue();
+        assertThat(jwtValidator.getUsername(token)).isEqualTo(username);
     }
 
     @Test
@@ -50,7 +53,7 @@ public class JwtUtilTest {
         String username = "testUser";
 
         // when
-        var tokenInfo = jwtUtil.generateRefreshToken(username, Role.ROLE_USER);
+        var tokenInfo = jwtIssuer.generateRefreshToken(username, Role.ROLE_USER);
 
         // then
         assertThat(tokenInfo.token()).isNotBlank();
@@ -61,14 +64,14 @@ public class JwtUtilTest {
     @DisplayName("잘못된 서명 키로 서명된 토큰은 유효하지 않다")
     void invalidSignatureTokenShouldFailValidation() {
         // given
-        String validToken = jwtUtil.generateAccessToken("user1", Role.ROLE_USER);
+        String validToken = jwtIssuer.generateAccessToken("user1", Role.ROLE_USER);
 
         // 다른 키로 새 util 생성
         String otherKey = Base64.getEncoder().encodeToString("different-secret-key-1234567890".getBytes(StandardCharsets.UTF_8));
-        JwtUtil invalidUtil = new JwtUtil(otherKey);
+        JwtValidator invalidJwtValidator = new JwtValidator(otherKey);
 
         // when
-        boolean isValid = invalidUtil.validateToken(validToken);
+        boolean isValid = invalidJwtValidator.validateToken(validToken);
 
         // then
         assertThat(isValid).isFalse();
@@ -79,10 +82,10 @@ public class JwtUtilTest {
     void expiredTokenShouldFailValidation() {
         // given
         long expiredMillis = -1000L; // 이미 만료된 시간
-        var tokenInfo = jwtUtil.generateToken("user1", Role.ROLE_USER, expiredMillis);
+        var tokenInfo = jwtIssuer.generateToken("user1", Role.ROLE_USER, expiredMillis);
 
         // when
-        boolean isValid = jwtUtil.validateToken(tokenInfo.token());
+        boolean isValid = jwtValidator.validateToken(tokenInfo.token());
 
         // then
         assertThat(isValid).isFalse();
@@ -92,10 +95,10 @@ public class JwtUtilTest {
     @DisplayName("만료된 토큰을 파싱하면 ExpiredJwtException이 발생한다")
     void getUsername_ShouldThrowExpiredJwtException_WhenTokenExpired() {
         // given
-        var tokenInfo = jwtUtil.generateToken("expiredUser", Role.ROLE_USER, -1000L);
+        var tokenInfo = jwtIssuer.generateToken("expiredUser", Role.ROLE_USER, -1000L);
 
         // then
-        assertThatThrownBy(() -> jwtUtil.getUsername(tokenInfo.token()))
+        assertThatThrownBy(() -> jwtValidator.getUsername(tokenInfo.token()))
                 .isInstanceOf(ExpiredJwtException.class);
     }
 
@@ -106,7 +109,7 @@ public class JwtUtilTest {
         String malformedToken = "not.a.valid.token";
 
         // when
-        boolean isValid = jwtUtil.validateToken(malformedToken);
+        boolean isValid = jwtValidator.validateToken(malformedToken);
 
         // then
         assertThat(isValid).isFalse();
