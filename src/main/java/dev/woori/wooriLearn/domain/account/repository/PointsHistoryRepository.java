@@ -16,7 +16,7 @@ import java.util.Optional;
 
 public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Long> {
 
-    List<PointsHistory> findAllByUser_Id(Long userId);
+
 
     @Query("SELECT p FROM PointsHistory p WHERE "
             + "p.user.id = :userId "

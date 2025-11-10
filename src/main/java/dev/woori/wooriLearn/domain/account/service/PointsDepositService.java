@@ -1,6 +1,7 @@
 package dev.woori.wooriLearn.domain.account.service;
 
-import dev.woori.wooriLearn.config.exception.UserNotFoundException;
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.account.dto.PointsDepositRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsDepositResponseDto;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
@@ -21,15 +22,17 @@ public class PointsDepositService {
     private final PointsHistoryRepository pointsHistoryRepository;
 
     @Transactional
-    public PointsDepositResponseDto depositPoints(Long userId, PointsDepositRequestDto dto) {
+    public PointsDepositResponseDto depositPoints(String username, PointsDepositRequestDto dto) {
+
+        Long userId = userRepository.findByUserId(username)
+                .map(Users::getId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
         Users user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new UserNotFoundException(userId));
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. id=" + userId));
 
-        // 1) 포인트 증가
         user.addPoints(dto.amount());
 
-        // 2) 내역 저장
         PointsHistory history = pointsHistoryRepository.save(
                 PointsHistory.builder()
                         .user(user)
@@ -39,7 +42,6 @@ public class PointsDepositService {
                         .build()
         );
 
-        // 3) 응답 반환
         return PointsDepositResponseDto.builder()
                 .userId(user.getId())
                 .addedPoint(dto.amount())
@@ -50,3 +52,4 @@ public class PointsDepositService {
                 .build();
     }
 }
+
