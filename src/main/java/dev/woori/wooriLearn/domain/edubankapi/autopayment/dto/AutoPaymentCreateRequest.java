@@ -59,10 +59,6 @@ public record AutoPaymentCreateRequest(
         @Size(min = 4, max = 4, message = "계좌 비밀번호는 4자리여야 합니다.")
         String accountPassword
 ) {
-    /**
-     * 만료일 유효성 검증
-     * - expirationDate는 startDate 이후여야 함
-     */
     @AssertTrue(message = "만료일은 시작일 이후여야 합니다.")
     private boolean isExpirationDateValid() {
 
@@ -72,22 +68,5 @@ public record AutoPaymentCreateRequest(
 
         // expirationDate는 startDate보다 이후이거나 같아야 함
         return !expirationDate.isBefore(startDate);
-    }
-
-    @Override
-    public String toString() {
-        return "AutoPaymentCreateRequest[" +
-                "educationalAccountId=" + educationalAccountId +
-                ", depositBankCode='" + depositBankCode + '\'' +
-                ", depositNumber='" + depositNumber + '\'' +
-                ", amount=" + amount +
-                ", counterpartyName='" + counterpartyName + '\'' +
-                ", displayName='" + displayName + '\'' +
-                ", transferCycle=" + transferCycle +
-                ", designatedDate=" + designatedDate +
-                ", startDate=" + startDate +
-                ", expirationDate=" + expirationDate +
-                ", accountPassword='****'" +
-                ']';
     }
 }
