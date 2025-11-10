@@ -28,7 +28,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class PointsExchangeService {
-
+    private static final String INSUFFICIENT_POINTS_FAIL_REASON = "INSUFFICIENT_POINTS";
     private final Clock clock;
     private final PointsHistoryRepository pointsHistoryRepository;
     private final UserRepository userRepository;
@@ -38,12 +38,10 @@ public class PointsExchangeService {
     @Transactional
     public PointsExchangeResponseDto requestExchange(String username, PointsExchangeRequestDto dto) {
 
-        Long userId = userRepository.findByUserId(username)
-                .map(Users::getId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
-        Users user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. id=" + userId));
+
+        Users user = userRepository.findByUserIdForUpdate(username)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
         if (user.getPoints() < dto.exchangeAmount()) {
             throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족하여 출금 요청을 처리할 수 없습니다.");
@@ -132,7 +130,7 @@ public class PointsExchangeService {
         }
 
         Users user = userRepository.findByIdForUpdate(history.getUser().getId())
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + history.getUser().getId()));
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. Id= " + history.getUser().getId()));
 
         int amount = history.getAmount();
         String message;
@@ -142,7 +140,7 @@ public class PointsExchangeService {
             history.markSuccess(LocalDateTime.now(clock));
             message = "정상적으로 처리되었습니다.";
         } catch (CommonException e) {
-            history.markFailed("INSUFFICIENT_POINTS", LocalDateTime.now(clock));
+            history.markFailed(INSUFFICIENT_POINTS_FAIL_REASON, LocalDateTime.now(clock));
             message = "포인트가 부족하여 실패했습니다.";
         }
 
