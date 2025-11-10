@@ -1,6 +1,6 @@
 package dev.woori.wooriLearn.domain.account.dto;
 
 public record PointsDepositRequestDto(
-        Integer amount,
+        @jakarta.validation.constraints.NotNull @jakarta.validation.constraints.Positive Integer amount,
         String reason
 ) {}
