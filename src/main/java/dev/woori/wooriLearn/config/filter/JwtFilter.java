@@ -1,6 +1,6 @@
 package dev.woori.wooriLearn.config.filter;
 
-import dev.woori.wooriLearn.config.jwt.JwtUtil;
+import dev.woori.wooriLearn.config.jwt.JwtValidator;
 import dev.woori.wooriLearn.domain.user.entity.Role;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
+    private final JwtValidator jwtValidator;
     private final String BEARER = "Bearer ";
 
     @Override
@@ -33,9 +33,9 @@ public class JwtFilter extends OncePerRequestFilter {
 
         if (accessToken != null && accessToken.startsWith(BEARER)) {
             String token = accessToken.substring(BEARER.length()); // 순수 토큰값만 가져오기
-            if (jwtUtil.validateToken(token)) {
-                String username = jwtUtil.getUsername(token);
-                Role role = jwtUtil.getRole(token);
+            if (jwtValidator.validateToken(token)) {
+                String username = jwtValidator.getUsername(token);
+                Role role = jwtValidator.getRole(token);
 
                 // Authentication 객체 생성
                 UsernamePasswordAuthenticationToken auth =

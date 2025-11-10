@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.auth.repository;
+package dev.woori.wooriLearn.domain.auth.port;
 
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 
