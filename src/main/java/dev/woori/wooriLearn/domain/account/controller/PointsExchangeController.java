@@ -1,6 +1,6 @@
 package dev.woori.wooriLearn.domain.account.controller;
 
-import dev.woori.wooriLearn.config.security.CurrentUserResolver;
+import dev.woori.wooriLearn.domain.common.auth.PrincipalUtils;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
@@ -23,19 +23,18 @@ import java.util.List;
 public class PointsExchangeController {
 
     private final PointsExchangeService pointsExchangeService;
-    private final CurrentUserResolver currentUserResolver;
 
-    @PostMapping("")
+    @PostMapping
     public ResponseEntity<BaseResponse<?>> requestExchange(
             @AuthenticationPrincipal Object principal,
             @RequestBody PointsExchangeRequestDto dto
     ) {
-        Long userId = currentUserResolver.requireUserId(principal);
-        PointsExchangeResponseDto response = pointsExchangeService.requestExchange(userId, dto);
+        String username = PrincipalUtils.requireUsername(principal);
+        PointsExchangeResponseDto response = pointsExchangeService.requestExchange(username, dto);
         return ApiResponse.success(SuccessCode.CREATED, response);
     }
 
-    @GetMapping("")
+    @GetMapping
     public ResponseEntity<BaseResponse<?>> getHistory(
             @AuthenticationPrincipal Object principal,
             @RequestParam(required = false) String startDate,
@@ -43,9 +42,9 @@ public class PointsExchangeController {
             @RequestParam(required = false, defaultValue = "ALL") HistoryStatus status,
             @RequestParam(required = false, defaultValue = "DESC") SortDirection sort
     ) {
-        Long userId = currentUserResolver.requireUserId(principal);
+        String username = PrincipalUtils.requireUsername(principal);
         List<PointsExchangeResponseDto> history = pointsExchangeService
-                .getHistory(userId, startDate, endDate, status, sort);
+                .getHistory(username, startDate, endDate, status, sort);
         return ApiResponse.success(SuccessCode.OK, history);
     }
 

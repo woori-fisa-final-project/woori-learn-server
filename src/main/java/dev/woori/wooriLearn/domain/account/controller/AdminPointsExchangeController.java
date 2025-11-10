@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,13 +20,11 @@ public class AdminPointsExchangeController {
 
     private final PointsExchangeService pointsExchangeService;
 
+    @PostMapping("/approve/{requestId}")
     @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/{requestId}/approve")
-    public ResponseEntity<BaseResponse<?>> approveExchange(
-            @PathVariable Long requestId
-    ) {
-        PointsExchangeResponseDto response = pointsExchangeService.approveExchange(requestId);
-        return ApiResponse.success(SuccessCode.OK, response);
+    public ResponseEntity<BaseResponse<?>> approve(@PathVariable Long requestId) {
+        PointsExchangeResponseDto dto = pointsExchangeService.approveExchange(requestId);
+        return ApiResponse.success(SuccessCode.OK, dto);
     }
 }
 
