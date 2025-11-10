@@ -18,7 +18,7 @@ public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Lo
 
 
 
-    @Query("SELECT p FROM PointsHistory p WHERE "
+    @Query("SELECT p FROM PointsHistory p JOIN FETCH p.user WHERE "
             + "p.user.id = :userId "
             + "AND p.type = :type " // type 조건 추가
             + "AND (:status IS NULL OR p.status = :status) "
