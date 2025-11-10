@@ -66,7 +66,23 @@ public record AutoPaymentCreateRequest(
             return true;
         }
 
-        // expirationDate는 startDate보다 이후이거나 같아야 함
         return !expirationDate.isBefore(startDate);
+    }
+
+    @Override
+    public String toString() {
+        return "AutoPaymentCreateRequest[" +
+                "educationalAccountId=" + educationalAccountId +
+                ", depositBankCode='" + depositBankCode + '\'' +
+                ", depositNumber='" + depositNumber + '\'' +
+                ", amount=" + amount +
+                ", counterpartyName='" + counterpartyName + '\'' +
+                ", displayName='" + displayName + '\'' +
+                ", transferCycle=" + transferCycle +
+                ", designatedDate=" + designatedDate +
+                ", startDate=" + startDate +
+                ", expirationDate=" + expirationDate +
+                ", accountPassword='****'" +
+                ']';
     }
 }
