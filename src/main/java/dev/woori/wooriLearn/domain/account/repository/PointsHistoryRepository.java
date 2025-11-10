@@ -34,7 +34,7 @@ public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Lo
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT h FROM PointsHistory h WHERE h.id = :id")
+    @Query("SELECT h FROM PointsHistory h JOIN FETCH h.user WHERE h.id = :id")
     Optional<PointsHistory> findAndLockById(@Param("id") Long id);
 
 }

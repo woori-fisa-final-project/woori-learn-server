@@ -46,6 +46,9 @@ public class PointsExchangeService {
         if (user.getPoints() < dto.exchangeAmount()) {
             throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족하여 출금 요청을 처리할 수 없습니다.");
         }
+        if (dto.exchangeAmount() == null || dto.exchangeAmount() <= 0) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "교환 요청 금액은 0보다 커야 합니다.");
+        }
 
         Account account = accountRepository.findByAccountNumber(dto.accountNum())
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "계좌를 찾을 수 없습니다. accountNum=" + dto.accountNum()));
@@ -140,8 +143,13 @@ public class PointsExchangeService {
             history.markSuccess(LocalDateTime.now(clock));
             message = "정상적으로 처리되었습니다.";
         } catch (CommonException e) {
-            history.markFailed(INSUFFICIENT_POINTS_FAIL_REASON, LocalDateTime.now(clock));
-            message = "포인트가 부족하여 실패했습니다.";
+            if (e.getErrorCode() == ErrorCode.CONFLICT) {
+                history.markFailed(INSUFFICIENT_POINTS_FAIL_REASON, LocalDateTime.now(clock));
+                message = "포인트가 부족하여 실패했습니다.";
+            } else {
+                history.markFailed("PROCESSING_ERROR", LocalDateTime.now(clock));
+                message = "요청 처리 중 오류가 발생했습니다: " + e.getMessage();
+            }
         }
 
         return PointsExchangeResponseDto.builder()
