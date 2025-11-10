@@ -29,10 +29,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PointsExchangeService {
     private static final String INSUFFICIENT_POINTS_FAIL_REASON = "INSUFFICIENT_POINTS";
+    private static final String PROCESSING_ERROR_FAIL_REASON = "PROCESSING_ERROR";
     private final Clock clock;
     private final PointsHistoryRepository pointsHistoryRepository;
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
+
 
     /* 출금 요청 */
     @Transactional
@@ -147,7 +149,7 @@ public class PointsExchangeService {
                 history.markFailed(INSUFFICIENT_POINTS_FAIL_REASON, LocalDateTime.now(clock));
                 message = "포인트가 부족하여 실패했습니다.";
             } else {
-                history.markFailed("PROCESSING_ERROR", LocalDateTime.now(clock));
+                history.markFailed(PROCESSING_ERROR_FAIL_REASON, LocalDateTime.now(clock));
                 message = "요청 처리 중 오류가 발생했습니다: " + e.getMessage();
             }
         }
