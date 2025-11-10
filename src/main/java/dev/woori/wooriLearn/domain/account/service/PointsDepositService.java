@@ -10,7 +10,7 @@ import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

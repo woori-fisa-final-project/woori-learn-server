@@ -259,11 +259,8 @@ class PointsExchangeServiceTest {
         when(pointsHistoryRepository.findAndLockById(99L)).thenReturn(Optional.of(history));
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
 
-        PointsExchangeResponseDto res = service.approveExchange(99L);
-
-        assertThat(history.getStatus()).isEqualTo(PointsStatus.FAILED);
-        assertThat(history.getFailReason()).isEqualTo("PROCESSING_ERROR");
-        assertThat(res.status()).isEqualTo(PointsStatus.FAILED);
+        CommonException ex = assertThrows(CommonException.class, () -> service.approveExchange(99L));
+        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+        assertThat(history.getStatus()).isEqualTo(PointsStatus.APPLY);
     }
 }
-
