@@ -16,6 +16,7 @@ import java.util.List;
 
 @Entity
 @Getter
+@Setter
 @Table(name = "educational_account")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor

@@ -4,6 +4,7 @@ import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 
 public interface EdubankapiAccountRepository extends JpaRepository<EducationalAccount, Long> {
@@ -19,5 +20,16 @@ public interface EdubankapiAccountRepository extends JpaRepository<EducationalAc
 
     // findBy + [엔티티 필드명] => JPA가 user_Id 컬럼을 조건으로 자동 쿼리 생성 됨.
     List<EducationalAccount> findByUserId(Long userId);
+
+    /**
+     * 계좌번호로 계좌 조회
+     *
+     * Optional로 감싼 이유
+     * -> 계좌가 존재하지 않을 수도 있기 때문에 예외처리를 위해서
+     *
+     * @param accountNumber 계좌번호
+     * @return Optional<EducationalAccount>
+     */
+    Optional<EducationalAccount> findByAccountNumber(String accountNumber);
 
 }

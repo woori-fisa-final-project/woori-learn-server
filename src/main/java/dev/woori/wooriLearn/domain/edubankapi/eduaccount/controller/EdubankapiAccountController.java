@@ -5,6 +5,7 @@ import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiAccountDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransactionHistoryDto;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransferRequestDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiAccountService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +26,9 @@ public class EdubankapiAccountController {
     // final을 통해 생성자 자동 주입
     private final EdubankapiAccountService edubankapiAccountService;
 
+
     /**
+     *   계좌 목록 조회
      *   postman
      *   => [GET] /accounts/list/{userId}
      *   => 특정 사용자 {userId}의 모든 교육용 계좌를 조회
@@ -64,4 +67,6 @@ public class EdubankapiAccountController {
 
         return ApiResponse.success(SuccessCode.OK, transactions);
     }
+
+
 }
