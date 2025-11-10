@@ -190,7 +190,13 @@ class PointsExchangeServiceTest {
                 .status(PointsStatus.APPLY)
                 .build();
 
+        when(pointsHistoryRepository.findById(99L)).thenReturn(Optional.of(history));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
         when(pointsHistoryRepository.findAndLockById(99L)).thenReturn(Optional.of(history));
+        when(pointsHistoryRepository.findAndLockById(anyLong())).thenReturn(Optional.of(history));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
+        when(userRepository.findByIdForUpdate(anyLong())).thenReturn(Optional.of(u));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
 
         // when
@@ -217,6 +223,7 @@ class PointsExchangeServiceTest {
                 .status(PointsStatus.SUCCESS) // 이미 처리됨
                 .build();
 
+        when(pointsHistoryRepository.findById(99L)).thenReturn(Optional.of(history));
         when(pointsHistoryRepository.findAndLockById(99L)).thenReturn(Optional.of(history));
 
         CommonException ex = assertThrows(CommonException.class, () -> service.approveExchange(99L));
@@ -233,6 +240,7 @@ class PointsExchangeServiceTest {
                 .status(PointsStatus.APPLY)
                 .build();
 
+        when(pointsHistoryRepository.findById(99L)).thenReturn(Optional.of(history));
         when(pointsHistoryRepository.findAndLockById(99L)).thenReturn(Optional.of(history));
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
 
@@ -256,6 +264,7 @@ class PointsExchangeServiceTest {
                 .status(PointsStatus.APPLY)
                 .build();
 
+        when(pointsHistoryRepository.findById(99L)).thenReturn(Optional.of(history));
         when(pointsHistoryRepository.findAndLockById(99L)).thenReturn(Optional.of(history));
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
 
