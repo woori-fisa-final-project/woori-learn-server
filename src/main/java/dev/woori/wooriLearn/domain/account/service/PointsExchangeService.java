@@ -45,11 +45,13 @@ public class PointsExchangeService {
         Users user = userRepository.findByUserIdForUpdate(username)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
-        if (user.getPoints() < dto.exchangeAmount()) {
-            throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족하여 출금 요청을 처리할 수 없습니다.");
-        }
+        // 금액 유효성 먼저 검증 (null/비양수)
         if (dto.exchangeAmount() == null || dto.exchangeAmount() <= 0) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "교환 요청 금액은 0보다 커야 합니다.");
+        }
+        // 이후 잔액 비교로 충족 여부 확인
+        if (user.getPoints() < dto.exchangeAmount()) {
+            throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족하여 출금 요청을 처리할 수 없습니다.");
         }
 
         Account account = accountRepository.findByAccountNumber(dto.accountNum())
@@ -150,7 +152,7 @@ public class PointsExchangeService {
                 message = "포인트가 부족하여 실패했습니다.";
             } else {
                 history.markFailed(PROCESSING_ERROR_FAIL_REASON, LocalDateTime.now(clock));
-                message = "요청 처리 중 오류가 발생했습니다: " + e.getMessage();
+                message = "요청 처리 중 오류가 발생했습니다.";
             }
         }
 
