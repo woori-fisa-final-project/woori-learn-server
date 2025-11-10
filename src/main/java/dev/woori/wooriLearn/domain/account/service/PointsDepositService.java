@@ -24,12 +24,10 @@ public class PointsDepositService {
     @Transactional
     public PointsDepositResponseDto depositPoints(String username, PointsDepositRequestDto dto) {
 
-        Long userId = userRepository.findByUserId(username)
-                .map(Users::getId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
-        Users user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. id=" + userId));
+
+        Users user = userRepository.findByUserIdForUpdate(username)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
         user.addPoints(dto.amount());
 

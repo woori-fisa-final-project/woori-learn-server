@@ -15,6 +15,11 @@ public interface UserRepository extends JpaRepository<Users, Long> {
     boolean existsByUserId(String userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM Users u WHERE u.userId = :userId")
+    Optional<Users> findByUserIdForUpdate(@Param("userId") String userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM Users u WHERE u.id = :id")
     Optional<Users> findByIdForUpdate(@Param("id") Long id);
+
 }
