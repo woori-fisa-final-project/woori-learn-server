@@ -20,6 +20,7 @@ public class PointsDepositService {
 
     private final UserRepository userRepository;
     private final PointsHistoryRepository pointsHistoryRepository;
+    private static final String DEFAULT_DEPOSIT_MESSAGE = "포인트 적립 완료";
 
     @Transactional
     public PointsDepositResponseDto depositPoints(String username, PointsDepositRequestDto dto) {
@@ -45,7 +46,7 @@ public class PointsDepositService {
                 .addedPoint(dto.amount())
                 .currentBalance(user.getPoints())
                 .status(PointsStatus.SUCCESS)
-                .message(dto.reason() != null ? dto.reason() : "포인트 적립 완료")
+                .message(dto.reason() != null ? dto.reason() : DEFAULT_DEPOSIT_MESSAGE)
                 .createdAt(history.getCreatedAt())
                 .build();
     }
