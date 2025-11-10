@@ -2,12 +2,15 @@ package dev.woori.wooriLearn.domain.edubankapi.eduaccount.service;
 
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiAccountDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransactionHistoryDto;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransferRequestDto;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransferResponseDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.validation.PeriodType;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.validation.TransactionType;
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.edubankapi.entity.TransactionHistory;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiAccountRepository;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiTransactionHistoryRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -25,14 +28,14 @@ public class EdubankapiAccountService {
     private final EdubankapiAccountRepository edubankapiAccountRepository;
     private final EdubankapiTransactionHistoryRepository edubankapiTransactionHistoryRepository;
 
-    /*
-        사용자 ID를 통해 계좌 목록 조회
-
-        - Repository를 통해 DB에서 특정 사용자{userId}의 계좌 데이터를 조회
-        - Entity를 DTO로 변환하여 Controller에 전달
-
-        @param userId : 사용자 ID
-        @return 계좌 목록 : <List<AccountDto>>
+    /**
+     *      사용자 ID를 통해 계좌 목록 조회
+     *
+     *         - Repository를 통해 DB에서 특정 사용자{userId}의 계좌 데이터를 조회
+     *         - Entity를 DTO로 변환하여 Controller에 전달
+     *
+     *         @param userId : 사용자 ID
+     *         @return 계좌 목록 : <List<AccountDto>>
      */
     public List<EdubankapiAccountDto> getAccountByUserId(long userId) {
 
@@ -94,4 +97,5 @@ public class EdubankapiAccountService {
                 .map(EdubankapiTransactionHistoryDto::from)
                 .collect(Collectors.toList());
     }
+
 }
