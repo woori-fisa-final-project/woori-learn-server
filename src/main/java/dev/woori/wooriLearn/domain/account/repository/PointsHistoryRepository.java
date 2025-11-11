@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.QueryHints;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
@@ -49,6 +50,7 @@ public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Lo
      * 관리자 전체 조회(페이징). 특정 사용자 필터, 상태, 기간, 타입 조건 적용.
      * Page 카운트 쿼리와 충돌을 피하기 위해 fetch join은 사용하지 않음.
      */
+    @EntityGraph(attributePaths = {"user"})
     @Query("SELECT p FROM PointsHistory p WHERE "
             + "p.type = :type "
             + "AND (:userId IS NULL OR p.user.id = :userId) "
