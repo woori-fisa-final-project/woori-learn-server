@@ -108,20 +108,15 @@ public class ScenarioProgressService {
         // 2) 퀴즈 처리(있을 때만)
         Quiz quiz = current.getQuiz();
         if (quiz != null) {
-            if (answer == null) {
-                // 2-1) 아직 정답 미제출 -> 퀴즈 먼저 노출
-                progress.setStep(current); // 위치 유지
+            boolean isCorrect = answer != null && Objects.equals(quiz.getAnswer(), answer);
+            if (!isCorrect) {
+                // 2-1) 정답이 아니거나 답을 제출하지 않은 경우 -> 퀴즈 다시/먼저 노출
+                progress.moveToStep(current); // 위치 유지
                 progressRepository.save(progress);
-                return new AdvanceResDto(AdvanceStatus.QUIZ_REQUIRED, mapStep(current), mapQuiz(quiz));
+                AdvanceStatus status = (answer == null) ? AdvanceStatus.QUIZ_REQUIRED : AdvanceStatus.QUIZ_WRONG;
+                return new AdvanceResDto(status, mapStep(current), mapQuiz(quiz));
             }
-            boolean correct = Objects.equals(quiz.getAnswer(), answer);
-            if (!correct) {
-                // 2-2) 오답 -> 다시 퀴즈
-                progress.setStep(current); // 위치 유지
-                progressRepository.save(progress);
-                return new AdvanceResDto(AdvanceStatus.QUIZ_WRONG, mapStep(current), mapQuiz(quiz));
-            }
-            // 2-3) 정답 -> 아래에서 next로 이동
+            // 2-2) 정답 -> 아래에서 next로 이동
         }
 
         // 3) 다음 스텝으로 이동
@@ -139,7 +134,7 @@ public class ScenarioProgressService {
         }
 
         // 4) 진행 위치 업데이트
-        progress.setStep(next);
+        progress.moveToStep(next);
         progressRepository.save(progress);
 
         return new AdvanceResDto(AdvanceStatus.ADVANCED, mapStep(next), null);
@@ -166,14 +161,13 @@ public class ScenarioProgressService {
 
         // 업서트
         ScenarioProgressList progress = progressRepository.findByUserAndScenario(user, scenario)
-                .orElse(ScenarioProgressList.builder()
+                .orElseGet(() -> ScenarioProgressList.builder()
                         .user(user)
                         .scenario(scenario)
-                        .step(step)
                         .progressRate(0.0)
                         .build());
 
-        progress.setStep(step);
+        progress.moveToStep(step);
         progressRepository.save(progress);
     }
 

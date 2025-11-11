@@ -7,7 +7,6 @@ import lombok.*;
 @Entity
 @Table(name = "scenario_step")
 @Getter
-@Setter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor

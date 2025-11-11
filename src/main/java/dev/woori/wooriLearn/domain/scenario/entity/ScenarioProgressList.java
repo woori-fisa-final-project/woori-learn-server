@@ -8,7 +8,6 @@ import lombok.*;
 @Entity
 @Table(name = "scenario_progress")
 @Getter
-@Setter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -31,4 +30,9 @@ public class ScenarioProgressList extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "step_id", nullable = false)
     private ScenarioStep step;
+
+    public void moveToStep(ScenarioStep nextStep) {
+        if (nextStep == null) throw new IllegalArgumentException("nextStep은 null일 수 없습니다.");
+        this.step = nextStep;
+    }
 }

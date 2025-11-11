@@ -1,6 +1,8 @@
 package dev.woori.wooriLearn.domain.scenario.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 /**
  * 시나리오 진행(체크포인트) 저장 요청 DTO
@@ -10,5 +12,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ProgressSaveReqDto(
+        @NotNull
+        @Positive
         Long nowStepId
 ) {}
