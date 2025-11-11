@@ -60,4 +60,17 @@ public class AutoPaymentController {
 
         return ApiResponse.success(SuccessCode.CREATED, response);
     }
+
+    @PutMapping("/{autoPaymentId}/cancel")
+    public ResponseEntity<BaseResponse<?>> cancelAutoPayment(
+            @PathVariable @Positive(message = "자동이체 ID는 양수여야 합니다.") Long autoPaymentId,
+            @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId) {
+
+        log.info("자동이체 해지 요청 - 자동이체ID: {}, 교육용계좌ID: {}",
+                autoPaymentId, educationalAccountId);
+
+        autoPaymentService.cancelAutoPayment(autoPaymentId, educationalAccountId);
+
+        return ApiResponse.success(SuccessCode.OK, "자동이체가 해지되었습니다.");
+    }
 }
