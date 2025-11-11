@@ -1,9 +1,9 @@
 package dev.woori.wooriLearn.domain.scenario.entity;
 
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.util.List;
 
 @Entity
 @Getter
@@ -50,20 +50,25 @@ public class Quiz {
         this.answer = newAnswer;
     }
 
-    // ---- Simple validations ----
     private static void validateQuestion(String q) {
-        if (q == null || q.isBlank())
-            throw new IllegalArgumentException("question은 비어 있을 수 없습니다.");
+        if (q == null || q.isBlank()) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "question이 비어 있을 수 없습니다.");
+        }
     }
 
     private static void validateOptionsJson(String json) {
-        if (json == null) throw new IllegalArgumentException("options는 null일 수 없습니다.");
+        if (json == null) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "options가 null일 수 없습니다.");
+        }
         String t = json.trim();
-        if (!(t.startsWith("[") && t.endsWith("]")))
-            throw new IllegalArgumentException("options는 JSON 배열 문자열이어야 합니다.");
+        if (!(t.startsWith("[") && t.endsWith("]"))) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "options는 JSON 배열 문자열이어야 합니다.");
+        }
     }
 
     private static void validateAnswer(Integer a) {
-        if (a == null) throw new IllegalArgumentException("answer는 null일 수 없습니다.");
+        if (a == null) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "answer가 null일 수 없습니다.");
+        }
     }
 }

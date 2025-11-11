@@ -10,8 +10,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 
 /**
  *  제공 기능:
@@ -94,14 +94,13 @@ public class ScenarioController {
 
     private Users resolveUserFlexible(String userKey) {
         if (userKey == null || userKey.isBlank())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userKey가 필요합니다");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "userKey가 필요합니다");
         if (userKey.chars().allMatch(Character::isDigit)) {
             Long pk = Long.parseLong(userKey);
             return userRepository.findById(pk)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자 없음: id=" + pk));
+                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자 없음: id=" + pk));
         }
         return userRepository.findByUserId(userKey)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자 없음: user_id=" + userKey));
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자 없음: user_id=" + userKey));
     }
 }
-
