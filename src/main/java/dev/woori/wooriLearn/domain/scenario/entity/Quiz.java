@@ -1,5 +1,8 @@
 package dev.woori.wooriLearn.domain.scenario.entity;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import jakarta.persistence.*;
@@ -61,12 +64,12 @@ public class Quiz {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "options가 null일 수 없습니다.");
         }
         try {
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            com.fasterxml.jackson.databind.JsonNode node = mapper.readTree(json);
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode node = mapper.readTree(json);
             if (!node.isArray()) {
                 throw new CommonException(ErrorCode.INVALID_REQUEST, "options는 JSON 배열 형식의 문자열이어야 합니다.");
             }
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+        } catch (JsonProcessingException e) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "options가 유효한 JSON 형식이 아닙니다.");
         }
     }
