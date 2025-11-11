@@ -1,5 +1,6 @@
 package dev.woori.wooriLearn.domain.account.controller;
 
+import dev.woori.wooriLearn.domain.account.dto.PointsHistorySearchRequestDto;
 import dev.woori.wooriLearn.domain.common.auth.PrincipalUtils;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
@@ -30,23 +31,28 @@ public class PointsExchangeController {
             @RequestBody PointsExchangeRequestDto dto
     ) {
         String username = PrincipalUtils.requireUsername(principal);
-        PointsExchangeResponseDto response = pointsExchangeService.requestExchange(username, dto);
-        return ApiResponse.success(SuccessCode.CREATED, response);
+        return ApiResponse.success(SuccessCode.CREATED, pointsExchangeService.requestExchange(username, dto));
     }
 
     @GetMapping
     public ResponseEntity<BaseResponse<?>> getHistory(
             @AuthenticationPrincipal Object principal,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(required = false, defaultValue = "ALL") HistoryStatus status,
-            @RequestParam(required = false, defaultValue = "DESC") SortDirection sort
+            PointsHistorySearchRequestDto request
     ) {
         String username = PrincipalUtils.requireUsername(principal);
-        List<PointsExchangeResponseDto> history = pointsExchangeService
-                .getHistory(username, startDate, endDate, status, sort);
+
+        List<PointsExchangeResponseDto> history = pointsExchangeService.getHistory(
+                username,
+                request.getStartDate(),
+                request.getEndDate(),
+                request.getPeriod(),
+                request.getStatus(),
+                request.getSort()
+        );
+
         return ApiResponse.success(SuccessCode.OK, history);
     }
+
 
 
 }

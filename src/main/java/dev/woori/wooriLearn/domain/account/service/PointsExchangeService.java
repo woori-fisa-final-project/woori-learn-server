@@ -2,6 +2,7 @@ package dev.woori.wooriLearn.domain.account.service;
 
 import dev.woori.wooriLearn.common.HistoryStatus;
 import dev.woori.wooriLearn.common.SortDirection;
+import dev.woori.wooriLearn.common.SearchPeriod;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
@@ -10,12 +11,15 @@ import dev.woori.wooriLearn.domain.account.entity.Account;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
+import dev.woori.wooriLearn.domain.account.entity.PointsFailReason;
 import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,11 +29,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
+import dev.woori.wooriLearn.config.response.PageResponse;
+
 @Service
 @RequiredArgsConstructor
 public class PointsExchangeService {
-    private static final String INSUFFICIENT_POINTS_FAIL_REASON = "INSUFFICIENT_POINTS";
-    private static final String PROCESSING_ERROR_FAIL_REASON = "PROCESSING_ERROR";
     private final Clock clock;
     private final PointsHistoryRepository pointsHistoryRepository;
     private final UserRepository userRepository;
@@ -88,6 +92,7 @@ public class PointsExchangeService {
             String username,
             String startDate,
             String endDate,
+            SearchPeriod period,
             HistoryStatus status,
             SortDirection sort
     ) {
@@ -95,8 +100,8 @@ public class PointsExchangeService {
                 .map(Users::getId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
-        LocalDateTime start = parseStartDate(startDate);
-        LocalDateTime end = parseEndDate(endDate);
+        LocalDateTime start = resolveStartDate(startDate, period);
+        LocalDateTime end = resolveEndDate(endDate, period);
 
         PointsStatus statusEnum = convertStatus(status);
         Sort sortOption = sort.toSort("createdAt");
@@ -113,9 +118,63 @@ public class PointsExchangeService {
                         .status(h.getStatus())
                         .requestDate(h.getCreatedAt())
                         .processedDate(h.getProcessedAt())
-                        .message(mapStatusToMessage(h.getStatus()))
+                        .message(h.getStatus().message())
                         .build()
                 ).toList();
+    }
+
+    // 관리자 전체 조회 (페이징)
+    public PageResponse<PointsExchangeResponseDto> getAllHistory(
+            String startDate,
+            String endDate,
+            HistoryStatus status,
+            SortDirection sort,
+            Integer page,
+            Integer size,
+            Long userId
+    ) {
+        int pageNum = (page == null) ? 1 : page;
+        int pageSize = (size == null) ? 20 : size;
+        if (pageNum <= 0) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "page는 1 이상이어야 합니다.");
+        }
+        if (pageSize <= 0 || pageSize > 200) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "size는 1~200 사이여야 합니다.");
+        }
+
+        LocalDateTime start = parseStartDate(startDate);
+        LocalDateTime end = parseEndDate(endDate);
+        PointsStatus statusEnum = convertStatus(status);
+
+        Page<PointsHistory> pageResult = pointsHistoryRepository.findAllByFilters(
+                userId,
+                PointsHistoryType.WITHDRAW,
+                statusEnum,
+                start,
+                end,
+                PageRequest.of(pageNum - 1, pageSize, sort.toSort("createdAt"))
+        );
+
+        List<PointsExchangeResponseDto> items = pageResult.getContent().stream()
+                .map(h -> PointsExchangeResponseDto.builder()
+                        .requestId(h.getId())
+                        .userId(h.getUser().getId())
+                        .exchangeAmount(h.getAmount())
+                        .status(h.getStatus())
+                        .requestDate(h.getCreatedAt())
+                        .processedDate(h.getProcessedAt())
+                        .message(h.getStatus().message())
+                        .build())
+                .toList();
+
+        return new PageResponse<>(
+                items,
+                pageNum,
+                pageSize,
+                pageResult.getTotalElements(),
+                pageResult.getTotalPages(),
+                pageResult.hasNext()
+        );
     }
 
     // 출금 승인: Users → History 순서로 락
@@ -131,6 +190,7 @@ public class PointsExchangeService {
         }
 
         // Users 먼저 잠금 (lambda 캡처 변수는 final/유사-final 이어야 하므로 userId 보관)
+        try {
         Long userId = history.getUser().getId();
         Users user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. Id=" + userId));
@@ -152,10 +212,10 @@ public class PointsExchangeService {
             message = "정상적으로 처리되었습니다.";
         } catch (CommonException e) {
             if (e.getErrorCode() == ErrorCode.CONFLICT) {
-                history.markFailed(INSUFFICIENT_POINTS_FAIL_REASON, processedAt);
+                history.markFailed(PointsFailReason.INSUFFICIENT_POINTS, processedAt);
                 message = "포인트가 부족하여 실패했습니다.";
             } else {
-                history.markFailed(PROCESSING_ERROR_FAIL_REASON, processedAt);
+                history.markFailed(PointsFailReason.PROCESSING_ERROR, processedAt);
                 message = "요청 처리 중 오류가 발생하여 실패했습니다.";
             }
         }
@@ -168,6 +228,14 @@ public class PointsExchangeService {
                 .message(message)
                 .processedDate(history.getProcessedAt())
                 .build();
+        } catch (jakarta.persistence.LockTimeoutException
+                 | jakarta.persistence.PessimisticLockException
+                 | jakarta.persistence.QueryTimeoutException
+                 | org.springframework.dao.DataAccessException e) {
+            throw new CommonException(
+                    ErrorCode.SERVICE_UNAVAILABLE,
+                    "처리가 지연되고 있습니다. 잠시 후 다시 시도해 주세요.");
+        }
     }
 
     // 날짜 파싱
@@ -180,6 +248,28 @@ public class PointsExchangeService {
         }
     }
 
+    private LocalDateTime resolveStartDate(String startDate, SearchPeriod period) {
+        LocalDateTime parsed = parseStartDate(startDate);
+        if (parsed != null) return parsed;
+        if (period == null || period == SearchPeriod.ALL) return null;
+        LocalDateTime now = LocalDateTime.now(clock).withNano(0);
+        // 기간 기준 시작 시각은 00:00:00로 맞춤
+        return switch (period) {
+            case WEEK -> now.minusWeeks(1).withHour(0).withMinute(0).withSecond(0);
+            case MONTH -> now.minusMonths(1).withHour(0).withMinute(0).withSecond(0);
+            case THREE_MONTHS -> now.minusMonths(3).withHour(0).withMinute(0).withSecond(0);
+            case ALL -> null;
+        };
+    }
+
+    private LocalDateTime resolveEndDate(String endDate, SearchPeriod period) {
+        LocalDateTime parsed = parseEndDate(endDate);
+        if (parsed != null) return parsed;
+        if (period == null || period == SearchPeriod.ALL) return null;
+        // 기간 지정 시 종료 시각은 현재 시각으로
+        return LocalDateTime.now(clock);
+    }
+
     private LocalDateTime parseEndDate(String date) {
         if (date == null || date.isEmpty()) return null;
         try {
@@ -189,12 +279,5 @@ public class PointsExchangeService {
         }
     }
 
-    private String mapStatusToMessage(PointsStatus status) {
-        return switch (status) {
-            case APPLY -> "출금 요청 처리 중입니다.";
-            case SUCCESS -> "출금이 완료되었습니다.";
-            case FAILED -> "출금 요청이 실패했습니다.";
-            default -> throw new CommonException(ErrorCode.INVALID_REQUEST, "Unknown status: " + status);
-        };
-    }
+
 }
