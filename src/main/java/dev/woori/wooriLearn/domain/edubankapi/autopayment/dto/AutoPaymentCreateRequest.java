@@ -59,8 +59,22 @@ public record AutoPaymentCreateRequest(
         @Size(min = 4, max = 4, message = "계좌 비밀번호는 4자리여야 합니다.")
         String accountPassword
 ) {
+    /**
+     * 만료일 유효성 검증
+     *
+     * NOTE: null 체크가 필요한 이유
+     * Bean Validation 스펙에서 @AssertTrue는 메소드 레벨 검증이며,
+     * 필드 레벨의 @NotNull보다 먼저 실행될 수 있습니다.
+     * 따라서 DTO 단독 validation 테스트 시 NullPointerException을 방지하기 위해
+     * 방어적으로 null 체크를 수행합니다.
+     * (실제 API 요청에서는 @NotNull이 먼저 검증되므로 중복 검증 아님)
+     */
     @AssertTrue(message = "만료일은 시작일 이후여야 합니다.")
     private boolean isExpirationDateValid() {
+        // null 체크: DTO 단독 validation 시 NPE 방지
+        if (startDate == null || expirationDate == null) {
+            return true;  // null 검증은 @NotNull이 담당
+        }
         return !expirationDate.isBefore(startDate);
     }
 
