@@ -28,7 +28,7 @@ public class AccountAuthController {
     private final AccountAuthService service;
 
     /**
-     * 인증번호(OTP) 발급/재발급 요청  s
+     * 인증번호(OTP) 발급/재발급 요청
      *
      * 흐름
      * 1) 사용자 식별자 추출
