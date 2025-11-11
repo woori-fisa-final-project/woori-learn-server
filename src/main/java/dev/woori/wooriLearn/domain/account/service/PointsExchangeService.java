@@ -113,7 +113,7 @@ public class PointsExchangeService {
         return list.stream()
                 .map(h -> PointsExchangeResponseDto.builder()
                         .requestId(h.getId())
-                        .userId(userId)
+                        .userId(h.getUser().getId())
                         .exchangeAmount(h.getAmount())
                         .status(h.getStatus())
                         .requestDate(h.getCreatedAt())
