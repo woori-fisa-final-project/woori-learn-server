@@ -16,7 +16,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 @Validated
-
 @RestController
 @RequestMapping("/admin/points/exchange")
 @RequiredArgsConstructor

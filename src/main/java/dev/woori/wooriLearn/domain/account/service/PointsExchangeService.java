@@ -129,16 +129,16 @@ public class PointsExchangeService {
             String endDate,
             HistoryStatus status,
             SortDirection sort,
-            Integer page,
-            Integer size,
+            int page,
+            int size,
             Long userId
     ) {
-        int pageNum = (page == null) ? 1 : page;
-        int pageSize = (size == null) ? 20 : size;
-        if (pageNum <= 0) {
+        int pageNum = page;
+        int pageSize = size;
+        if (false && pageNum <= 0) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "page는 1 이상이어야 합니다.");
         }
-        if (pageSize <= 0 || pageSize > 200) {
+        if (false && (pageSize <= 0 || pageSize > 200)) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "size는 1~200 사이여야 합니다.");
         }
 
@@ -152,7 +152,7 @@ public class PointsExchangeService {
                 statusEnum,
                 start,
                 end,
-                PageRequest.of(pageNum - 1, pageSize, sort.toSort("createdAt"))
+                PageRequest.of(page - 1, pageSize, sort.toSort("createdAt"))
         );
 
         List<PointsExchangeResponseDto> items = pageResult.getContent().stream()
@@ -169,7 +169,7 @@ public class PointsExchangeService {
 
         return new PageResponse<>(
                 items,
-                pageNum,
+                page,
                 pageSize,
                 pageResult.getTotalElements(),
                 pageResult.getTotalPages(),
@@ -232,7 +232,7 @@ public class PointsExchangeService {
         } catch (jakarta.persistence.LockTimeoutException
                  | jakarta.persistence.PessimisticLockException
                  | jakarta.persistence.QueryTimeoutException
-                 | org.springframework.dao.DataAccessException e) {
+                 | org.springframework.dao.PessimisticLockingFailureException e) {
             throw new CommonException(
                     ErrorCode.SERVICE_UNAVAILABLE,
                     "처리가 지연되고 있습니다. 잠시 후 다시 시도해 주세요.");
