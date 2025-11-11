@@ -1,5 +1,6 @@
 package dev.woori.wooriLearn.domain.edubankapi.autopayment.entity;
 
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentCreateRequest;
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import jakarta.persistence.*;
 import lombok.*;
@@ -69,5 +70,24 @@ public class AutoPayment {
                     .map(Enum::name)
                     .collect(Collectors.joining(", "));
         }
+    }
+
+    public static AutoPayment create(
+            AutoPaymentCreateRequest request,
+            EducationalAccount educationalAccount
+    ) {
+        return AutoPayment.builder()
+                .educationalAccount(educationalAccount)
+                .depositNumber(request.depositNumber())
+                .depositBankCode(request.depositBankCode())
+                .amount(request.amount())
+                .counterpartyName(request.counterpartyName())
+                .displayName(request.displayName())
+                .transferCycle(request.transferCycle())
+                .designatedDate(request.designatedDate())
+                .startDate(request.startDate())
+                .expirationDate(request.expirationDate())
+                .processingStatus(AutoPaymentStatus.ACTIVE)
+                .build();
     }
 }

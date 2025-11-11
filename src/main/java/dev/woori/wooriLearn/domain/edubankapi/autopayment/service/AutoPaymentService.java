@@ -2,13 +2,17 @@ package dev.woori.wooriLearn.domain.edubankapi.autopayment.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentCreateRequest;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentResponse;
-import dev.woori.wooriLearn.domain.edubankapi.autopayment.repository.AutoPaymentRepository;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment.AutoPaymentStatus;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.repository.AutoPaymentRepository;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiAccountRepository;
+import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -22,6 +26,9 @@ import java.util.List;
 public class AutoPaymentService {
 
     private final AutoPaymentRepository autoPaymentRepository;
+    private final EdubankapiAccountRepository edubankapiAccountRepository;
+    private final PasswordEncoder passwordEncoder;
+
     private static final String ALL_STATUS = "ALL";
 
     public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status) {
@@ -49,6 +56,45 @@ public class AutoPaymentService {
                 });
 
         return AutoPaymentResponse.of(autoPayment, autoPayment.getEducationalAccount().getId());
+    }
+
+    @Transactional
+    public AutoPaymentResponse createAutoPayment(AutoPaymentCreateRequest request) {
+        // 1. 교육용 계좌 조회 및 검증
+        EducationalAccount educationalAccount = findAndValidateAccount(
+                request.educationalAccountId(),
+                request.accountPassword()
+        );
+        // 2. 자동이체 생성
+        AutoPayment autoPayment = AutoPayment.create(request, educationalAccount);
+
+        // 3. 저장
+        AutoPayment savedAutoPayment = autoPaymentRepository.save(autoPayment);
+
+        log.info("자동이체 등록 완료 - ID: {}, 교육용계좌ID: {}",
+                savedAutoPayment.getId(), request.educationalAccountId());
+
+        return AutoPaymentResponse.of(savedAutoPayment, request.educationalAccountId());
+    }
+
+    private EducationalAccount findAndValidateAccount(Long accountId, String password) {
+        EducationalAccount account = edubankapiAccountRepository.findById(accountId)
+                .orElseThrow(() -> {
+                    log.error("교육용 계좌 조회 실패 - ID: {}", accountId);
+                    return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                            "교육용 계좌를 찾을 수 없습니다.");
+                });
+
+        validateAccountPassword(account, password);
+        return account;
+    }
+
+    private void validateAccountPassword(EducationalAccount account, String inputPassword) {
+        if (!passwordEncoder.matches(inputPassword, account.getAccountPassword())) {
+            log.warn("계좌 비밀번호 불일치 - 계좌ID: {}", account.getId());
+            throw new CommonException(ErrorCode.UNAUTHORIZED, "계좌 비밀번호가 일치하지 않습니다.");
+        }
+        log.debug("계좌 비밀번호 검증 성공 - 계좌ID: {}", account.getId());
     }
 
     private AutoPaymentStatus resolveStatus(String status) {
