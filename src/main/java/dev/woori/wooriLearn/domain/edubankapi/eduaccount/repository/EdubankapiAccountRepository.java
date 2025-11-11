@@ -40,7 +40,9 @@ public interface EdubankapiAccountRepository extends JpaRepository<EducationalAc
      * -> 동시 이체 요청 시 잔액 불일치 / 중복 이체 방지
      * @Query
      * -> 명시적으로 JPQL 작성 ( 자동 메서드 네이밍보다 명확)
-     * => JPA 메서드 네이밍 규칙 기반 쿼리가 내부적으로 락 옵셥을 명확히 적용하지 못하거나, 상황에 따라 DB 벤더별 쿼리가 달라질 수 있기 때문에 사용
+     *  JPA 메서드 네이밍 규칙 기반 쿼리가 내부적으로 락 옵셥을 명확히 적용하지 못하거나, 상황에 따라 DB 벤더별 쿼리가 달라질 수 있기 때문에 사용
+     *
+     * => 잔액 차감/증가 등 '동시성 충돌 위험'이 있는 수정 트랜잭션에서만 사용
      *
      * @param accountNumber 계좌번호
      * @return Optional<EducationalAccount>

@@ -13,12 +13,8 @@ import org.springframework.web.bind.annotation.*;
 
 
 @Slf4j
-// 이 클래스가 REST API 요청을 처리하는 Controller임을 선언
-// @Controller + @ResponseBody 역할을 합친 어노테이션 (응답이 JSON으로 반환됨)
 @RestController
 @RequestMapping("/accounts")
-// Lombok이 final 필드를 자동으로 주입받는 생성자를 만들어줌
-// → transferService를 @Autowired 대신 생성자 주입 방식으로 주입함
 @RequiredArgsConstructor
 public class EdubankapiTransferController {
 
