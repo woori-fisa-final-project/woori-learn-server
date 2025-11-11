@@ -78,7 +78,7 @@ public class AutoPaymentService {
     }
 
     @Transactional
-    public void cancelAutoPayment(Long autoPaymentId, Long educationalAccountId) {
+    public AutoPayment cancelAutoPayment(Long autoPaymentId, Long educationalAccountId) {
         log.info("자동이체 해지 시작 - 자동이체ID: {}, 교육용계좌ID: {}",
                 autoPaymentId, educationalAccountId);
 
@@ -109,6 +109,9 @@ public class AutoPaymentService {
         autoPayment.cancel();
 
         log.info("자동이체 해지 완료 - ID: {}, 교육용계좌ID: {}", autoPaymentId, educationalAccountId);
+
+        return autoPayment;
+
     }
 
     private EducationalAccount findAndValidateAccount(Long accountId, String password) {

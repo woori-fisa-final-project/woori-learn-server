@@ -94,7 +94,7 @@ jacocoTestCoverageVerification {
             limit {
                 counter = 'LINE'
                 value = 'COVEREDRATIO'
-                minimum = 0.70  // 70% 이상
+                minimum = 0.80  // 80% 이상
             }
         }
 
@@ -103,7 +103,7 @@ jacocoTestCoverageVerification {
             limit {
                 counter = 'LINE'
                 value = 'COVEREDRATIO'
-                minimum = 0.60  // 60% 이상
+                minimum = 0.70  // 70% 이상
             }
         }
     }
