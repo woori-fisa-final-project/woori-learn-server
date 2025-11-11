@@ -13,23 +13,40 @@ import org.springframework.web.bind.annotation.*;
 
 
 @Slf4j
+// 이 클래스가 REST API 요청을 처리하는 Controller임을 선언
+// @Controller + @ResponseBody 역할을 합친 어노테이션 (응답이 JSON으로 반환됨)
 @RestController
 @RequestMapping("/accounts")
+// Lombok이 final 필드를 자동으로 주입받는 생성자를 만들어줌
+// → transferService를 @Autowired 대신 생성자 주입 방식으로 주입함
 @RequiredArgsConstructor
 public class EdubankapiTransferController {
 
+    // 실제 계좌이체 로직(출금, 입금, 예외처리 등)은 Service에서 수행
     private final EdubankapiTransferService transferService;
 
     /**
      *      계좌이체 실행
      *      POST /accounts/transfer
+     *      - 요청 Body: EdubankapiTransferRequestDto(JSON)
+     *      - 응답 Body: EdubankapiTransferResponseDto(JSON)
      */
     @PostMapping("/transfer")
     public ResponseEntity<BaseResponse<?>> transfer(@RequestBody EdubankapiTransferRequestDto request) {
+        // 요청 본문(JSON)을 EdubankapiTransferRequestDto 객체로 매핑
+        // @RequestBody: JSON → DTO 자동 변환
+
+        //디버깅 및 추적용
         log.info("[계좌이체 요청]: {}", request);
 
+        /*
+             Service 계층의 transfer() 메서드 호출
+             → 실제 계좌 잔액 검증, 출금 처리, 입금 처리, 거래내역 저장 등을 수행
+             → 그 결과로 Response DTO 반환
+         */
         EdubankapiTransferResponseDto result = transferService.transfer(request);
 
+        // 성공 결과 반환
         return ApiResponse.success(SuccessCode.OK, result);
     }
 }
