@@ -10,6 +10,7 @@ import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.edubankapi.entity.TransactionHistory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class EdubankapiTransferService {
 
     private final EdubankapiAccountRepository accountRepository;
     private final EdubankapiTransactionHistoryRepository transactionHistoryRepository;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      *  계좌이체
@@ -140,7 +142,7 @@ public class EdubankapiTransferService {
         }
 
         // 비밀번호 불일치
-        if (!fromAccount.getAccountPassword().equals(request.accountPassword())) {
+        if (!passwordEncoder.matches(request.accountPassword(), fromAccount.getAccountPassword())) {
             throw new CommonException(ErrorCode.UNAUTHORIZED, "계좌 비밀번호가 일치하지 않습니다.");
         }
 
