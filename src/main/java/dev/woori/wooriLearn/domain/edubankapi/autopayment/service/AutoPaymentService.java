@@ -94,8 +94,8 @@ public class AutoPaymentService {
         if (!autoPayment.isOwnedBy(educationalAccountId)) {
             log.warn("자동이체 소유자 불일치 - 자동이체ID: {}, 요청계좌ID: {}, 실제계좌ID: {}",
                     autoPaymentId, educationalAccountId, autoPayment.getEducationalAccount().getId());
-            throw new CommonException(ErrorCode.FORBIDDEN,
-                    "해당 자동이체를 해지할 권한이 없습니다.");
+            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                    "자동이체 정보를 찾을 수 없습니다.");
         }
 
         // 3. 이미 해지된 경우
