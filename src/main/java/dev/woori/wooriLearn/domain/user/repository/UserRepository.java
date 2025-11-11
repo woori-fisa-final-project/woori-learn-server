@@ -17,18 +17,10 @@ public interface UserRepository extends JpaRepository<Users, Long> {
     boolean existsByUserId(String userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @QueryHints({
-            @QueryHint(name = "javax.persistence.lock.timeout", value = "2000"),
-            @QueryHint(name = "org.hibernate.timeout", value = "3")
-    })
     @Query("SELECT u FROM Users u WHERE u.userId = :userId")
     Optional<Users> findByUserIdForUpdate(@Param("userId") String userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @QueryHints({
-            @QueryHint(name = "javax.persistence.lock.timeout", value = "2000"),
-            @QueryHint(name = "org.hibernate.timeout", value = "3")
-    })
     @Query("SELECT u FROM Users u WHERE u.id = :id")
     Optional<Users> findByIdForUpdate(@Param("id") Long id);
 

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
+import dev.woori.wooriLearn.domain.scenario.dto.OverallProgressResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressSaveResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
@@ -129,6 +130,45 @@ public class ScenarioProgressService {
         return new ProgressSaveResDto(scenarioId, nowStepId, rate);
     }
 
+    @Transactional(readOnly = true)
+    public OverallProgressResDto computeOverallProgress(Users user) {
+        List<Scenario> scenarios = scenarioRepository.findAll();
+        if (scenarios.isEmpty()) {
+            return new OverallProgressResDto(0.0);
+        }
+
+        // 사용자 진행/완료 목록 일괄 조회
+        Map<Long, Double> progressRateByScenario = new HashMap<>();
+        progressRepository.findAllByUser(user).forEach(p ->
+                progressRateByScenario.put(
+                        p.getScenario().getId(),
+                        clampPercent(p.getProgressRate())
+                )
+        );
+
+        Set<Long> completedScenarioIds = new HashSet<>();
+        completedRepository.findAllByUser(user).forEach(c ->
+                completedScenarioIds.add(c.getScenario().getId())
+        );
+
+        double sum = 0.0;
+        for (Scenario s : scenarios) {
+            Long sid = s.getId();
+            double val;
+            if (completedScenarioIds.contains(sid)) {
+                val = 100.0;
+            } else if (progressRateByScenario.containsKey(sid)) {
+                val = progressRateByScenario.get(sid);
+            } else {
+                val = 0.0;
+            }
+            sum += val;
+        }
+
+        double avg = sum / scenarios.size();
+        return new OverallProgressResDto(clampPercent(avg));
+    }
+
     private double computeProgressRate(Long scenarioId, Long nowStepId) {
         var steps = stepRepository.findByScenarioId(scenarioId);
         if (steps.isEmpty()) {
@@ -193,6 +233,11 @@ public class ScenarioProgressService {
         } catch (JsonProcessingException e) {
             throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "퀴즈 options 파싱 실패. quizId=" + quiz.getId());
         }
+    }
+
+    private double clampPercent(Double value) {
+        if (value == null) return 0.0;
+        return Math.min(100.0, Math.max(0.0, value));
     }
 }
 

@@ -5,8 +5,11 @@ import dev.woori.wooriLearn.domain.scenario.entity.ScenarioCompleted;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ScenarioCompletedRepository extends JpaRepository<ScenarioCompleted, Long> {
     Optional<ScenarioCompleted> findByUserAndScenario(Users user, Scenario scenario);
+
+    List<ScenarioCompleted> findAllByUser(Users user);
 }
