@@ -19,9 +19,9 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  *  제공 기능:
- *  1) GET  /users/{userId}/scenarios/{id}/progress   : 저장된 위치가 있으면 그 스텝부터, 없으면 시작 스텝 반환
- *  2) POST /users/{userId}/scenarios/{id}/progress   : 현재 스텝 체크인 저장
- *  3) POST /users/{userId}/scenarios/{id}/advance    : 다음 스텝으로 진행(퀴즈 게이트 포함)
+ *  1) GET  /users/{userId}/scenarios/{scenarioId}              : 저장된 위치가 있으면 그 스텝부터, 없으면 시작 스텝 반환
+ *  2) PUT  /users/{userId}/scenarios/{scenarioId}/progress     : 시나리오 진행률 업데이트
+ *  3) POST /users/{userId}/scenarios/{scenarioId}/next-step    : 다음 스텝으로 진행(퀴즈 게이트 포함)
  *
  *  접근 제어:
  *   - 인증 필요 + 경로의 userId가 본인 또는 ADMIN만 접근 가능
@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(
-        value = "/users/{userId}/scenarios/{id}",
+        value = "/users/{userId}/scenarios/{scenarioId}",
         produces = MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8"
 )
 public class ScenarioController {
@@ -39,30 +39,29 @@ public class ScenarioController {
 
     /**
      * 사용자의 시나리오 진행 상태 조회(재개)
-     * ex) GET /users/{userId}/scenarios/{id}/progress
+     * ex) GET /users/{userId}/scenarios/{scenarioId}
      */
     @GetMapping
     @PreAuthorize("isAuthenticated() and (#userId == authentication.name or hasRole('ADMIN'))")
     public ResponseEntity<BaseResponse<?>> resume(
             @AuthenticationPrincipal String username,
             @PathVariable String userId,
-            @PathVariable("id") Long scenarioId
+            @PathVariable("scenarioId") Long scenarioId
     ) {
         Users me = findUserByUserId(userId);
         return ApiResponse.success(SuccessCode.OK, progressService.resume(me, scenarioId));
     }
 
     /**
-     * 현재 스텝 체크인 저장
-     * ex) POST /users/{userId}/scenarios/{id}/progress
-     * Body: { "nowStepId": 103 }
+     * 시나리오 진행률 저장
+     * ex) POST /users/{userId}/scenarios/{scenarioId}/progress
      */
     @PutMapping(value = "/progress", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("isAuthenticated() and (#userId == authentication.name or hasRole('ADMIN'))")
     public ResponseEntity<BaseResponse<?>> saveCheckpoint(
             @AuthenticationPrincipal String username,
             @PathVariable String userId,
-            @PathVariable("id") Long scenarioId,
+            @PathVariable("scenarioId") Long scenarioId,
             @Valid @RequestBody ProgressSaveReqDto req
     ) {
         Users me = findUserByUserId(userId);
@@ -72,7 +71,7 @@ public class ScenarioController {
 
     /**
      * 다음 스텝으로 이동(퀴즈 게이트 포함)
-     * ex) POST /users/{userId}/scenarios/{id}/advance
+     * ex) POST /users/{userId}/scenarios/{scenarioId}/next-step
      * Body 예:
      *   - { "nowStepId": 102 }
      *   - { "nowStepId": 103 } (QUIZ_REQUIRED)
@@ -83,7 +82,7 @@ public class ScenarioController {
     public ResponseEntity<BaseResponse<?>> nextStep(
             @AuthenticationPrincipal String username,
             @PathVariable String userId,
-            @PathVariable("id") Long scenarioId,
+            @PathVariable("scenarioId") Long scenarioId,
             @Valid @RequestBody AdvanceReqDto req
     ) {
         Users me = findUserByUserId(userId);
