@@ -70,4 +70,16 @@ public class AutoPayment {
                     .collect(Collectors.joining(", "));
         }
     }
+
+    public void cancel() {
+        this.processingStatus = AutoPaymentStatus.CANCELLED;
+    }
+
+    public boolean isOwnedBy(Long educationalAccountId) {
+        return this.educationalAccount.getId().equals(educationalAccountId);
+    }
+
+    public boolean isCancelled() {
+        return this.processingStatus == AutoPaymentStatus.CANCELLED;
+    }
 }

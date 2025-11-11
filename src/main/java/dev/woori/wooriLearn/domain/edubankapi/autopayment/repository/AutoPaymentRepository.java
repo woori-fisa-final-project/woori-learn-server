@@ -22,4 +22,6 @@ public interface AutoPaymentRepository extends JpaRepository<AutoPayment, Long> 
 
     @EntityGraph(attributePaths = {"educationalAccount"})
     Optional<AutoPayment> findById(Long id);
+
+    boolean existsByIdAndEducationalAccountId(Long id, Long educationalAccountId);
 }
