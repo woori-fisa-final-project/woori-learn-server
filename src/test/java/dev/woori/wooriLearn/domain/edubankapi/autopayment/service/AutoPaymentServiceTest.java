@@ -341,7 +341,7 @@ class AutoPaymentServiceTest {
     }
 
     @Test
-    @DisplayName("자동이체 해지 실패 - 소유자 불일치 (FORBIDDEN)")
+    @DisplayName("자동이체 해지 실패 - 소유자 불일치 시 존재 여부 숨김 (ENTITY_NOT_FOUND)")
     void cancelAutoPayment_Fail_NotOwner() {
         // given
         Users otherUser = Users.builder()
@@ -372,8 +372,8 @@ class AutoPaymentServiceTest {
 
         // then
         assertThat(exception).isNotNull();
-        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN);
-        assertThat(exception.getMessage()).contains("해당 자동이체를 해지할 권한이 없습니다");
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
+        assertThat(exception.getMessage()).contains("자동이체 정보를 찾을 수 없습니다");
 
         verify(autoPaymentRepository).findById(1L);
     }
