@@ -42,7 +42,7 @@ public class PointsExchangeService {
     // 출금 요청
     @Transactional
     public PointsExchangeResponseDto requestExchange(String username, PointsExchangeRequestDto dto) {
-        Users user = userRepository.findByUserId(username)
+        Users user = userRepository.findByUserIdForUpdate(username)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
         if (dto.exchangeAmount() == null || dto.exchangeAmount() <= 0) {
