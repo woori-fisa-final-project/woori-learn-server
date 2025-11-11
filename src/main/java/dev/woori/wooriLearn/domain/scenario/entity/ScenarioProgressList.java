@@ -39,4 +39,15 @@ public class ScenarioProgressList extends BaseEntity {
         }
         this.step = nextStep;
     }
+
+    public void moveToStep(ScenarioStep nextStep, double newRate) {
+        if (nextStep == null) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "nextStep가 null입니다.");
+        }
+        if (newRate < 0.0 || newRate > 100.0) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "progressRate 범위(0~100) 위반");
+        }
+        this.step = nextStep;
+        this.progressRate = newRate;
+    }
 }

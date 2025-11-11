@@ -41,7 +41,7 @@ public class ScenarioController {
      * 사용자의 시나리오 진행 상태 조회(재개)
      * ex) GET /users/{userId}/scenarios/{id}/progress
      */
-    @GetMapping("/progress")
+    @GetMapping
     @PreAuthorize("isAuthenticated() and (#userId == authentication.name or hasRole('ADMIN'))")
     public ResponseEntity<BaseResponse<?>> resume(
             @AuthenticationPrincipal String username,
@@ -57,7 +57,7 @@ public class ScenarioController {
      * ex) POST /users/{userId}/scenarios/{id}/progress
      * Body: { "nowStepId": 103 }
      */
-    @PostMapping(value = "/progress", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/progress", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("isAuthenticated() and (#userId == authentication.name or hasRole('ADMIN'))")
     public ResponseEntity<BaseResponse<?>> saveCheckpoint(
             @AuthenticationPrincipal String username,
@@ -66,8 +66,8 @@ public class ScenarioController {
             @Valid @RequestBody ProgressSaveReqDto req
     ) {
         Users me = findUserByUserId(userId);
-        progressService.saveCheckpoint(me, scenarioId, req.nowStepId());
-        return ApiResponse.success(SuccessCode.OK);
+        return ApiResponse.success(SuccessCode.OK,
+                progressService.saveCheckpoint(me, scenarioId, req.nowStepId()));
     }
 
     /**
@@ -78,9 +78,9 @@ public class ScenarioController {
      *   - { "nowStepId": 103 } (QUIZ_REQUIRED)
      *   - { "nowStepId": 103, "answer": 2 } (정답 시 ADVANCED)
      */
-    @PostMapping(value = "/advance", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/next-step", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("isAuthenticated() and (#userId == authentication.name or hasRole('ADMIN'))")
-    public ResponseEntity<BaseResponse<?>> advance(
+    public ResponseEntity<BaseResponse<?>> nextStep(
             @AuthenticationPrincipal String username,
             @PathVariable String userId,
             @PathVariable("id") Long scenarioId,
