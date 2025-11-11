@@ -1,15 +1,15 @@
 package dev.woori.wooriLearn.domain.scenario.entity;
 
 import dev.woori.wooriLearn.config.BaseEntity;
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Table(name = "scenario_progress")
+@Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -32,4 +32,22 @@ public class ScenarioProgressList extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "step_id", nullable = false)
     private ScenarioStep step;
+
+    public void moveToStep(ScenarioStep nextStep) {
+        if (nextStep == null) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "nextStep가 null입니다.");
+        }
+        this.step = nextStep;
+    }
+
+    public void moveToStep(ScenarioStep nextStep, double newRate) {
+        if (nextStep == null) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "nextStep가 null입니다.");
+        }
+        if (newRate < 0.0 || newRate > 100.0) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "progressRate 범위(0~100) 위반");
+        }
+        this.step = nextStep;
+        this.progressRate = newRate;
+    }
 }
