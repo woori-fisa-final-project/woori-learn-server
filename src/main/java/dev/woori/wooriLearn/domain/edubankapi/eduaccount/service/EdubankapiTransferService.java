@@ -8,7 +8,7 @@ import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiAc
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiTransactionHistoryRepository;
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.edubankapi.entity.TransactionHistory;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -135,7 +135,6 @@ public class EdubankapiTransferService {
                 .balance(fromAccount.getBalance())
                 .message("이체가 완료되었습니다.")
                 .build();
-        transactionHistoryRepository.save(depositHistory);
 
         // 로깅 반환
         log.info("[계좌이체 완료] from={} to={} amount={} fromBalanceAfter={}",
