@@ -310,7 +310,7 @@ class AutoPaymentControllerTest {
     }
 
     @Test
-    @DisplayName("자동이체 해지 - 권한 없음 (다른 사용자의 자동이체)")
+    @DisplayName("자동이체 해지 - 다른 사용자의 자동이체 (존재 여부 숨김)")
     void cancelAutoPayment_Forbidden() throws Exception {
         // given
         Long autoPaymentId = 1L;

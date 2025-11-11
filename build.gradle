@@ -77,7 +77,7 @@ jacocoTestReport {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: [
                     '**/config/**',           // 설정 파일
-                    '**/dto/**',              // DTO
+                    '**/dto/*Response*',      // Response DTO만 제외
                     '**/entity/**',           // Entity
                     '**/exception/**',        // Exception
                     '**/*Application.class',  // 메인 클래스
