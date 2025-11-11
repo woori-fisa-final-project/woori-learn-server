@@ -8,10 +8,14 @@ import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
 import dev.woori.wooriLearn.common.SortDirection;
 import dev.woori.wooriLearn.common.HistoryStatus;
 import dev.woori.wooriLearn.config.response.PageResponse;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+@Validated
 
 @RestController
 @RequestMapping("/admin/points/exchange")
@@ -34,8 +38,8 @@ public class AdminPointsExchangeController {
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false, defaultValue = "ALL") HistoryStatus status,
             @RequestParam(required = false, defaultValue = "DESC") SortDirection sort,
-            @RequestParam(required = false, defaultValue = "1") Integer page,
-            @RequestParam(required = false, defaultValue = "20") Integer size,
+            @RequestParam(defaultValue = "1") @Min(1) Integer page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(200) Integer size,
             @RequestParam(required = false) Long userId
     ) {
         PageResponse<PointsExchangeResponseDto> res = pointsExchangeService.getAllHistory(

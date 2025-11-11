@@ -190,9 +190,10 @@ public class PointsExchangeService {
         }
 
         // Users 먼저 잠금 (lambda 캡처 변수는 final/유사-final 이어야 하므로 userId 보관)
+        Users user;
         try {
         Long userId = history.getUser().getId();
-        Users user = userRepository.findByIdForUpdate(userId)
+        user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. Id=" + userId));
 
         // 이후 History 잠금
