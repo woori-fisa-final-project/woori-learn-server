@@ -59,4 +59,22 @@ public class EducationalAccount {
      */
     @OneToMany(mappedBy = "account", fetch = FetchType.LAZY)
     private List<TransactionHistory> transactionHistories;
+
+    // 행위 메서드 추가
+    public void withdraw(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("출금 금액은 0보다 커야 합니다.");
+        }
+        if (this.balance < amount) {
+            throw new IllegalStateException("잔액이 부족합니다.");
+        }
+        this.balance -= amount;
+    }
+
+    public void deposit(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("입금 금액은 0보다 커야 합니다.");
+        }
+        this.balance += amount;
+    }
 }
