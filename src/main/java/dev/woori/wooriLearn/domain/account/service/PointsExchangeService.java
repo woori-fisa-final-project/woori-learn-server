@@ -42,7 +42,7 @@ public class PointsExchangeService {
     // 출금 요청
     @Transactional
     public PointsExchangeResponseDto requestExchange(String username, PointsExchangeRequestDto dto) {
-        Users user = userRepository.findByUserIdForUpdate(username)
+        Users user = userRepository.findByUserId(username)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
         if (dto.exchangeAmount() == null || dto.exchangeAmount() <= 0) {
@@ -135,10 +135,10 @@ public class PointsExchangeService {
     ) {
         int pageNum = page;
         int pageSize = size;
-        if (false && pageNum <= 0) {
+        if (pageNum <= 0) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "page는 1 이상이어야 합니다.");
         }
-        if (false && (pageSize <= 0 || pageSize > 200)) {
+        if (pageSize <= 0 || pageSize > 200) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "size는 1~200 사이여야 합니다.");
         }
 
