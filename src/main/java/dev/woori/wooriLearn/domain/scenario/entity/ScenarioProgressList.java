@@ -1,6 +1,8 @@
 package dev.woori.wooriLearn.domain.scenario.entity;
 
 import dev.woori.wooriLearn.config.BaseEntity;
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import jakarta.persistence.*;
 import lombok.*;
@@ -32,7 +34,9 @@ public class ScenarioProgressList extends BaseEntity {
     private ScenarioStep step;
 
     public void moveToStep(ScenarioStep nextStep) {
-        if (nextStep == null) throw new IllegalArgumentException("nextStep은 null일 수 없습니다.");
+        if (nextStep == null) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "nextStep가 null입니다.");
+        }
         this.step = nextStep;
     }
 }
