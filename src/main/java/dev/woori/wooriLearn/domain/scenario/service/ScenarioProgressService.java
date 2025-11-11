@@ -8,6 +8,7 @@ import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
+import dev.woori.wooriLearn.domain.scenario.dto.ProgressSaveResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
 import dev.woori.wooriLearn.domain.scenario.entity.Quiz;
 import dev.woori.wooriLearn.domain.scenario.entity.Scenario;
@@ -24,8 +25,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+
+import static java.util.stream.Collectors.toMap;
 
 @Service
 @RequiredArgsConstructor
@@ -91,14 +93,15 @@ public class ScenarioProgressService {
             return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
         }
 
-        progress.moveToStep(next);
+        double rate = computeProgressRate(scenarioId, next.getId());
+        progress.moveToStep(next, rate);
         progressRepository.save(progress);
 
         return new AdvanceResDto(AdvanceStatus.ADVANCED, mapStep(next), null);
     }
 
     @Transactional
-    public void saveCheckpoint(Users user, Long scenarioId, Long nowStepId) {
+    public ProgressSaveResDto saveCheckpoint(Users user, Long scenarioId, Long nowStepId) {
         Scenario scenario = scenarioRepository.findById(scenarioId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "시나리오가 존재하지 않습니다. id=" + scenarioId));
         ScenarioStep step = stepRepository.findById(nowStepId)
@@ -116,8 +119,54 @@ public class ScenarioProgressService {
                         .progressRate(0.0)
                         .build());
 
-        progress.moveToStep(step);
+        // 진행률 계산
+        double rate = computeProgressRate(scenarioId, nowStepId);
+
+        // 스텝 이동 + 진행률 갱신
+        progress.moveToStep(step, rate);
         progressRepository.save(progress);
+
+        return new ProgressSaveResDto(scenarioId, nowStepId, rate);
+    }
+
+    private double computeProgressRate(Long scenarioId, Long nowStepId) {
+        var steps = stepRepository.findByScenarioId(scenarioId);
+        if (steps.isEmpty()) {
+            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "스텝이 비어있습니다. scenarioId=" + scenarioId);
+        }
+
+        // map 구성
+        Map<Long, ScenarioStep> byId = steps.stream()
+                .collect(toMap(ScenarioStep::getId, java.util.function.Function.identity()));
+
+        // start부터 nextStep 체인을 따라가며 순서 계산(루프 방지)
+        ScenarioStep cur = stepRepository.findStartStepOrFail(scenarioId);
+        Set<Long> visited = new HashSet<>();
+
+        int total = 0;
+        Integer foundIdx = null;
+
+        while (cur != null && !visited.contains(cur.getId())) {
+            visited.add(cur.getId());
+            if (cur.getId().equals(nowStepId)) {
+                foundIdx = total; // 0-based index
+            }
+            total++;
+            cur = (cur.getNextStep() != null) ? byId.get(cur.getNextStep().getId()) : null;
+        }
+
+        // 체인에 포함되지 않은 경우(id 오름차순 폴백)
+        if (foundIdx == null) {
+            var ordered = steps.stream().map(ScenarioStep::getId).sorted().toList();
+            int pos = ordered.indexOf(nowStepId);
+            if (pos < 0) pos = 0;
+            total = ordered.size();
+            foundIdx = pos;
+        }
+
+        double pct = ((foundIdx + 1) * 100.0) / Math.max(total, 1);
+        // 소수 한 자리 반올림 등 필요 시 적용 가능
+        return Math.min(100.0, Math.max(0.0, pct));
     }
 
     private ProgressResumeResDto mapStep(ScenarioStep step) {
