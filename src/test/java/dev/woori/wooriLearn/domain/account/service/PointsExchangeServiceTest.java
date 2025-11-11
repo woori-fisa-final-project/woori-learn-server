@@ -4,10 +4,7 @@ import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
-import dev.woori.wooriLearn.domain.account.entity.Account;
-import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
-import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
-import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
+import dev.woori.wooriLearn.domain.account.entity.*;
 import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.user.entity.Role;
@@ -196,8 +193,7 @@ class PointsExchangeServiceTest {
         when(pointsHistoryRepository.findAndLockById(anyLong())).thenReturn(Optional.of(history));
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
         when(userRepository.findByIdForUpdate(anyLong())).thenReturn(Optional.of(u));
-        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
-        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
+
 
         // when
         PointsExchangeResponseDto res = service.approveExchange(99L);
@@ -248,7 +244,7 @@ class PointsExchangeServiceTest {
 
         assertThat(history.getStatus()).isEqualTo(PointsStatus.FAILED);
         assertThat(res.status()).isEqualTo(PointsStatus.FAILED);
-        assertThat(history.getFailReason()).isEqualTo("INSUFFICIENT_POINTS");
+        assertThat(history.getFailReason()).isEqualTo(PointsFailReason.INSUFFICIENT_POINTS);
         assertThat(res.exchangeAmount()).isEqualTo(200);
         assertThat(res.userId()).isEqualTo(1L);
     }
@@ -270,7 +266,7 @@ class PointsExchangeServiceTest {
 
         PointsExchangeResponseDto res = service.approveExchange(99L);
         assertThat(history.getStatus()).isEqualTo(PointsStatus.FAILED);
-        assertThat(history.getFailReason()).isEqualTo("PROCESSING_ERROR");
+        assertThat(history.getFailReason()).isEqualTo(PointsFailReason.PROCESSING_ERROR);
         assertThat(history.getProcessedAt()).isNotNull();
         assertThat(res.status()).isEqualTo(PointsStatus.FAILED);
         assertThat(res.processedDate()).isEqualTo(history.getProcessedAt());
