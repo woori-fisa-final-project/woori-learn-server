@@ -69,6 +69,8 @@ class ScenarioProgressServiceTest {
 
         // then
         assertEquals(101L, res.nowStepId());
+        assertEquals(StepType.DIALOG, res.type());
+        assertNotNull(res.content());
     }
 
     @Test
@@ -82,6 +84,8 @@ class ScenarioProgressServiceTest {
         when(scenarioRepository.findById(1L)).thenReturn(Optional.of(scenario));
         when(stepRepository.findById(101L)).thenReturn(Optional.of(s1));
         when(progressRepository.findByUserAndScenario(user, scenario)).thenReturn(Optional.empty());
+        when(stepRepository.findByScenarioId(1L)).thenReturn(List.of(s1, s2));
+        when(stepRepository.findStartStepOrFail(1L)).thenReturn(s1);
 
         // when
         AdvanceResDto res = service.advance(user, 1L, 101L, null);
@@ -91,6 +95,7 @@ class ScenarioProgressServiceTest {
         assertNotNull(res.step());
         assertEquals(102L, res.step().nowStepId());
         assertNull(res.quiz());
+        verify(progressRepository).save(any(ScenarioProgressList.class));
     }
 
     @Test

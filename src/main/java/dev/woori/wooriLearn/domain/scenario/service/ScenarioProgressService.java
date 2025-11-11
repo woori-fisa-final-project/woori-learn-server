@@ -112,6 +112,9 @@ public class ScenarioProgressService {
                     step.getId() + ", scenarioId=" + scenario.getId());
         }
 
+        // 이미 완료했는지 확인
+        boolean alreadyCompleted = completedRepository.existsByUserAndScenario(user, scenario);
+
         ScenarioProgressList progress = progressRepository.findByUserAndScenario(user, scenario)
                 .orElseGet(() -> ScenarioProgressList.builder()
                         .user(user)
@@ -119,8 +122,8 @@ public class ScenarioProgressService {
                         .progressRate(0.0)
                         .build());
 
-        // 진행률 계산
-        double rate = computeProgressRate(scenarioId, nowStepId);
+        // 시나리오를 완료한 사용자는 100.0 고정, 미완료자는 정상 계산
+        double rate = alreadyCompleted ? 100.0 : computeProgressRate(scenarioId, nowStepId);
 
         // 스텝 이동 + 진행률 갱신
         progress.moveToStep(step, rate);

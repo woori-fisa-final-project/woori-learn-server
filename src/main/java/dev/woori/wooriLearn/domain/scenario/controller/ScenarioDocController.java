@@ -17,7 +17,7 @@ import java.time.Duration;
 
 /**
  *  제공 기능:
- *  1) /doc: 시나리오 전체 문서 조회
+ *  1) GET  /scenarios/{scenarioId}/doc : 시나리오 전체 문서 조회
  */
 @RestController
 @RequiredArgsConstructor
