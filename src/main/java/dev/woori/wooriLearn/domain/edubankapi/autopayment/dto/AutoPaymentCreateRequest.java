@@ -61,11 +61,6 @@ public record AutoPaymentCreateRequest(
 ) {
     @AssertTrue(message = "만료일은 시작일 이후여야 합니다.")
     private boolean isExpirationDateValid() {
-
-        if (startDate == null || expirationDate == null) {
-            return true;
-        }
-
         return !expirationDate.isBefore(startDate);
     }
 
