@@ -69,7 +69,7 @@ class EdubankapiAccountControllerTest {
      * - fromAccount=1122334455, toAccount=5544332211, amount=1000, password=1111
      */
     @Test
-    @DisplayName(" 계좌이체 성공 테스트 (비밀번호 1111, 금액 1000원)")
+    @DisplayName("계좌이체 성공 테스트 (비밀번호 1111, 금액 1000원)")
     void testTransferSuccess() throws Exception {
 
         // given
