@@ -4,7 +4,10 @@ import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
-import dev.woori.wooriLearn.domain.account.entity.*;
+import dev.woori.wooriLearn.domain.account.entity.Account;
+import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
+import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
+import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.user.entity.Role;
@@ -179,38 +182,36 @@ class PointsExchangeServiceTest {
     @Test
     @DisplayName("현금화 승인 성공: SUCCESS, processedAt = fixedClock")
     void approveExchange_success() {
-        // given
-        Long requestId = 99L;
-        Long userId = 1L;
-
-        Users u = user(userId, 1000);
+        // given history(APPLY) + user(points 충분)
+        Users u = user(1L, 1000);
         PointsHistory history = PointsHistory.builder()
-                .id(requestId)
-                .user(u)
-                .amount(200)
+                .id(99L).user(u).amount(200)
                 .type(PointsHistoryType.WITHDRAW)
                 .status(PointsStatus.APPLY)
                 .build();
 
-        when(pointsHistoryRepository.findById(requestId)).thenReturn(Optional.of(history));
-        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(u));
-        when(pointsHistoryRepository.findAndLockById(requestId)).thenReturn(Optional.of(history));
+        when(pointsHistoryRepository.findById(99L)).thenReturn(Optional.of(history));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
+        when(pointsHistoryRepository.findAndLockById(99L)).thenReturn(Optional.of(history));
+        when(pointsHistoryRepository.findAndLockById(anyLong())).thenReturn(Optional.of(history));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
+        when(userRepository.findByIdForUpdate(anyLong())).thenReturn(Optional.of(u));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(u));
 
         // when
-        PointsExchangeResponseDto res = service.approveExchange(requestId);
+        PointsExchangeResponseDto res = service.approveExchange(99L);
 
         // then
         assertThat(history.getStatus()).isEqualTo(PointsStatus.SUCCESS);
-
         LocalDateTime expected = LocalDateTime.ofInstant(fixedClock.instant(), ZoneOffset.UTC);
         assertThat(history.getProcessedAt()).isEqualTo(expected);
 
         assertThat(res.status()).isEqualTo(PointsStatus.SUCCESS);
-        assertThat(res.userId()).isEqualTo(userId);
+        assertThat(res.userId()).isEqualTo(1L);
         assertThat(res.exchangeAmount()).isEqualTo(200);
         assertThat(res.processedDate()).isEqualTo(expected);
     }
-
 
     @Test
     @DisplayName("현금화 승인 실패: APPLY 아님 → CONFLICT")
@@ -247,7 +248,7 @@ class PointsExchangeServiceTest {
 
         assertThat(history.getStatus()).isEqualTo(PointsStatus.FAILED);
         assertThat(res.status()).isEqualTo(PointsStatus.FAILED);
-        assertThat(history.getFailReason()).isEqualTo(PointsFailReason.INSUFFICIENT_POINTS);
+        assertThat(history.getFailReason()).isEqualTo("INSUFFICIENT_POINTS");
         assertThat(res.exchangeAmount()).isEqualTo(200);
         assertThat(res.userId()).isEqualTo(1L);
     }
@@ -269,7 +270,7 @@ class PointsExchangeServiceTest {
 
         PointsExchangeResponseDto res = service.approveExchange(99L);
         assertThat(history.getStatus()).isEqualTo(PointsStatus.FAILED);
-        assertThat(history.getFailReason()).isEqualTo(PointsFailReason.PROCESSING_ERROR);
+        assertThat(history.getFailReason()).isEqualTo("PROCESSING_ERROR");
         assertThat(history.getProcessedAt()).isNotNull();
         assertThat(res.status()).isEqualTo(PointsStatus.FAILED);
         assertThat(res.processedDate()).isEqualTo(history.getProcessedAt());
