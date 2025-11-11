@@ -235,8 +235,8 @@ class AutoPaymentCreateRequestTest {
         AutoPaymentCreateRequest request = new AutoPaymentCreateRequest(
                 1L, "020", "110-123-456789", 50000,
                 "홍길동", "월세", 1, 5,
-                null,  // startDate
-                LocalDate.of(2025, 12, 31),
+                null,  // startDate null
+                LocalDate.of(2025, 12, 31),  // ← 유효한 값으로 변경!
                 "1234"
         );
 
@@ -244,7 +244,7 @@ class AutoPaymentCreateRequestTest {
         Set<ConstraintViolation<AutoPaymentCreateRequest>> violations = validator.validate(request);
 
         // then
-        assertThat(violations).hasSize(1);
+        assertThat(violations).hasSize(1);  // ← 정확히 1개로 변경!
         assertThat(violations)
                 .extracting(ConstraintViolation::getMessage)
                 .contains("시작일은 필수입니다.");
@@ -257,8 +257,8 @@ class AutoPaymentCreateRequestTest {
         AutoPaymentCreateRequest request = new AutoPaymentCreateRequest(
                 1L, "020", "110-123-456789", 50000,
                 "홍길동", "월세", 1, 5,
-                LocalDate.of(2025, 1, 1),
-                null,  // expirationDate
+                LocalDate.of(2025, 1, 1),  // ← 유효한 값으로 변경!
+                null,  // expirationDate null
                 "1234"
         );
 
@@ -266,7 +266,7 @@ class AutoPaymentCreateRequestTest {
         Set<ConstraintViolation<AutoPaymentCreateRequest>> violations = validator.validate(request);
 
         // then
-        assertThat(violations).hasSize(1);
+        assertThat(violations).hasSize(1);  // ← 정확히 1개로 변경!
         assertThat(violations)
                 .extracting(ConstraintViolation::getMessage)
                 .contains("만료일은 필수입니다.");
