@@ -1,6 +1,4 @@
 package dev.woori.wooriLearn.domain.account.controller;
-
-import dev.woori.wooriLearn.domain.common.auth.PrincipalUtils;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
@@ -23,10 +21,9 @@ public class PointsDepositController {
 
     @PostMapping
     public ResponseEntity<BaseResponse<?>> deposit(
-            @AuthenticationPrincipal Object principal,
+            @AuthenticationPrincipal String username,
             @RequestBody PointsDepositRequestDto dto
     ) {
-        String username = PrincipalUtils.requireUsername(principal);
         return ApiResponse.success(SuccessCode.CREATED, pointsDepositService.depositPoints(username, dto));
     }
 }

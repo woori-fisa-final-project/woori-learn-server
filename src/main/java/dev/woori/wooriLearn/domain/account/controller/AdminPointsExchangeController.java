@@ -4,12 +4,10 @@ import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
+import dev.woori.wooriLearn.domain.account.dto.PointsHistorySearchRequestDto;
 import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
-import dev.woori.wooriLearn.common.SortDirection;
-import dev.woori.wooriLearn.common.HistoryStatus;
 import dev.woori.wooriLearn.config.response.PageResponse;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,17 +30,15 @@ public class AdminPointsExchangeController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BaseResponse<?>> getAll(
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(required = false, defaultValue = "ALL") HistoryStatus status,
-            @RequestParam(required = false, defaultValue = "DESC") SortDirection sort,
-            @RequestParam(defaultValue = "1") @Min(1) Integer page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(200) Integer size,
-            @RequestParam(required = false) Long userId
-    ) {
+    public ResponseEntity<BaseResponse<?>> getAll(@Valid @ModelAttribute PointsHistorySearchRequestDto request) {
         PageResponse<PointsExchangeResponseDto> res = pointsExchangeService.getAllHistory(
-                startDate, endDate, status, sort, page, size, userId
+                request.startDate(),
+                request.endDate(),
+                request.status(),
+                request.sort(),
+                request.page(),
+                request.size(),
+                request.userId()
         );
         return ApiResponse.success(SuccessCode.OK, res);
     }
