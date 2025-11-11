@@ -39,15 +39,16 @@ public class PointsHistory extends BaseEntity {
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "fail_reason")
-    private String failReason;
+    private PointsFailReason failReason;
 
     public void markSuccess(LocalDateTime processedAt) {
         this.status = PointsStatus.SUCCESS;
         this.processedAt = processedAt;
     }
 
-    public void markFailed(String reason, LocalDateTime processedAt) {
+    public void markFailed(PointsFailReason reason, LocalDateTime processedAt) {
         this.status = PointsStatus.FAILED;
         this.failReason = reason;
         this.processedAt = processedAt;
