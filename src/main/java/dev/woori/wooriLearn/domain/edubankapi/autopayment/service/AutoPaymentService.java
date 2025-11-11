@@ -65,20 +65,8 @@ public class AutoPaymentService {
                 request.educationalAccountId(),
                 request.accountPassword()
         );
-        // 2. 자동이체 엔티티 생성
-        AutoPayment autoPayment = AutoPayment.builder()
-                .educationalAccount(educationalAccount)
-                .depositNumber(request.depositNumber())
-                .depositBankCode(request.depositBankCode())
-                .amount(request.amount())
-                .counterpartyName(request.counterpartyName())
-                .displayName(request.displayName())
-                .transferCycle(request.transferCycle())
-                .designatedDate(request.designatedDate())
-                .startDate(request.startDate())
-                .expirationDate(request.expirationDate())
-                .processingStatus(AutoPaymentStatus.ACTIVE)
-                .build();
+        // 2. 자동이체 생성
+        AutoPayment autoPayment = AutoPayment.create(request, educationalAccount);
 
         // 3. 저장
         AutoPayment savedAutoPayment = autoPaymentRepository.save(autoPayment);
