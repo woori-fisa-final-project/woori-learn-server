@@ -4,8 +4,10 @@ import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentCreateRequest;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentResponse;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.service.AutoPaymentService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +19,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/auto-payment")
+@RequestMapping("/education/auto-payment")
 @RequiredArgsConstructor
 @Validated
 public class AutoPaymentController {
@@ -45,5 +47,17 @@ public class AutoPaymentController {
         AutoPaymentResponse response = autoPaymentService.getAutoPaymentDetail(autoPaymentId);
 
         return ApiResponse.success(SuccessCode.OK, response);
+    }
+
+    @PostMapping
+    public ResponseEntity<BaseResponse<?>> createAutoPayment(
+            @Valid @RequestBody AutoPaymentCreateRequest request) {
+
+        log.info("자동이체 등록 요청 - 교육용계좌ID: {}, 금액: {}",
+                request.educationalAccountId(), request.amount());
+
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(request);
+
+        return ApiResponse.success(SuccessCode.CREATED, response);
     }
 }
