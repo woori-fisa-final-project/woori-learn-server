@@ -39,10 +39,6 @@ public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Lo
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @QueryHints({
-            @QueryHint(name = "javax.persistence.lock.timeout", value = "2000"),
-            @QueryHint(name = "org.hibernate.timeout", value = "3")
-    })
     @Query("SELECT h FROM PointsHistory h JOIN FETCH h.user WHERE h.id = :id")
     Optional<PointsHistory> findAndLockById(@Param("id") Long id);
 
