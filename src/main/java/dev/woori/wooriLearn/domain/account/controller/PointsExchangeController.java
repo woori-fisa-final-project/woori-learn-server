@@ -1,12 +1,12 @@
 package dev.woori.wooriLearn.domain.account.controller;
 
 import dev.woori.wooriLearn.domain.account.dto.PointsHistorySearchRequestDto;
-import dev.woori.wooriLearn.domain.common.auth.PrincipalUtils;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.common.SortDirection;
 import dev.woori.wooriLearn.common.HistoryStatus;
+import dev.woori.wooriLearn.config.response.PageResponse;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
@@ -16,7 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+ 
 
 @RestController
 @RequestMapping("/points/exchange")
@@ -27,30 +27,30 @@ public class PointsExchangeController {
 
     @PostMapping
     public ResponseEntity<BaseResponse<?>> requestExchange(
-            @AuthenticationPrincipal Object principal,
+            @AuthenticationPrincipal String username,
             @RequestBody PointsExchangeRequestDto dto
     ) {
-        String username = PrincipalUtils.requireUsername(principal);
         return ApiResponse.success(SuccessCode.CREATED, pointsExchangeService.requestExchange(username, dto));
     }
 
     @GetMapping
     public ResponseEntity<BaseResponse<?>> getHistory(
-            @AuthenticationPrincipal Object principal,
-            PointsHistorySearchRequestDto request
+            @AuthenticationPrincipal String username,
+            @ModelAttribute PointsHistorySearchRequestDto request
     ) {
-        String username = PrincipalUtils.requireUsername(principal);
 
-        List<PointsExchangeResponseDto> history = pointsExchangeService.getHistory(
+        PageResponse<PointsExchangeResponseDto> res = pointsExchangeService.getUserHistory(
                 username,
-                request.getStartDate(),
-                request.getEndDate(),
-                request.getPeriod(),
-                request.getStatus(),
-                request.getSort()
+                request.startDate(),
+                request.endDate(),
+                request.period(),
+                request.status(),
+                request.sort(),
+                request.page(),
+                request.size()
         );
 
-        return ApiResponse.success(SuccessCode.OK, history);
+        return ApiResponse.success(SuccessCode.OK, res);
     }
 
 

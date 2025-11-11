@@ -123,6 +123,63 @@ public class PointsExchangeService {
                 ).toList();
     }
 
+    // 사용자 조회(관리자와 동일하게 페이징)
+    public PageResponse<PointsExchangeResponseDto> getUserHistory(
+            String username,
+            String startDate,
+            String endDate,
+            SearchPeriod period,
+            HistoryStatus status,
+            SortDirection sort,
+            int page,
+            int size
+    ) {
+        Long userId = userRepository.findByUserId(username)
+                .map(Users::getId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
+
+        if (page <= 0) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "page는 1 이상이어야 합니다.");
+        }
+        if (size <= 0 || size > 200) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "size는 1~200 사이여야 합니다.");
+        }
+
+        LocalDateTime start = resolveStartDate(startDate, period);
+        LocalDateTime end = resolveEndDate(endDate, period);
+        PointsStatus statusEnum = convertStatus(status);
+
+        Page<PointsHistory> pageResult = pointsHistoryRepository.findAllByFilters(
+                userId,
+                PointsHistoryType.WITHDRAW,
+                statusEnum,
+                start,
+                end,
+                PageRequest.of(page - 1, size, sort.toSort("createdAt"))
+        );
+
+        List<PointsExchangeResponseDto> items = pageResult.getContent().stream()
+                .map(h -> PointsExchangeResponseDto.builder()
+                        .requestId(h.getId())
+                        .userId(h.getUser().getId())
+                        .exchangeAmount(h.getAmount())
+                        .status(h.getStatus())
+                        .requestDate(h.getCreatedAt())
+                        .processedDate(h.getProcessedAt())
+                        .message(h.getStatus().message())
+                        .build())
+                .toList();
+
+        return new PageResponse<>(
+                items,
+                page,
+                size,
+                pageResult.getTotalElements(),
+                pageResult.getTotalPages(),
+                pageResult.hasNext()
+        );
+    }
+
     // 관리자 전체 조회 (페이징)
     public PageResponse<PointsExchangeResponseDto> getAllHistory(
             String startDate,
