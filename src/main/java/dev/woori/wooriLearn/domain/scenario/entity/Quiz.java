@@ -60,9 +60,14 @@ public class Quiz {
         if (json == null) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "options가 null일 수 없습니다.");
         }
-        String t = json.trim();
-        if (!(t.startsWith("[") && t.endsWith("]"))) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "options는 JSON 배열 문자열이어야 합니다.");
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode node = mapper.readTree(json);
+            if (!node.isArray()) {
+                throw new CommonException(ErrorCode.INVALID_REQUEST, "options는 JSON 배열 형식의 문자열이어야 합니다.");
+            }
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "options가 유효한 JSON 형식이 아닙니다.");
         }
     }
 

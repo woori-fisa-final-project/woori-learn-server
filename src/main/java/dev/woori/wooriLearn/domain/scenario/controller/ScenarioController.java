@@ -1,17 +1,21 @@
 package dev.woori.wooriLearn.domain.scenario.controller;
 
+import dev.woori.wooriLearn.config.response.ApiResponse;
+import dev.woori.wooriLearn.config.response.BaseResponse;
+import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.scenario.dto.*;
 import dev.woori.wooriLearn.domain.scenario.service.ScenarioProgressService;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import dev.woori.wooriLearn.config.exception.CommonException;
-import dev.woori.wooriLearn.config.exception.ErrorCode;
 
 /**
  *  제공 기능:
@@ -23,7 +27,7 @@ import dev.woori.wooriLearn.config.exception.ErrorCode;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(
-        value = "/users/{userKey}/scenarios/{scenarioId}",
+        value = "/me/scenarios/{scenarioId}",
         produces = MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8"
 )
 public class ScenarioController {
@@ -32,19 +36,20 @@ public class ScenarioController {
     private final UserRepository userRepository;
 
     /**
-     * 사용자의 시나리오 진행 상태 조회(재개)
-     * ex) GET /users/user/scenarios/1/progress
-     * - 저장된 진행 기록이 있다면 해당 스텝부터
-     * - 없으면 시작 스텝을 반환
+     * 나의 시나리오 진행 상태 조회(재개)
+     * ex) GET /me/scenarios/1/progress
+     * - 저장된 진행 기록이 있으면 해당 스텝부터
+     * - 없으면 시작 스텝 반환
      */
     @GetMapping("/progress")
-    @PreAuthorize("permitAll()")
-    public ResponseEntity<ProgressResumeResDto> resume(
-            @PathVariable String userKey,
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<BaseResponse<?>> resume(
+            @AuthenticationPrincipal String username,
             @PathVariable Long scenarioId
     ) {
-        Users user = resolveUserFlexible(userKey);
-        return ResponseEntity.ok(progressService.resume(user, scenarioId));
+        Users me = userRepository.findByUserId(username)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다: " + username));
+        return ApiResponse.success(SuccessCode.OK, progressService.resume(me, scenarioId));
     }
 
     /**
@@ -56,15 +61,16 @@ public class ScenarioController {
      * - 동작: (user, scenario) 기준 진행 레코드를 upsert하여 nowStepId 스텝으로 위치 저장
      */
     @PostMapping(value = "/progress", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("permitAll()")
-    public ResponseEntity<Void> saveCheckpoint(
-            @PathVariable String userKey,
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<BaseResponse<?>> saveCheckpoint(
+            @AuthenticationPrincipal String username,
             @PathVariable Long scenarioId,
             @Valid @RequestBody ProgressSaveReqDto req
     ) {
-        Users user = resolveUserFlexible(userKey);
-        progressService.saveCheckpoint(user, scenarioId, req.nowStepId());
-        return ResponseEntity.noContent().build();
+        Users me = userRepository.findByUserId(username)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다: " + username));
+        progressService.saveCheckpoint(me, scenarioId, req.nowStepId());
+        return ApiResponse.success(SuccessCode.OK);
     }
 
     /**
@@ -82,25 +88,14 @@ public class ScenarioController {
      *      - status = COMPLETED     : 마지막 스텝에서 완료 처리 (step, quiz = null)
      */
     @PostMapping(value = "/advance", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("permitAll()")
-    public ResponseEntity<AdvanceResDto> advance(
-            @PathVariable String userKey,
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<BaseResponse<?>> advance(
+            @AuthenticationPrincipal String username,
             @PathVariable Long scenarioId,
             @Valid @RequestBody AdvanceReqDto req
     ) {
-        Users user = resolveUserFlexible(userKey);
-        return ResponseEntity.ok(progressService.advance(user, scenarioId, req.nowStepId(), req.answer()));
-    }
-
-    private Users resolveUserFlexible(String userKey) {
-        if (userKey == null || userKey.isBlank())
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "userKey가 필요합니다");
-        if (userKey.chars().allMatch(Character::isDigit)) {
-            Long pk = Long.parseLong(userKey);
-            return userRepository.findById(pk)
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자 없음: id=" + pk));
-        }
-        return userRepository.findByUserId(userKey)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자 없음: user_id=" + userKey));
+        Users me = userRepository.findByUserId(username)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다: " + username));
+        return ApiResponse.success(SuccessCode.OK, progressService.advance(me, scenarioId, req.nowStepId(), req.answer()));
     }
 }

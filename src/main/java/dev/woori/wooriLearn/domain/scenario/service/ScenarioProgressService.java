@@ -42,13 +42,10 @@ public class ScenarioProgressService {
         Scenario scenario = scenarioRepository.findById(scenarioId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "시나리오가 존재하지 않습니다. id=" + scenarioId));
 
+        // 진행 이력 -> 없으면 시작 스텝(중복 제거: repository default 메서드 사용)
         ScenarioStep step = progressRepository.findByUserAndScenario(user, scenario)
                 .map(ScenarioProgressList::getStep)
-                .orElseGet(() ->
-                        stepRepository.findStartStep(scenarioId)
-                                .orElseGet(() -> stepRepository.findFirstByScenarioIdOrderByIdAsc(scenarioId)
-                                        .orElseThrow(() -> new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "시작 스텝을 찾을 수 없습니다.")))
-                );
+                .orElseGet(() -> stepRepository.findStartStepOrFail(scenarioId));
 
         return mapStep(step);
     }

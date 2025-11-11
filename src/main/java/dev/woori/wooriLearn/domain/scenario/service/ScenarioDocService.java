@@ -8,7 +8,6 @@ import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.scenario.dto.ScenarioDocDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ScenarioDocStepDto;
 import dev.woori.wooriLearn.domain.scenario.entity.Scenario;
-import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioStepRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,12 +34,8 @@ public class ScenarioDocService {
             throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "스텝이 비어있습니다. scenarioId=" + scenarioId);
         }
 
-        // 3) 시작 스텝 계산
-        ScenarioStep startStep = stepRepository.findStartStep(scenarioId)
-                .orElseGet(() -> stepRepository.findFirstByScenarioIdOrderByIdAsc(scenarioId)
-                        .orElseThrow(() -> new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "시작 스텝을 찾지 못했습니다")));
-
-        Long startId = startStep.getId();
+        // 3) 시작 스텝 계산 (중복 제거: repository default 메서드 사용)
+        Long startId = stepRepository.findStartStepOrFail(scenarioId).getId();
 
         // 4) 문서 스텝 DTO 변환
         var docSteps = steps.stream().map(s -> {
