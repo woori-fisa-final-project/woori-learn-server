@@ -1,7 +1,5 @@
 package dev.woori.wooriLearn.config.jwt;
 
-import dev.woori.wooriLearn.config.exception.CommonException;
-import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
