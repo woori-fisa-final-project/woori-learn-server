@@ -226,7 +226,9 @@ public class ScenarioProgressService {
         if (foundIdx == null) {
             List<Long> ordered = byId.keySet().stream().sorted().toList();
             int pos = ordered.indexOf(nowStepId);
-            if (pos < 0) pos = 0;
+            if (pos < 0) {
+                throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "현재 스텝 ID가 시나리오의 스텝 목록에 존재하지 않습니다. stepId=" + nowStepId);
+            }
             total = ordered.size();
             foundIdx = pos;
         }

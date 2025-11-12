@@ -59,7 +59,7 @@ class ScenarioDocServiceTest {
     void getScenarioDoc_emptySteps() {
         // given
         when(scenarioRepository.findById(1L)).thenReturn(Optional.of(new Scenario(1L, "title", null)));
-        when(stepRepository.findByScenarioId(1L)).thenReturn(List.of());
+        when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of());
 
         // when
         CommonException ex = assertThrows(CommonException.class, () -> service.getScenarioDoc(1L));
@@ -91,7 +91,7 @@ class ScenarioDocServiceTest {
                 .build();
 
         when(scenarioRepository.findById(1L)).thenReturn(Optional.of(scenario));
-        when(stepRepository.findByScenarioId(1L)).thenReturn(List.of(s1, s2));
+        when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of(s1, s2));
         // 시작 스텝 계산 메서드가 s1을 반환하도록
         when(stepRepository.findStartStepOrFail(1L)).thenReturn(s1);
 
@@ -124,7 +124,7 @@ class ScenarioDocServiceTest {
                 .build();
 
         when(scenarioRepository.findById(1L)).thenReturn(Optional.of(scenario));
-        when(stepRepository.findByScenarioId(1L)).thenReturn(List.of(s1));
+        when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of(s1));
         when(stepRepository.findStartStepOrFail(1L)).thenReturn(s1);
 
         // when
