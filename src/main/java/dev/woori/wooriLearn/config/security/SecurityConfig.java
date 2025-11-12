@@ -47,7 +47,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Profile({"!dev", "!test"})
+    @Profile("!dev & !test")
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable) // API 테스트용, 실제 서비스면 토큰 기반 CSRF 설정 필요
