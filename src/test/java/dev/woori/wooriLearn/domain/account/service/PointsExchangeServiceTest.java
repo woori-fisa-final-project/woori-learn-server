@@ -1,9 +1,13 @@
 package dev.woori.wooriLearn.domain.account.service;
 
+import dev.woori.wooriLearn.common.HistoryStatus;
+import dev.woori.wooriLearn.common.SortDirection;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.config.response.PageResponse;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
+import dev.woori.wooriLearn.domain.account.dto.PointsHistorySearchRequestDto;
 import dev.woori.wooriLearn.domain.account.entity.*;
 import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
@@ -14,15 +18,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -272,5 +281,99 @@ class PointsExchangeServiceTest {
         assertThat(res.status()).isEqualTo(PointsStatus.FAILED);
         assertThat(res.processedDate()).isEqualTo(history.getProcessedAt());
         assertThat(u.getPoints()).isEqualTo(1000);
+    }
+
+    @Test
+    @DisplayName("사용자의 포인트 내역 페이지 조회")
+    void getUserHistoryPage_shouldReturnPagedResult() {
+        // given
+        String username = "testUser";
+        Users user = user(1L, 1000);
+
+        // 기본값 사용 (status=ALL, sort=DESC, page=1, size=20)
+        PointsHistorySearchRequestDto requestDto = new PointsHistorySearchRequestDto(
+                null, null, null, null, null, null, null, null
+        );
+        when(userRepository.findByUserId(username)).thenReturn(Optional.of(user));
+
+        PointsHistory ph = PointsHistory.builder()
+                .user(user)
+                .amount(500)
+                .status(PointsStatus.APPLY)
+                .type(PointsHistoryType.WITHDRAW)
+                .build();
+
+        // ReflectionTestUtils로 BaseEntity 필드 세팅
+        ReflectionTestUtils.setField(ph, "id", 100L);
+        ReflectionTestUtils.setField(ph, "createdAt", LocalDateTime.now());
+
+        Page<PointsHistory> pageResult = new PageImpl<>(List.of(ph));
+        when(pointsHistoryRepository.findAllByFilters(
+                any(), any(), any(), any(), any(), any()
+        )).thenReturn(pageResult);
+
+        // when
+        PageResponse<PointsExchangeResponseDto> result =
+                service.getUserHistoryPage(username, requestDto);
+
+        // then
+        assertNotNull(result);
+        assertEquals(1, result.items().size());
+        verify(pointsHistoryRepository, times(1))
+                .findAllByFilters(eq(user.getId()), any(), any(), any(), any(), any(PageRequest.class));
+    }
+
+    @Test
+    @DisplayName("관리자의 포인트 내역 페이지 조회")
+    void getAdminHistoryPage_shouldReturnPagedResult() {
+        // given - users
+        Users user1 = user(1L, 1000);
+        Users user2 = user(2L, 2000);
+
+        userRepository.save(user1);
+        userRepository.save(user2);
+
+        // given - points history
+        PointsHistory ph1 = PointsHistory.builder()
+                .user(user1)
+                .amount(200)
+                .status(PointsStatus.SUCCESS)
+                .type(PointsHistoryType.WITHDRAW)
+                .build();
+        PointsHistory ph2 = PointsHistory.builder()
+                .user(user2)
+                .amount(100)
+                .status(PointsStatus.APPLY)
+                .type(PointsHistoryType.WITHDRAW)
+                .build();
+
+        ReflectionTestUtils.setField(ph1, "id", 101L);
+        ReflectionTestUtils.setField(ph1, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(ph2, "id", 102L);
+        ReflectionTestUtils.setField(ph2, "createdAt", LocalDateTime.now());
+
+        pointsHistoryRepository.save(ph1);
+        pointsHistoryRepository.save(ph2);
+
+        Page<PointsHistory> pageResult = new PageImpl<>(List.of(ph1, ph2));
+        when(pointsHistoryRepository.findAllByFilters(
+                any(), any(), any(), any(), any(), any()
+        )).thenReturn(pageResult);
+
+        PointsHistorySearchRequestDto requestDto = new PointsHistorySearchRequestDto(
+                null, null, null, null, null, 1, 20, null // 전체 조회
+        );
+
+        // when
+        PageResponse<PointsExchangeResponseDto> result =
+                service.getAdminHistoryPage(requestDto);
+
+        // then
+        assertNotNull(result);
+        assertEquals(2, result.items().size());
+
+        // 항목 검증
+        assertEquals(101L, result.items().get(0).requestId());
+        assertEquals(102L, result.items().get(1).requestId());
     }
 }
