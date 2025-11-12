@@ -1,0 +1,259 @@
+package dev.woori.wooriLearn.domain.scenario.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.TypeFactory;
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
+import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
+import dev.woori.wooriLearn.domain.scenario.dto.ProgressSaveResDto;
+import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
+import dev.woori.wooriLearn.domain.scenario.entity.Quiz;
+import dev.woori.wooriLearn.domain.scenario.entity.Scenario;
+import dev.woori.wooriLearn.domain.scenario.entity.ScenarioCompleted;
+import dev.woori.wooriLearn.domain.scenario.entity.ScenarioProgressList;
+import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
+import dev.woori.wooriLearn.domain.scenario.model.AdvanceStatus;
+import dev.woori.wooriLearn.domain.scenario.repository.ScenarioCompletedRepository;
+import dev.woori.wooriLearn.domain.scenario.repository.ScenarioProgressListRepository;
+import dev.woori.wooriLearn.domain.scenario.repository.ScenarioRepository;
+import dev.woori.wooriLearn.domain.scenario.repository.ScenarioStepRepository;
+import dev.woori.wooriLearn.domain.user.entity.Users;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+
+/**
+ * ?œë‚˜ë¦¬ì˜¤ ì§„í–‰(?¬ê°œ/?¤ìŒ ?¤í…/ì²´í¬?¬ì¸???€?? ë¹„ì¦ˆ?ˆìŠ¤ ë¡œì§???´ë‹¹?˜ëŠ” ?œë¹„?? *
+ * ì£¼ìš”ê¸°ëŠ¥
+ * ?¬ìš©???œë‚˜ë¦¬ì˜¤ ê¸°ì? ?„ì¬ ?¤í… ì¡°íšŒ(?¬ê°œ)
+ * ?¤ìŒ ?¤í…?¼ë¡œ ì§„í–‰(?´ì¦ˆ ê²Œì´?? ë¯¸ì œì¶??¤ë‹µ/?•ë‹µ ì²˜ë¦¬)
+ * ì²´í¬?¬ì¸???„ì¬ ?¤í…) ?€??ë°?ì§„í–‰ë¥?ê³„ì‚°
+ * ?„ë£Œ ì²˜ë¦¬ ë°?ì§„í–‰ ?´ë ¥ ?œê±°
+ */
+@Service
+@RequiredArgsConstructor
+public class ScenarioProgressService {
+
+    private final ScenarioRepository scenarioRepository;
+    private final ScenarioStepRepository stepRepository;
+    private final ScenarioProgressListRepository progressRepository;
+    private final ScenarioCompletedRepository completedRepository;
+    private final ObjectMapper objectMapper;
+
+    /**
+     * ?œë‚˜ë¦¬ì˜¤ ì§„í–‰ ?¬ê°œ: ?€?¥ëœ ?´ë ¥???ˆìœ¼ë©??´ë‹¹ ?¤í…, ?†ìœ¼ë©??œì‘ ?¤í… ë°˜í™˜
+     * @param user          ?¬ìš©??     * @param scenarioId    ?œë‚˜ë¦¬ì˜¤ ID
+     * @return              ?„ì¬ ?Œë”ë§í•´?????¤í… ?•ë³´ DTO
+     */
+    @Transactional(readOnly = true)
+    public ProgressResumeResDto resume(Users user, Long scenarioId) {
+        Scenario scenario = scenarioRepository.findById(scenarioId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "?œë‚˜ë¦¬ì˜¤ê°€ ì¡´ì¬?˜ì? ?ŠìŠµ?ˆë‹¤. id=" + scenarioId));
+
+        // ì§„í–‰ ?´ë ¥???ˆìœ¼ë©??´ë‹¹ ?¤í…, ?†ìœ¼ë©??œì‘ ?¤í…
+        ScenarioStep step = progressRepository.findByUserAndScenario(user, scenario)
+                .map(ScenarioProgressList::getStep)
+                .orElseGet(() -> stepRepository.findStartStepOrFail(scenarioId));
+
+        return mapStep(step);
+    }
+
+    /**
+     * ?¤ìŒ ?¤í…?¼ë¡œ ì§„í–‰(?´ì¦ˆ ê²Œì´???¬í•¨)
+     * ?´ì¦ˆ ?ˆê³  ?•ë‹µ ë¯¸ì œì¶?- QUIZ_REQUIRED
+     * ?´ì¦ˆ ?ˆê³  ?¤ë‹µ ?œì¶œ - QUIZ_WORNG
+     * ?•ë‹µ ?ëŠ” ?´ì¦ˆ ?†ìŒ - nextStep?¼ë¡œ ?´ë™
+     * ë§ˆì?ë§??¤í… - COMPLETED + ì§„í–‰ ?´ë ¥ ?? œ
+     *
+     * @param user          ?¬ìš©??     * @param scenarioId    ?œë‚˜ë¦¬ì˜¤ ID
+     * @param nowStepId     ?„ì¬ ?¤í… ID
+     * @param answer        (?´ì¦ˆ ?¤í…?ì„œ) ?¬ìš©?ê? ?œì¶œ???¸ë±??     * @return              ì§„í–‰ ê²°ê³¼/?¤ìŒ?¤í…/?´ì¦ˆ ?•ë³´ DTO
+     */
+    @Transactional
+    public AdvanceResDto advance(Users user, Long scenarioId, Long nowStepId, Integer answer) {
+        Scenario scenario = scenarioRepository.findById(scenarioId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "?œë‚˜ë¦¬ì˜¤ê°€ ì¡´ì¬?˜ì? ?ŠìŠµ?ˆë‹¤. id=" + scenarioId));
+
+        ScenarioStep current = stepRepository.findById(nowStepId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "?¤í…??ì¡´ì¬?˜ì? ?ŠìŠµ?ˆë‹¤. id=" + nowStepId));
+        if (!Objects.equals(current.getScenario().getId(), scenario.getId())) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "?¤í…???´ë‹¹ ?œë‚˜ë¦¬ì˜¤???í•˜ì§€ ?ŠìŠµ?ˆë‹¤.");
+        }
+
+        ScenarioProgressList progress = progressRepository.findByUserAndScenario(user, scenario)
+                .orElseGet(() -> ScenarioProgressList.builder()
+                        .user(user)
+                        .scenario(scenario)
+                        .step(current)
+                        .progressRate(0.0)
+                        .build());
+
+        // 1) ?´ì¦ˆ ê²Œì´??        Quiz quiz = current.getQuiz();
+        if (quiz != null) {
+            boolean isCorrect = answer != null && Objects.equals(quiz.getAnswer(), answer);
+            if (!isCorrect) {
+                // ë¯¸ì œì¶??¤ë‹µ -> ?„ì¬ ?¤í… ? ì? + ?íƒœ ë°˜í™˜
+                progress.moveToStep(current);
+                progressRepository.save(progress);
+                AdvanceStatus status = (answer == null) ? AdvanceStatus.QUIZ_REQUIRED : AdvanceStatus.QUIZ_WRONG;
+                return new AdvanceResDto(status, mapStep(current), mapQuiz(quiz));
+            }
+        }
+
+        // 2) ?¤ìŒ ?¤í… ?´ë™ or ?„ë£Œ ì²˜ë¦¬
+        ScenarioStep next = current.getNextStep();
+        if (next == null) {
+            // ë§ˆì?ë§??¤í… -> ?„ë£Œ ê¸°ë¡ ??ì§„í–‰ ?´ë ¥ ?? œ
+            if (!completedRepository.existsByUserAndScenario(user, scenario)) {
+                completedRepository.save(
+                        ScenarioCompleted.builder().user(user).scenario(scenario).build()
+                );
+            }
+
+            progressRepository.deleteByUserAndScenario(user, scenario);
+            return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
+        }
+
+        // ì§„í–‰ë¥?ê³„ì‚° + ?´ë™ ?€??        double rate = computeProgressRate(scenarioId, next.getId());
+        progress.moveToStep(next, rate);
+        progressRepository.save(progress);
+
+        return new AdvanceResDto(AdvanceStatus.ADVANCED, mapStep(next), null);
+    }
+
+    /**
+     * ?„ì¬ ?¤í…(ì²´í¬?¬ì¸?? ?€??ë°?ì§„í–‰ë¥?ê°±ì‹ 
+     * - ?´ë? ?„ë£Œ???¬ìš©?ë¼ë©?ì§„í–‰ë¥?100.0?¼ë¡œ ê³ ì •
+     * - ë¯¸ì™„ë£??¬ìš©?ëŠ” ?„ì¬ ?¤í… ê¸°ì??¼ë¡œ ê³„ì‚°
+     *
+     * @param user          ?¬ìš©??     * @param scenarioId    ?œë‚˜ë¦¬ì˜¤ ID
+     * @param nowStepId     ?„ì¬ ?¤í… ID
+     * @return              ?€??ê²°ê³¼ DTO
+     */
+    @Transactional
+    public ProgressSaveResDto saveCheckpoint(Users user, Long scenarioId, Long nowStepId) {
+        Scenario scenario = scenarioRepository.findById(scenarioId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "?œë‚˜ë¦¬ì˜¤ê°€ ì¡´ì¬?˜ì? ?ŠìŠµ?ˆë‹¤. id=" + scenarioId));
+        ScenarioStep step = stepRepository.findById(nowStepId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "?¤í…??ì¡´ì¬?˜ì? ?ŠìŠµ?ˆë‹¤. id=" + nowStepId));
+
+        if (!Objects.equals(step.getScenario().getId(), scenario.getId())) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "?¤í…???œë‚˜ë¦¬ì˜¤?€ ?¼ì¹˜?˜ì? ?ŠìŠµ?ˆë‹¤. stepId=" +
+                    step.getId() + ", scenarioId=" + scenario.getId());
+        }
+
+        // ?´ë? ?„ë£Œ?ˆëŠ”ì§€ ?•ì¸
+        boolean alreadyCompleted = completedRepository.existsByUserAndScenario(user, scenario);
+
+        ScenarioProgressList progress = progressRepository.findByUserAndScenario(user, scenario)
+                .orElseGet(() -> ScenarioProgressList.builder()
+                        .user(user)
+                        .scenario(scenario)
+                        .progressRate(0.0)
+                        .build());
+
+        // ?œë‚˜ë¦¬ì˜¤ë¥??„ë£Œ???¬ìš©?ëŠ” 100.0 ê³ ì •, ë¯¸ì™„ë£Œì??ê³„ì‚°
+        double rate = alreadyCompleted ? 100.0 : computeProgressRate(scenarioId, nowStepId);
+
+        // ?¤í… ?´ë™ + ì§„í–‰ë¥?ê°±ì‹ 
+        progress.moveToStep(step, rate);
+        progressRepository.save(progress);
+
+        return new ProgressSaveResDto(scenarioId, nowStepId, rate);
+    }
+
+    /**
+     * ì§„í–‰ë¥?ê³„ì‚°(0.0 ~ 100.0)
+     * - 'findByScenarioIdWithNextStep'ë¡?ëª¨ë“  ?¤í…(+nextStep)????ë²ˆì— ë¡œë”©(N+1 ë°©ì?)
+     * - ?¤ë¥¸ ?¤í…??nextStep?¼ë¡œ ì°¸ì¡°?˜ì? ?Šì? ?¤í…???œì‘ ?¤í…?¼ë¡œ ê°„ì£¼
+     * - startë¶€??nextStep ì²´ì¸???°ë¼ê°€ë©?ì´?ê¸¸ì´?€ ?„ì¬ ?¤í…???¸ë±??0-based)ë¥?ê³„ì‚°
+     * - ì§„í–‰ë¥?= (?„ì¬ ?¸ë±??+ 1) / ì´??¤í… ??* 100, ê²°ê³¼??0 ~ 100 ë²”ìœ„
+     *
+     * @param scenarioId    ?œë‚˜ë¦¬ì˜¤ ID
+     * @param nowStepId     ?„ì¬ ?¤í… ID
+     * @return              ì§„í–‰ë¥??¼ì„¼??     */
+    private double computeProgressRate(Long scenarioId, Long nowStepId) {
+        // 1) nextStep JOIN FETCHë¡??¼ê´„ ë¡œë“œ
+        List<ScenarioStep> steps = stepRepository.findByScenarioIdWithNextStep(scenarioId);
+        if (steps.isEmpty()) {
+            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "?¤í…??ë¹„ì–´?ˆìŠµ?ˆë‹¤. scenarioId=" + scenarioId);
+        }
+
+        // id -> step ë§?(LinkedHashMap?¼ë¡œ ?œì„œ ë³´ì¡´)
+        Map<Long, ScenarioStep> byId = new LinkedHashMap<>();
+        for (ScenarioStep s : steps) {
+            byId.putIfAbsent(s.getId(), s);
+        }
+
+        // 2) ?œì‘ ?¤í… ì¶”ë¡ : ?´ë–¤ ?¤í…??nextStep?¼ë¡œ??ì°¸ì¡°?˜ì? ?Šì? ?¤í…
+        Long startStepId = stepRepository.findStartStepOrFail(scenarioId).getId();
+        ScenarioStep start = byId.get(startStepId);
+
+        if (start == null) {
+            // ë¡œë“œ???¤í… ëª©ë¡???œì‘ ?¤í…???†ëŠ” ?ˆì™¸?ì¸ ?í™©
+            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "?œì‘ ?¤í…??ê³„ì‚°?????†ìŠµ?ˆë‹¤. scenarioId=" + scenarioId);
+        }
+
+        // 3) startë¶€??ì²´ì¸ ?œíšŒ(ë£¨í”„ ë°©ì?)?˜ì—¬ nowStepId ?„ì¹˜ ê³„ì‚°
+        Set<Long> visited = new HashSet<>();
+        ScenarioStep cur = start;
+        int total = 0;
+        Integer foundIdx = null;
+
+        while (cur != null && !visited.contains(cur.getId())) {
+            visited.add(cur.getId());
+            if (cur.getId().equals(nowStepId)) {
+                foundIdx = total; // 0-based
+            }
+            total++;
+            cur = (cur.getNextStep() != null) ? byId.get(cur.getNextStep().getId()) : null;
+        }
+
+        // 4) ì²´ì¸???¬í•¨?˜ì? ?Šì? ê²½ìš°: id ?¤ë¦„ì°¨ìˆœ ?€ì²?ê³„ì‚°
+        if (foundIdx == null) {
+            List<Long> ordered = byId.keySet().stream().sorted().toList();
+            int pos = ordered.indexOf(nowStepId);
+            if (pos < 0) {
+                throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "?„ì¬ ?¤í… IDê°€ ?œë‚˜ë¦¬ì˜¤???¤í… ëª©ë¡??ì¡´ì¬?˜ì? ?ŠìŠµ?ˆë‹¤. stepId=" + nowStepId);
+            }
+            total = ordered.size();
+            foundIdx = pos;
+        }
+
+        // 5) ?¼ì„¼???°ì¶œ ë°?0~100 ë²”ìœ„
+        double pct = ((foundIdx + 1) * 100.0) / Math.max(total, 1);
+        return Math.min(100.0, Math.max(0.0, pct));
+    }
+
+    private ProgressResumeResDto mapStep(ScenarioStep step) {
+        try {
+            JsonNode contentNode = objectMapper.readTree(step.getContent());
+            return new ProgressResumeResDto(
+                    step.getScenario().getId(),
+                    step.getId(),
+                    step.getType(),
+                    step.getQuiz() != null ? step.getQuiz().getId() : null,
+                    contentNode
+            );
+        } catch (JsonProcessingException e) {
+            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "?¤í… content JSON ?Œì‹± ?¤íŒ¨. stepId=" + step.getId());
+        }
+    }
+
+    private QuizResDto mapQuiz(Quiz quiz) {
+        try {
+            var listType = TypeFactory.defaultInstance()
+                    .constructCollectionType(List.class, String.class);
+            List<String> opts = objectMapper.readValue(quiz.getOptions(), listType);
+            return new QuizResDto(quiz.getId(), quiz.getQuestion(), opts);
+        } catch (JsonProcessingException e) {
+            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "?´ì¦ˆ options ?Œì‹± ?¤íŒ¨. quizId=" + quiz.getId());
+        }
+    }
+}
+

@@ -92,6 +92,7 @@ class ScenarioProgressServiceTest {
         when(progressRepository.findByUserAndScenario(user, scenario)).thenReturn(Optional.empty());
 
         when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of(s1, s2));
+        when(stepRepository.findStartStepOrFail(1L)).thenReturn(s1);
 
         // when
         AdvanceResDto res = service.advance(user, 1L, 101L, null);
@@ -182,4 +183,3 @@ class ScenarioProgressServiceTest {
         assertEquals(ErrorCode.ENTITY_NOT_FOUND, ex.getErrorCode());
     }
 }
-

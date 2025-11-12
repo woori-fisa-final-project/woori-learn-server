@@ -8,11 +8,14 @@ import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.scenario.dto.ScenarioDocDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ScenarioDocStepDto;
 import dev.woori.wooriLearn.domain.scenario.entity.Scenario;
+import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioStepRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +32,7 @@ public class ScenarioDocService {
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "시나리오 없음: " + scenarioId));
 
         // 2) 모든 스텝 조회
-        var steps = stepRepository.findByScenarioIdWithNextStep(scenarioId);
+        List<ScenarioStep> steps = stepRepository.findByScenarioIdWithNextStep(scenarioId);
         if (steps.isEmpty()) {
             throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "스텝이 비어있습니다. scenarioId=" + scenarioId);
         }
@@ -38,7 +41,7 @@ public class ScenarioDocService {
         Long startId = stepRepository.findStartStepOrFail(scenarioId).getId();
 
         // 4) 문서 스텝 DTO 변환
-        var docSteps = steps.stream().map(s -> {
+        List<ScenarioDocStepDto> docSteps = steps.stream().map(s -> {
             try {
                 JsonNode content = objectMapper.readTree(s.getContent());
                 return new ScenarioDocStepDto(

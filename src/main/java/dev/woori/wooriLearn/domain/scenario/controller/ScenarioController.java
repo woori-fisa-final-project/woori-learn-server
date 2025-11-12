@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -39,12 +40,12 @@ public class ScenarioController {
      * ex) GET /users/{userId}/scenarios/{scenarioId}
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated() and (#userId == authentication.name or hasRole('ADMIN'))")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BaseResponse<?>> resume(
-            @PathVariable String userId,
+            @AuthenticationPrincipal String username,
             @PathVariable("scenarioId") Long scenarioId
     ) {
-        Users me = userService.getByUserIdOrThrow(userId);
+        Users me = userService.getByUserIdOrThrow(username);
         return ApiResponse.success(SuccessCode.OK, progressService.resume(me, scenarioId));
     }
 
@@ -53,13 +54,13 @@ public class ScenarioController {
      * ex) PUT /users/{userId}/scenarios/{scenarioId}/progress
      */
     @PutMapping(value = "/progress", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("isAuthenticated() and (#userId == authentication.name or hasRole('ADMIN'))")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BaseResponse<?>> saveCheckpoint(
-            @PathVariable String userId,
+            @AuthenticationPrincipal String username,
             @PathVariable("scenarioId") Long scenarioId,
             @Valid @RequestBody ProgressSaveReqDto req
     ) {
-        Users me = userService.getByUserIdOrThrow(userId);
+        Users me = userService.getByUserIdOrThrow(username);
         return ApiResponse.success(SuccessCode.OK,
                 progressService.saveCheckpoint(me, scenarioId, req.nowStepId()));
     }
@@ -73,13 +74,13 @@ public class ScenarioController {
      *   - { "nowStepId": 103, "answer": 2 } (정답 시 ADVANCED)
      */
     @PostMapping(value = "/next-step", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("isAuthenticated() and (#userId == authentication.name or hasRole('ADMIN'))")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BaseResponse<?>> nextStep(
-            @PathVariable String userId,
+            @AuthenticationPrincipal String username,
             @PathVariable("scenarioId") Long scenarioId,
             @Valid @RequestBody AdvanceReqDto req
     ) {
-        Users me = userService.getByUserIdOrThrow(userId);
+        Users me = userService.getByUserIdOrThrow(username);
         return ApiResponse.success(SuccessCode.OK,
                 progressService.advance(me, scenarioId, req.nowStepId(), req.answer()));
     }
