@@ -41,4 +41,11 @@ public class UserService {
         userRepository.save(user);
         // TODO: 회원가입 이후 기본 포인트를 지급한다 하면 포인트 내역 추가 로직 필요
     }
+
+    public Users getByUserIdOrThrow(String userId) {
+        return userRepository.findByUserId(userId)
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다: " + userId
+                ));
+    }
 }
