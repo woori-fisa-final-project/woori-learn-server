@@ -1,7 +1,6 @@
 package dev.woori.wooriLearn.domain.auth.entity;
 
 import dev.woori.wooriLearn.config.BaseEntity;
-import dev.woori.wooriLearn.domain.user.entity.Role;
 import jakarta.persistence.*;
 import lombok.*;
 

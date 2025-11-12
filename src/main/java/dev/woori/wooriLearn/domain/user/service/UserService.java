@@ -5,7 +5,7 @@ import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
 import dev.woori.wooriLearn.domain.user.dto.SignupReqDto;
-import dev.woori.wooriLearn.domain.user.entity.Role;
+import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

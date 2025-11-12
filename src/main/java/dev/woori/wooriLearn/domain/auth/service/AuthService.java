@@ -10,7 +10,7 @@ import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
 import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
 import dev.woori.wooriLearn.domain.auth.port.RefreshTokenPort;
-import dev.woori.wooriLearn.domain.user.entity.Role;
+import dev.woori.wooriLearn.domain.auth.entity.Role;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;

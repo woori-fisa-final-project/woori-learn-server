@@ -1,7 +1,7 @@
 package dev.woori.wooriLearn.config.filter;
 
 import dev.woori.wooriLearn.config.jwt.JwtValidator;
-import dev.woori.wooriLearn.domain.user.entity.Role;
+import dev.woori.wooriLearn.domain.auth.entity.Role;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
