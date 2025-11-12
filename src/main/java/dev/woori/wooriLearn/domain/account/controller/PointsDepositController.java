@@ -24,6 +24,6 @@ public class PointsDepositController {
             @AuthenticationPrincipal String username,
             @RequestBody PointsDepositRequestDto dto
     ) {
-        return ApiResponse.success(SuccessCode.CREATED, pointsDepositService.depositPoints(username, dto));
+        return ApiResponse.success(SuccessCode.OK, pointsDepositService.depositPoints(username, dto));
     }
 }

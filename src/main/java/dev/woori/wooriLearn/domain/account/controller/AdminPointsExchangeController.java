@@ -31,14 +31,16 @@ public class AdminPointsExchangeController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BaseResponse<?>> getAll(@Valid @ModelAttribute PointsHistorySearchRequestDto request) {
-        PageResponse<PointsExchangeResponseDto> res = pointsExchangeService.getAllHistory(
+        PageResponse<PointsExchangeResponseDto> res = pointsExchangeService.getHistoryPage(
+                null,
+                request.userId(),
                 request.startDate(),
                 request.endDate(),
+                request.period(),
                 request.status(),
                 request.sort(),
                 request.page(),
-                request.size(),
-                request.userId()
+                request.size()
         );
         return ApiResponse.success(SuccessCode.OK, res);
     }
