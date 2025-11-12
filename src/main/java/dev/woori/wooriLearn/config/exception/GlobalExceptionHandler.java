@@ -3,6 +3,7 @@ package dev.woori.wooriLearn.config.exception;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -29,6 +30,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse<?>> handleValidationException(MethodArgumentNotValidException ex, HttpServletRequest request) {
         String errorMessage = ex.getBindingResult().getAllErrors().get(0).getDefaultMessage();
         log.warn("[ValidationException] {} {} - {}", request.getMethod(), request.getRequestURI(), errorMessage);
+        return ApiResponse.failure(ErrorCode.INVALID_REQUEST, errorMessage);
+    }
+
+    // 메소드 파라미터 유효성 검증 실패 시 (@Positive, @NotNull 등)
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<BaseResponse<?>> handleConstraintViolationException(ConstraintViolationException ex, HttpServletRequest request) {
+        String errorMessage = ex.getConstraintViolations().iterator().next().getMessage();
+        log.warn("[ConstraintViolationException] {} {} - {}", request.getMethod(), request.getRequestURI(), errorMessage);
         return ApiResponse.failure(ErrorCode.INVALID_REQUEST, errorMessage);
     }
 
