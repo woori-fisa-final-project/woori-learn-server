@@ -90,7 +90,7 @@ public class ScenarioProgressService {
         }
 
         ScenarioProgressList progress = progressRepository.findByUserAndScenario(user, scenario)
-                .orElse(ScenarioProgressList.builder()
+                .orElseGet(() -> ScenarioProgressList.builder()
                         .user(user)
                         .scenario(scenario)
                         .step(current)
@@ -199,21 +199,13 @@ public class ScenarioProgressService {
         }
 
         // 2) 시작 스텝 추론: 어떤 스텝의 nextStep으로도 참조되지 않은 스텝
-        Set<Long> nextIds = new HashSet<>();
-        for (ScenarioStep s : steps) {
-            if (s.getNextStep() != null) {
-                nextIds.add(s.getNextStep().getId());
-            }
+        Long startStepId = stepRepository.findStartStepOrFail(scenarioId).getId();
+        ScenarioStep start = byId.get(startStepId);
+
+        if (start == null) {
+            // 로드된 스텝 목록에 시작 스텝이 없는 예외적인 상황
+            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenarioId);
         }
-        ScenarioStep start = steps.stream()
-                .filter(s -> !nextIds.contains(s.getId()))
-                .min(Comparator.comparingLong(ScenarioStep::getId)) // 동률시 id가 작은 것
-                .orElseGet(() ->
-                        // 모든 스텝이 참조된 경우(비정상 체인)에는 최소 id 폴백
-                        steps.stream().min(Comparator.comparingLong(ScenarioStep::getId))
-                                .orElseThrow(() -> new CommonException(
-                                        ErrorCode.INTERNAL_SERVER_ERROR, "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenarioId))
-                );
 
         // 3) start부터 체인 순회(루프 방지)하여 nowStepId 위치 계산
         Set<Long> visited = new HashSet<>();

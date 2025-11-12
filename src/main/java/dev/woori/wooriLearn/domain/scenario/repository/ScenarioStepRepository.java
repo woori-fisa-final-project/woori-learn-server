@@ -15,7 +15,6 @@ import java.util.Optional;
  * - nextStep이 LAZY 로딩인 점을 고려하여 N+1을 회피하기 위한 JOIN FETCH 메서드 제공
  */
 public interface ScenarioStepRepository extends JpaRepository<ScenarioStep, Long> {
-    List<ScenarioStep> findByScenarioId(Long scenarioId);
     Optional<ScenarioStep> findFirstByScenarioIdOrderByIdAsc(Long scenarioId);
 
     /**

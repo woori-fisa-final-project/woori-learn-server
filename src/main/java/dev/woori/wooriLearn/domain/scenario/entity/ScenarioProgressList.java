@@ -35,14 +35,14 @@ public class ScenarioProgressList extends BaseEntity {
 
     public void moveToStep(ScenarioStep nextStep) {
         if (nextStep == null) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "nextStep가 null입니다.");
+            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "nextStep가 null입니다.");
         }
         this.step = nextStep;
     }
 
     public void moveToStep(ScenarioStep nextStep, double newRate) {
         if (nextStep == null) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "nextStep가 null입니다.");
+            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "nextStep가 null입니다.");
         }
         if (newRate < 0.0 || newRate > 100.0) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "progressRate 범위(0~100) 위반");
