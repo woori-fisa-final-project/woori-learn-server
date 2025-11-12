@@ -30,7 +30,21 @@ public class Users extends BaseEntity {
     @Builder.Default
     private Integer points = 0;
 
+    @Column(nullable = false)
+    private boolean accountNonExpired = true;
 
+    @Column(nullable = false)
+    private boolean accountNonLocked = true;
+
+    @Column(nullable = false)
+    private boolean credentialsNonExpired = true;
+
+    @Column(nullable = false)
+    private boolean enabled = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role;
 
     public void addPoints(Integer amount) {
         if (amount == null || amount <= 0) {
@@ -48,21 +62,4 @@ public class Users extends BaseEntity {
         }
         this.points -= amount;
     }
-
-    @Column(nullable = false)
-    private boolean accountNonExpired = true;
-
-    @Column(nullable = false)
-    private boolean accountNonLocked = true;
-
-    @Column(nullable = false)
-    private boolean credentialsNonExpired = true;
-
-    @Column(nullable = false)
-    private boolean enabled = true;
-
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role;
 }

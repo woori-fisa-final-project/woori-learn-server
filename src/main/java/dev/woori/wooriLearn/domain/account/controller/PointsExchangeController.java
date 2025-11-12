@@ -38,22 +38,8 @@ public class PointsExchangeController {
             @AuthenticationPrincipal String username,
             @ModelAttribute PointsHistorySearchRequestDto request
     ) {
-
-        PageResponse<PointsExchangeResponseDto> res = pointsExchangeService.getHistoryPage(
-                username,
-                null,
-                request.startDate(),
-                request.endDate(),
-                request.period(),
-                request.status(),
-                request.sort(),
-                request.page(),
-                request.size()
-        );
-
+        PageResponse<PointsExchangeResponseDto> res = pointsExchangeService.getUserHistoryPage(username, request);
         return ApiResponse.success(SuccessCode.OK, res);
     }
-
-
 
 }
