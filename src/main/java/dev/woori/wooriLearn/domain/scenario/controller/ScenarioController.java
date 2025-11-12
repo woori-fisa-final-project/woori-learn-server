@@ -1,20 +1,17 @@
 package dev.woori.wooriLearn.domain.scenario.controller;
 
-import dev.woori.wooriLearn.config.exception.CommonException;
-import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.scenario.dto.*;
 import dev.woori.wooriLearn.domain.scenario.service.ScenarioProgressService;
 import dev.woori.wooriLearn.domain.user.entity.Users;
-import dev.woori.wooriLearn.domain.user.repository.UserRepository;
+import dev.woori.wooriLearn.domain.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -35,7 +32,7 @@ import org.springframework.web.bind.annotation.*;
 public class ScenarioController {
 
     private final ScenarioProgressService progressService;
-    private final UserRepository userRepository;
+    private final UserService userService;
 
     /**
      * 사용자의 시나리오 진행 상태 조회(재개)
@@ -44,27 +41,25 @@ public class ScenarioController {
     @GetMapping
     @PreAuthorize("isAuthenticated() and (#userId == authentication.name or hasRole('ADMIN'))")
     public ResponseEntity<BaseResponse<?>> resume(
-            @AuthenticationPrincipal String username,
             @PathVariable String userId,
             @PathVariable("scenarioId") Long scenarioId
     ) {
-        Users me = findUserByUserId(userId);
+        Users me = userService.getByUserIdOrThrow(userId);
         return ApiResponse.success(SuccessCode.OK, progressService.resume(me, scenarioId));
     }
 
     /**
      * 시나리오 진행률 저장
-     * ex) POST /users/{userId}/scenarios/{scenarioId}/progress
+     * ex) PUT /users/{userId}/scenarios/{scenarioId}/progress
      */
     @PutMapping(value = "/progress", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("isAuthenticated() and (#userId == authentication.name or hasRole('ADMIN'))")
     public ResponseEntity<BaseResponse<?>> saveCheckpoint(
-            @AuthenticationPrincipal String username,
             @PathVariable String userId,
             @PathVariable("scenarioId") Long scenarioId,
             @Valid @RequestBody ProgressSaveReqDto req
     ) {
-        Users me = findUserByUserId(userId);
+        Users me = userService.getByUserIdOrThrow(userId);
         return ApiResponse.success(SuccessCode.OK,
                 progressService.saveCheckpoint(me, scenarioId, req.nowStepId()));
     }
@@ -80,19 +75,12 @@ public class ScenarioController {
     @PostMapping(value = "/next-step", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("isAuthenticated() and (#userId == authentication.name or hasRole('ADMIN'))")
     public ResponseEntity<BaseResponse<?>> nextStep(
-            @AuthenticationPrincipal String username,
             @PathVariable String userId,
             @PathVariable("scenarioId") Long scenarioId,
             @Valid @RequestBody AdvanceReqDto req
     ) {
-        Users me = findUserByUserId(userId);
+        Users me = userService.getByUserIdOrThrow(userId);
         return ApiResponse.success(SuccessCode.OK,
                 progressService.advance(me, scenarioId, req.nowStepId(), req.answer()));
-    }
-
-    private Users findUserByUserId(String userId) {
-        return userRepository.findByUserId(userId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
-                        "사용자를 찾을 수 없습니다: " + userId));
     }
 }

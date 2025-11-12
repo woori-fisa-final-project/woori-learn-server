@@ -26,11 +26,14 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class ScenarioDocServiceTest {
 
-    @Mock private ScenarioRepository scenarioRepository;
-    @Mock private ScenarioStepRepository stepRepository;
+    @Mock
+    private ScenarioRepository scenarioRepository;
+    @Mock
+    private ScenarioStepRepository stepRepository;
     private ObjectMapper objectMapper;
 
-    @InjectMocks private ScenarioDocService service;
+    @InjectMocks
+    private ScenarioDocService service;
 
     @BeforeEach
     void setUp() {
