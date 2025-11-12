@@ -1,13 +1,14 @@
 package dev.woori.wooriLearn.domain.scenario.controller;
 
+import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.domain.scenario.service.ScenarioDocService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,11 +35,14 @@ public class ScenarioDocController {
      * ex) GET /scenarios/1/doc
      */
     @GetMapping("/doc")
-    @PreAuthorize("permitAll()")
-    public ResponseEntity<BaseResponse<?>> getDoc(@PathVariable Long scenarioId) {
-        return ResponseEntity.ok()
-                // 정적 리소스에 가까우므로 캐시 헤더를 통해 응답 재사용성 증대
-                .cacheControl(CacheControl.maxAge(Duration.ofMinutes(10)))
-                .body(BaseResponse.of(SuccessCode.OK, docService.getScenarioDoc(scenarioId)));
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<BaseResponse<?>> getDoc(
+            @AuthenticationPrincipal String username,
+            @PathVariable Long scenarioId) {
+        return ApiResponse.successWithCache(
+                SuccessCode.OK,
+                docService.getScenarioDoc(scenarioId),
+                Duration.ofMinutes(60)
+        );
     }
 }
