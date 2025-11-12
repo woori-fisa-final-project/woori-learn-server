@@ -45,42 +45,4 @@ public class JwtValidator {
             throw new BadCredentialsException("유효하지 않은 토큰입니다.", e);
         }
     }
-
-    public String getUsername(String token) {
-        return parseClaims(token).getSubject();
-    }
-
-    public Role getRole(String token) {
-        String role = parseClaims(token).get("role", String.class);
-        try {
-            return Role.valueOf(role);
-        } catch (IllegalArgumentException e) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST);
-        }
-    }
-
-    public boolean validateToken(String token) {
-        try {
-            parseClaims(token);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private Claims parseClaims(String token) {
-        try {
-            return Jwts.parserBuilder()
-                    .setSigningKey(secretKey)
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-        } catch (ExpiredJwtException e) {
-            log.warn("[JwtUtil] Token expired: {} - {}", e.getClass().getSimpleName(), e.getMessage());
-            throw new CommonException(ErrorCode.TOKEN_EXPIRED);
-        } catch (JwtException | IllegalArgumentException e) {
-            log.warn("[JwtUtil] Token validation failed: {} - {}", e.getClass().getSimpleName(), e.getMessage());
-            throw new CommonException(ErrorCode.INVALID_REQUEST);
-        }
-    }
 }
