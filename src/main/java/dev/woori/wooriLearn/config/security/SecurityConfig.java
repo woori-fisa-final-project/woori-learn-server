@@ -36,9 +36,9 @@ public class SecurityConfig {
             "/admin/*"
     );
 
-    // 개발 모드에서는 인증 적용 x
+    // 개발 모드와 테스트 모드에서는 인증 적용 x
     @Bean
-    @Profile("dev")
+    @Profile({"dev", "test"})
     public SecurityFilterChain devFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
@@ -47,7 +47,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Profile("!dev")
+    @Profile("!dev & !test")
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable) // API 테스트용, 실제 서비스면 토큰 기반 CSRF 설정 필요
