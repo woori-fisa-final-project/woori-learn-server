@@ -29,7 +29,7 @@ public class ScenarioDocService {
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "시나리오 없음: " + scenarioId));
 
         // 2) 모든 스텝 조회
-        var steps = stepRepository.findByScenarioId(scenarioId);
+        var steps = stepRepository.findByScenarioIdWithNextStep(scenarioId);
         if (steps.isEmpty()) {
             throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "스텝이 비어있습니다. scenarioId=" + scenarioId);
         }
