@@ -2,7 +2,7 @@ package dev.woori.wooriLearn.jwtTest;
 
 import dev.woori.wooriLearn.domain.auth.jwt.JwtIssuer;
 import dev.woori.wooriLearn.config.jwt.JwtValidator;
-import dev.woori.wooriLearn.domain.user.entity.Role;
+import dev.woori.wooriLearn.domain.auth.entity.Role;
 import io.jsonwebtoken.ExpiredJwtException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
