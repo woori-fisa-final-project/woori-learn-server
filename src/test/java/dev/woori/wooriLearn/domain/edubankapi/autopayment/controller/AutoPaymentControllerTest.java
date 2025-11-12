@@ -5,7 +5,10 @@ import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentCreateRequest;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentResponse;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment.AutoPaymentStatus;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.service.AutoPaymentService;
+import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +27,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -281,14 +285,33 @@ class AutoPaymentControllerTest {
         Long autoPaymentId = 1L;
         Long educationalAccountId = 1L;
 
-        // void 메소드는 doNothing() 사용
-        doNothing().when(autoPaymentService)
-                .cancelAutoPayment(autoPaymentId, educationalAccountId);
+        // Mock AutoPayment 객체 생성 및 모든 필요한 메소드 설정
+        AutoPayment mockAutoPayment = mock(AutoPayment.class);
+        EducationalAccount mockAccount = mock(EducationalAccount.class);
+        given(mockAccount.getId()).willReturn(educationalAccountId);
+        given(mockAutoPayment.getEducationalAccount()).willReturn(mockAccount);
+        given(mockAutoPayment.getId()).willReturn(autoPaymentId);
+        given(mockAutoPayment.getDepositNumber()).willReturn("1234567890");
+        given(mockAutoPayment.getDepositBankCode()).willReturn("001");
+        given(mockAutoPayment.getAmount()).willReturn(50000);
+        given(mockAutoPayment.getCounterpartyName()).willReturn("김철수");
+        given(mockAutoPayment.getDisplayName()).willReturn("용돈");
+        given(mockAutoPayment.getTransferCycle()).willReturn(1);
+        given(mockAutoPayment.getDesignatedDate()).willReturn(15);
+        given(mockAutoPayment.getStartDate()).willReturn(LocalDate.now());
+        given(mockAutoPayment.getExpirationDate()).willReturn(LocalDate.now().plusYears(1));
+        given(mockAutoPayment.getProcessingStatus()).willReturn(AutoPaymentStatus.CANCELLED);
+
+        given(autoPaymentService.cancelAutoPayment(autoPaymentId, educationalAccountId))
+                .willReturn(mockAutoPayment);
 
         // when & then
         mockMvc.perform(put("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
                         .param("educationalAccountId", educationalAccountId.toString()))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.id").value(autoPaymentId))
+                .andExpect(jsonPath("$.data.processingStatus").value("CANCELLED"));
     }
 
     @Test
