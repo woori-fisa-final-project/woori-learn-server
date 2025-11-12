@@ -2,6 +2,7 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.5.7'
 	id 'io.spring.dependency-management' version '1.1.7'
+    id 'jacoco'
 }
 
 group = 'dev.woori'
@@ -46,9 +47,64 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+
+    runtimeOnly 'com.h2database:h2'
 
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+jacoco {
+    toolVersion = "0.8.11"
+}
+
+jacocoTestReport {
+    dependsOn test  // 테스트 실행 후 리포트 생성
+
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+
+    // 리포트에서 제외할 파일들
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    '**/config/**',           // 설정 파일
+                    '**/dto/*Response*',      // Response DTO만 제외
+                    '**/entity/**',           // Entity
+                    '**/exception/**',        // Exception
+                    '**/*Application.class',  // 메인 클래스
+                    '**/response/**'          // 공통 응답
+            ])
+        }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.80  // 80% 이상
+            }
+        }
+
+        rule {
+            element = 'METHOD'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.70  // 70% 이상
+            }
+        }
+    }
 }

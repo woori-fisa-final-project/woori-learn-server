@@ -30,8 +30,8 @@ public class SecurityConfig {
 
     // 인증 없이도 접근 가능한 엔드포인트 목록
     private static final List<String> whiteList = List.of(
-            "/auth/login",
-            "/auth/signup"
+            "/auth/login", // 로그인
+            "/auth/signup" // 회원가입
     );
 
     // 관리자만 접근 가능한 엔드포인트 목록
@@ -39,9 +39,9 @@ public class SecurityConfig {
             "/admin/**"
     );
 
-    /**  dev 환경은 인증 비활성화 */
+    // 개발 모드와 테스트 모드에서는 인증 적용 x
     @Bean
-    @Profile("dev")
+    @Profile({"dev", "test"})
     public SecurityFilterChain devFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
@@ -49,19 +49,18 @@ public class SecurityConfig {
                 .build();
     }
 
-    /**  운영/기타 환경 - JWT 보안 적용 */
     @Bean
-    @Profile("!dev")
+    @Profile("!dev & !test")
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(AbstractHttpConfigurer::disable) // API 테스트용, 실제 서비스면 토큰 기반 CSRF 설정 필요
+                .sessionManagement(sessionManagementConfigurer ->
+                        sessionManagementConfigurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 사용 안함
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(whiteList.toArray(new String[0])).permitAll()
                         .requestMatchers(adminList.toArray(new String[0])).hasRole("ADMIN")
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated()) // 나머지는 JWT 필요
                 .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
