@@ -285,25 +285,23 @@ class AutoPaymentControllerTest {
         Long autoPaymentId = 1L;
         Long educationalAccountId = 1L;
 
-        // Mock AutoPayment 객체 생성 및 모든 필요한 메소드 설정
-        AutoPayment mockAutoPayment = mock(AutoPayment.class);
-        EducationalAccount mockAccount = mock(EducationalAccount.class);
-        given(mockAccount.getId()).willReturn(educationalAccountId);
-        given(mockAutoPayment.getEducationalAccount()).willReturn(mockAccount);
-        given(mockAutoPayment.getId()).willReturn(autoPaymentId);
-        given(mockAutoPayment.getDepositNumber()).willReturn("1234567890");
-        given(mockAutoPayment.getDepositBankCode()).willReturn("001");
-        given(mockAutoPayment.getAmount()).willReturn(50000);
-        given(mockAutoPayment.getCounterpartyName()).willReturn("김철수");
-        given(mockAutoPayment.getDisplayName()).willReturn("용돈");
-        given(mockAutoPayment.getTransferCycle()).willReturn(1);
-        given(mockAutoPayment.getDesignatedDate()).willReturn(15);
-        given(mockAutoPayment.getStartDate()).willReturn(LocalDate.now());
-        given(mockAutoPayment.getExpirationDate()).willReturn(LocalDate.now().plusYears(1));
-        given(mockAutoPayment.getProcessingStatus()).willReturn(AutoPaymentStatus.CANCELLED);
-
+        EducationalAccount account = EducationalAccount.builder().id(educationalAccountId).build();
+        AutoPayment autoPaymentToReturn = AutoPayment.builder()
+                .id(autoPaymentId)
+                .educationalAccount(account)
+                .depositNumber("1234567890")
+                .depositBankCode("001")
+                .amount(50000)
+                .counterpartyName("김철수")
+                .displayName("용돈")
+                .transferCycle(1)
+                .designatedDate(15)
+                .startDate(LocalDate.now())
+                .expirationDate(LocalDate.now().plusYears(1))
+                .processingStatus(AutoPaymentStatus.CANCELLED)
+                .build();
         given(autoPaymentService.cancelAutoPayment(autoPaymentId, educationalAccountId))
-                .willReturn(mockAutoPayment);
+                .willReturn(autoPaymentToReturn);
 
         // when & then
         mockMvc.perform(put("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
