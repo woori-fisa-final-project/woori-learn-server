@@ -46,7 +46,7 @@ public class PointsExchangeService {
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
         if (dto.exchangeAmount() == null || dto.exchangeAmount() <= 0) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "교환 요청 금액은 0보다 커야 합니다.");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "교환 요청 금액은 0보다 커야 합니다");
         }
         if (user.getPoints() < dto.exchangeAmount()) {
             throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족하여 출금 요청을 처리할 수 없습니다.");
@@ -73,7 +73,7 @@ public class PointsExchangeService {
                 .exchangeAmount(history.getAmount())
                 .status(history.getStatus())
                 .requestDate(history.getCreatedAt())
-                .message("출금 요청이 정상적으로 접수되었습니다.")
+                .message("출금 요청이 정상적으로 접수되었습니다")
                 .build();
     }
 
@@ -123,34 +123,47 @@ public class PointsExchangeService {
                 ).toList();
     }
 
-    // 사용자 조회(관리자와 동일하게 페이징)
-    public PageResponse<PointsExchangeResponseDto> getUserHistory(
-            String username,
+    // 단일 페이지 이력 조회(사용자/관리자 통합)
+    public PageResponse<PointsExchangeResponseDto> getHistoryPage(
+            String username,          // 사용자 요청 시 사용 (nullable)
+            Long userId,              // 관리자 요청 시 필터링용 (nullable, null이면 전체)
             String startDate,
             String endDate,
-            SearchPeriod period,
+            SearchPeriod period,      // 사용자 요청 시 기간 검색용 (nullable)
             HistoryStatus status,
             SortDirection sort,
             int page,
             int size
     ) {
-        Long userId = userRepository.findByUserId(username)
-                .map(Users::getId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
-
         if (page <= 0) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "page는 1 이상이어야 합니다.");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "page는 1 이상이어야 합니다");
         }
         if (size <= 0 || size > 200) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "size는 1~200 사이여야 합니다.");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "size는 1~200 이어야 합니다");
         }
 
-        LocalDateTime start = resolveStartDate(startDate, period);
-        LocalDateTime end = resolveEndDate(endDate, period);
+        Long effectiveUserId = userId;
+        if (effectiveUserId == null && username != null) {
+            effectiveUserId = userRepository.findByUserId(username)
+                    .map(Users::getId)
+                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
+        }
+
+        boolean noExplicitDates = (startDate == null || startDate.isEmpty()) && (endDate == null || endDate.isEmpty());
+        LocalDateTime start;
+        LocalDateTime end;
+        if (period != null && period != SearchPeriod.ALL && noExplicitDates) {
+            start = resolveStartDate(null, period);
+            end = resolveEndDate(null, period);
+        } else {
+            start = parseStartDate(startDate);
+            end = parseEndDate(endDate);
+        }
+
         PointsStatus statusEnum = convertStatus(status);
 
         Page<PointsHistory> pageResult = pointsHistoryRepository.findAllByFilters(
-                userId,
+                effectiveUserId,
                 PointsHistoryType.WITHDRAW,
                 statusEnum,
                 start,
@@ -180,61 +193,6 @@ public class PointsExchangeService {
         );
     }
 
-    // 관리자 전체 조회 (페이징)
-    public PageResponse<PointsExchangeResponseDto> getAllHistory(
-            String startDate,
-            String endDate,
-            HistoryStatus status,
-            SortDirection sort,
-            int page,
-            int size,
-            Long userId
-    ) {
-        int pageNum = page;
-        int pageSize = size;
-        if (pageNum <= 0) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "page는 1 이상이어야 합니다.");
-        }
-        if (pageSize <= 0 || pageSize > 200) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "size는 1~200 사이여야 합니다.");
-        }
-
-        LocalDateTime start = parseStartDate(startDate);
-        LocalDateTime end = parseEndDate(endDate);
-        PointsStatus statusEnum = convertStatus(status);
-
-        Page<PointsHistory> pageResult = pointsHistoryRepository.findAllByFilters(
-                userId,
-                PointsHistoryType.WITHDRAW,
-                statusEnum,
-                start,
-                end,
-                PageRequest.of(page - 1, pageSize, sort.toSort("createdAt"))
-        );
-
-        List<PointsExchangeResponseDto> items = pageResult.getContent().stream()
-                .map(h -> PointsExchangeResponseDto.builder()
-                        .requestId(h.getId())
-                        .userId(h.getUser().getId())
-                        .exchangeAmount(h.getAmount())
-                        .status(h.getStatus())
-                        .requestDate(h.getCreatedAt())
-                        .processedDate(h.getProcessedAt())
-                        .message(h.getStatus().message())
-                        .build())
-                .toList();
-
-        return new PageResponse<>(
-                items,
-                page,
-                pageSize,
-                pageResult.getTotalElements(),
-                pageResult.getTotalPages(),
-                pageResult.hasNext()
-        );
-    }
-
-    // 출금 승인: Users → History 순서로 락
     @Transactional
     public PointsExchangeResponseDto approveExchange(Long requestId) {
         // 비잠금으로 우선 조회
@@ -243,10 +201,10 @@ public class PointsExchangeService {
 
         // Early check: not APPLY -> CONFLICT (avoid extra locks)
         if (history.getStatus() != PointsStatus.APPLY) {
-            throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다.");
+            throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다");
         }
 
-        // Users 먼저 잠금 (lambda 캡처 변수는 final/유사-final 이어야 하므로 userId 보관)
+        // Users 먼저 잠금 (lambda 캡처 변수는 final/사- final 이슈로 userId 보관)
         Users user;
         try {
         Long userId = history.getUser().getId();
@@ -258,7 +216,7 @@ public class PointsExchangeService {
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 요청을 찾을 수 없습니다. requestId=" + requestId));
 
         if (history.getStatus() != PointsStatus.APPLY) {
-            throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다.");
+            throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다");
         }
 
         int amount = history.getAmount();
@@ -267,14 +225,14 @@ public class PointsExchangeService {
         try {
             user.subtractPoints(amount);
             history.markSuccess(processedAt);
-            message = "정상적으로 처리되었습니다.";
+            message = "정상적으로 처리되었습니다";
         } catch (CommonException e) {
             if (e.getErrorCode() == ErrorCode.CONFLICT) {
                 history.markFailed(PointsFailReason.INSUFFICIENT_POINTS, processedAt);
                 message = "포인트가 부족하여 실패했습니다.";
             } else {
                 history.markFailed(PointsFailReason.PROCESSING_ERROR, processedAt);
-                message = "요청 처리 중 오류가 발생하여 실패했습니다.";
+                message = "요청 처리 도중 오류가 발생하여 실패했습니다.";
             }
         }
 
@@ -292,7 +250,7 @@ public class PointsExchangeService {
                  | org.springframework.dao.PessimisticLockingFailureException e) {
             throw new CommonException(
                     ErrorCode.SERVICE_UNAVAILABLE,
-                    "처리가 지연되고 있습니다. 잠시 후 다시 시도해 주세요.");
+                    "처리가 지연되었습니다. 잠시 후 다시 시도해주세요");
         }
     }
 
@@ -302,7 +260,7 @@ public class PointsExchangeService {
         try {
             return LocalDate.parse(date).atStartOfDay();
         } catch (DateTimeParseException e) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "startDate 형식을 잘못 입력했습니다. 예: 2025-11-01");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "startDate 형식을 잘못 입력했습니다. 예) 2025-11-01");
         }
     }
 
@@ -311,7 +269,7 @@ public class PointsExchangeService {
         if (parsed != null) return parsed;
         if (period == null || period == SearchPeriod.ALL) return null;
         LocalDateTime now = LocalDateTime.now(clock).withNano(0);
-        // 기간 기준 시작 시각은 00:00:00로 맞춤
+        // 기간 기준 시작 시각을 00:00:00으로 맞춤
         return switch (period) {
             case WEEK -> now.minusWeeks(1).withHour(0).withMinute(0).withSecond(0);
             case MONTH -> now.minusMonths(1).withHour(0).withMinute(0).withSecond(0);
@@ -333,7 +291,7 @@ public class PointsExchangeService {
         try {
             return LocalDate.parse(date).atTime(23, 59, 59);
         } catch (DateTimeParseException e) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "endDate 형식을 잘못 입력했습니다. 예: 2025-11-30");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "endDate 형식을 잘못 입력했습니다. 예) 2025-11-30");
         }
     }
 

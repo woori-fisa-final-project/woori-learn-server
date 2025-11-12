@@ -39,8 +39,9 @@ public class PointsExchangeController {
             @ModelAttribute PointsHistorySearchRequestDto request
     ) {
 
-        PageResponse<PointsExchangeResponseDto> res = pointsExchangeService.getUserHistory(
+        PageResponse<PointsExchangeResponseDto> res = pointsExchangeService.getHistoryPage(
                 username,
+                null,
                 request.startDate(),
                 request.endDate(),
                 request.period(),
