@@ -20,7 +20,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/educaccount/accounts")
+@RequestMapping("/education/accounts")
 @RequiredArgsConstructor
 public class EdubankapiAccountController {
 
