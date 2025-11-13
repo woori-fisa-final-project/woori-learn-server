@@ -83,7 +83,7 @@ public class AutoPayment {
     public boolean isCancelled() {
         return this.processingStatus == AutoPaymentStatus.CANCELLED;
     }
-  
+
     public static AutoPayment create(
             AutoPaymentCreateRequest request,
             EducationalAccount educationalAccount
