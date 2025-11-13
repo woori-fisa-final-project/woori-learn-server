@@ -41,6 +41,7 @@ public class UserService {
 
         Users user = Users.builder()
                 .authUser(authUser)
+                .userId(signupReqDto.userId())
                 .nickname(signupReqDto.nickname())
                 .points(0)
                 .build();

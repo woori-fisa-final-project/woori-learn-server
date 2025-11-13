@@ -1,7 +1,5 @@
 package dev.woori.wooriLearn.domain.account.service;
 
-import dev.woori.wooriLearn.common.HistoryStatus;
-import dev.woori.wooriLearn.common.SortDirection;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.config.response.PageResponse;
@@ -11,7 +9,7 @@ import dev.woori.wooriLearn.domain.account.dto.PointsHistorySearchRequestDto;
 import dev.woori.wooriLearn.domain.account.entity.*;
 import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
-import dev.woori.wooriLearn.domain.user.entity.Role;
+import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,10 +51,8 @@ class PointsExchangeServiceTest {
     private Users user(long id, int points) {
         return Users.builder()
                 .id(id)
-                .userId("user-" + id)
-                .password("pw")
+                .authUser(AuthUsers.builder().userId("userId").build())
                 .nickname("nick")
-                .role(Role.ROLE_USER)
                 .points(points)
                 .build();
     }
