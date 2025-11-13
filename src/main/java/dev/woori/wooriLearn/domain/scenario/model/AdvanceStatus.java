@@ -9,6 +9,9 @@ package dev.woori.wooriLearn.domain.scenario.model;
 public enum AdvanceStatus {
     QUIZ_REQUIRED,
     QUIZ_WRONG,
+    CHOICE_REQUIRED,
+    ADVANCED_FROZEN,
+    BAD_ENDING,
     ADVANCED,
     COMPLETED
 }
