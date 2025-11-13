@@ -21,7 +21,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/accounts")
+@RequestMapping("/education/accounts")
 @RequiredArgsConstructor
 public class EdubankapiAccountController {
 
