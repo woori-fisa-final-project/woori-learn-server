@@ -347,7 +347,7 @@ class AutoPaymentServiceTest {
         // given
         Users otherUser = Users.builder()
                 .id(2L)
-                .userId("otheruser")
+                .authUser(AuthUsers.builder().userId("otheruser").build())
                 .build();
 
         EducationalAccount otherAccount = EducationalAccount.builder()

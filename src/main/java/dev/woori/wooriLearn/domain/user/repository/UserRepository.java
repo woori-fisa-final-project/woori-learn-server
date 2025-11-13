@@ -12,8 +12,6 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<Users, Long> {
     Optional<Users> findByUserId(String userId);
 
-    boolean existsByUserId(String userId);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM Users u WHERE u.authUser.userId = :userId")
     Optional<Users> findByUserIdForUpdate(@Param("userId") String userId);
