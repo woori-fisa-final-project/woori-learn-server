@@ -10,10 +10,7 @@ import dev.woori.wooriLearn.domain.auth.dto.LoginReqDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 
@@ -28,6 +25,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<BaseResponse<?>> login(@RequestBody LoginReqDto loginReqDto) {
         return ApiResponse.success(SuccessCode.OK, authService.login(loginReqDto));
+    }
+
+    @GetMapping("/verify")
+    public ResponseEntity<BaseResponse<?>> verify(@RequestParam String userId) {
+        authService.verify(userId);
+        return ApiResponse.success(SuccessCode.OK, "사용 가능한 id입니다.");
     }
 
     @PostMapping("/refresh")

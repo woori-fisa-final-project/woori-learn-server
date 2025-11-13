@@ -32,7 +32,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final PointsHistoryRepository pointsHistoryRepository;
 
-    private final int NEW_MEMBER_REGISTRATION_POINTS = 1000;
+    private static final int NEW_MEMBER_REGISTRATION_POINTS = 1000;
 
     /**
      * id와 비밀번호, 사용자 이름을 입력받아 회원가입을 진행합니다.
@@ -80,28 +80,11 @@ public class UserService {
 
     public void changeNickname(String userId, ChangeNicknameReqDto request){
         Users user = userRepository.findByUserId(userId).orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
-
-        Users newUser = Users.builder()
-                .id(user.getId())
-                .authUser(user.getAuthUser())
-                .userId(user.getUserId())
-                .nickname(request.nickname())
-                .points(user.getPoints())
-                .build();
-
-        userRepository.save(newUser);
+        user.updateNickname(request.nickname());
     }
 
     public void changePassword(String userId, ChangePasswdReqDto request) {
         AuthUsers user = authUserRepository.findByUserId(userId).orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
-
-        AuthUsers newAuthUser = AuthUsers.builder()
-                .id(user.getId())
-                .userId(user.getUserId())
-                .password(passwordEncoder.encode(request.password()))
-                .role(user.getRole())
-                .build();
-
-        authUserRepository.save(newAuthUser);
+        user.updatePassword(request.password());
     }
 }
