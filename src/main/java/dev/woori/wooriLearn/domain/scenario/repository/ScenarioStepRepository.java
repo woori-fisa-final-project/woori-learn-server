@@ -16,6 +16,13 @@ import java.util.Optional;
  * - nextStep이 LAZY 로딩인 점을 고려하여 N+1을 회피하기 위한 JOIN FETCH 메서드 제공
  */
 public interface ScenarioStepRepository extends JpaRepository<ScenarioStep, Long> {
+
+    /**
+     * 주어진 시나리오의 가장 작은 id를 가진 스텝을 조회
+     *
+     * @param scenarioId    시나리오 ID
+     * @return  해당 시나리오에서 id 오름차순 첫 번째 스텝
+     */
     Optional<ScenarioStep> findFirstByScenarioIdOrderByIdAsc(Long scenarioId);
 
     /**
@@ -55,18 +62,6 @@ public interface ScenarioStepRepository extends JpaRepository<ScenarioStep, Long
         )
     """)
     Optional<ScenarioStep> findStartStep(@Param("scenarioId") Long scenarioId);
-
-    @Query("""
-        select s
-        from ScenarioStep s
-        left join fetch s.nextStep
-        left join fetch s.quiz
-        where s.id = :stepId and s.scenario.id = :scenarioId
-    """)
-    Optional<ScenarioStep> findByIdAndScenarioId(
-            @Param("stepId") Long stepId,
-            @Param("scenarioId") Long scenarioId
-    );
 
     /** 중복 제거용: 시작 스텝을 반환(없으면 최소 id 스텝, 그래도 없으면 예외) */
     default ScenarioStep findStartStepOrFail(Long scenarioId) {

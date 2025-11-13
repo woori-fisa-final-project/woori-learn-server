@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,7 +36,6 @@ public class ScenarioDocController {
     @GetMapping("/doc")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BaseResponse<?>> getDoc(
-            @AuthenticationPrincipal String username,
             @PathVariable Long scenarioId) {
         return ApiResponse.successWithCache(
                 SuccessCode.OK,
