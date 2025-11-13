@@ -1,6 +1,5 @@
 package dev.woori.wooriLearn.domain.user.dto;
 
-import dev.woori.wooriLearn.domain.auth.entity.Role;
 import lombok.Builder;
 
 import java.time.LocalDateTime;

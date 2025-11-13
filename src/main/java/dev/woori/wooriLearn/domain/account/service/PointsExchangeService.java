@@ -1,7 +1,7 @@
 package dev.woori.wooriLearn.domain.account.service;
 
-import dev.woori.wooriLearn.domain.account.entity.HistoryStatus;
-import dev.woori.wooriLearn.domain.account.entity.SearchPeriod;
+import dev.woori.wooriLearn.common.HistoryStatus;
+import dev.woori.wooriLearn.common.SearchPeriod;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
