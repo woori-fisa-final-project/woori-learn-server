@@ -12,6 +12,7 @@ import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 
 
 public record EdubankapiAccountDto(
+        Long id,
         String accountName,
         String accountNumber,
         Integer balance
@@ -26,6 +27,7 @@ public record EdubankapiAccountDto(
 
     public static EdubankapiAccountDto from(EducationalAccount account){
         return new EdubankapiAccountDto(
+                account.getId(),
                 account.getAccountName(),
                 account.getAccountNumber(),
                 account.getBalance()
