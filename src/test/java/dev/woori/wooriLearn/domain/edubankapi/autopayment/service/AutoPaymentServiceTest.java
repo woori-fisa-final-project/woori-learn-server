@@ -2,6 +2,7 @@ package dev.woori.wooriLearn.domain.edubankapi.autopayment.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentCreateRequest;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentResponse;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
@@ -54,7 +55,7 @@ class AutoPaymentServiceTest {
     void setUp() {
         Users mockUser = Users.builder()
                 .id(1L)
-                .userId("testuser")
+                .authUser(AuthUsers.builder().build())
                 .build();
 
         mockAccount = EducationalAccount.builder()
@@ -346,7 +347,7 @@ class AutoPaymentServiceTest {
         // given
         Users otherUser = Users.builder()
                 .id(2L)
-                .userId("otheruser")
+                .authUser(AuthUsers.builder().userId("otheruser").build())
                 .build();
 
         EducationalAccount otherAccount = EducationalAccount.builder()
