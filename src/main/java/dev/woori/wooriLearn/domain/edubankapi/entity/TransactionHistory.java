@@ -2,10 +2,7 @@ package dev.woori.wooriLearn.domain.edubankapi.entity;
 
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
@@ -15,6 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@Getter
 public class TransactionHistory {
 
     @Id
