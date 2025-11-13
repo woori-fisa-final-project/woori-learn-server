@@ -28,6 +28,7 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
+
         // 헤더에서 authorization 토큰 가져오기
         String accessToken = request.getHeader(HttpHeaders.AUTHORIZATION);
 
@@ -37,7 +38,9 @@ public class JwtFilter extends OncePerRequestFilter {
                 String username = jwtUtil.getUsername(token);
                 Role role = jwtUtil.getRole(token);
 
+
                 // Authentication 객체 생성
+
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(username, null,
                                 List.of(new SimpleGrantedAuthority(role.name())));
@@ -49,3 +52,4 @@ public class JwtFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
+

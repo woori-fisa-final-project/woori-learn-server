@@ -66,6 +66,7 @@ public class JwtUtil {
         }
     }
 
+
     public String generateAccessToken(String username, Role role) {
         return generateToken(username, role, accessTokenExpiration).token();
     }
