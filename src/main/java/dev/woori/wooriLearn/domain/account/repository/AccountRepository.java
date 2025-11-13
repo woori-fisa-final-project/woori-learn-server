@@ -1,6 +1,12 @@
 package dev.woori.wooriLearn.domain.account.repository;
 
 
-public interface AccountRepository {
+import dev.woori.wooriLearn.domain.account.entity.Account;
+import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
+
+public interface AccountRepository extends JpaRepository<Account, Long> {
+    // 계좌번호로 조회 (환전 신청에서 사용)
+    Optional<Account> findByAccountNumber(String accountNumber);
 }

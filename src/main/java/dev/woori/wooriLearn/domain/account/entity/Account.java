@@ -3,11 +3,9 @@ package dev.woori.wooriLearn.domain.account.entity;
 import dev.woori.wooriLearn.config.BaseEntity;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
+@Getter
 @Entity
 @Table(name = "account")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
