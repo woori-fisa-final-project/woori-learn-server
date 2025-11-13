@@ -33,7 +33,7 @@ class EdubankapiAccountControllerTest {
     @Test
     @DisplayName("계좌 목록 조회 테스트")
     void testGetAccountList() throws Exception {
-        mockMvc.perform(get("/accounts/list/{userId}", 1L)
+        mockMvc.perform(get("/educaccount/accounts/list/{userId}", 1L)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
@@ -50,7 +50,7 @@ class EdubankapiAccountControllerTest {
     @Test
     @DisplayName("거래내역 조회 테스트")
     void testGetTransactionList() throws Exception {
-        mockMvc.perform(get("/accounts/transactions")
+        mockMvc.perform(get("/educaccount/accounts/transactions")
                         .param("accountId", "1")
                         .param("period", "1M")
                         .param("type", "ALL")
@@ -82,7 +82,7 @@ class EdubankapiAccountControllerTest {
                 "홍길동"        // 상대방 이름
         );
 
-        mockMvc.perform(post("/accounts/transfer")
+        mockMvc.perform(post("/educaccount/accounts/transfer")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -107,7 +107,7 @@ class EdubankapiAccountControllerTest {
                 "홍길동"
         );
 
-        mockMvc.perform(post("/accounts/transfer")
+        mockMvc.perform(post("/educaccount/accounts/transfer")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
