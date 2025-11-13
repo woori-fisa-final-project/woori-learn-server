@@ -12,6 +12,7 @@ import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
 import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
 import dev.woori.wooriLearn.domain.auth.port.RefreshTokenPort;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
+import dev.woori.wooriLearn.domain.auth.repository.AuthUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -47,6 +48,11 @@ public class AuthService {
         }
 
         return generateAndSaveToken(loginReqDto.userId(), user.getRole());
+    }
+
+    public void verify(String userId){
+        if(authUserRepository.existsByUserId(userId))
+            throw new CommonException(ErrorCode.CONFLICT, "이미 존재하는 id입니다.");
     }
 
     /**

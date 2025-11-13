@@ -32,7 +32,8 @@ public class SecurityConfig {
     // 인증 없이도 접근 가능한 엔드포인트 목록
     private static final List<String> whiteList = List.of(
             "/auth/login", // 로그인
-            "/auth/signup" // 회원가입
+            "/auth/signup", // 회원가입
+            "/auth/verify" // 아이디 중복체크
     );
 
     // 관리자만 접근 가능한 엔드포인트 목록
