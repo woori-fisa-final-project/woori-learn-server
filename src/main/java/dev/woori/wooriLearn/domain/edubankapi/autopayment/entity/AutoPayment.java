@@ -72,6 +72,18 @@ public class AutoPayment {
         }
     }
 
+    public void cancel() {
+        this.processingStatus = AutoPaymentStatus.CANCELLED;
+    }
+
+    public boolean isOwnedBy(Long educationalAccountId) {
+        return this.educationalAccount.getId().equals(educationalAccountId);
+    }
+
+    public boolean isCancelled() {
+        return this.processingStatus == AutoPaymentStatus.CANCELLED;
+    }
+
     public static AutoPayment create(
             AutoPaymentCreateRequest request,
             EducationalAccount educationalAccount
