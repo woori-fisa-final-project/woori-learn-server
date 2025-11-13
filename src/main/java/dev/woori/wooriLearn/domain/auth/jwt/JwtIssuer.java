@@ -1,8 +1,7 @@
-package dev.woori.wooriLearn.config.jwt;
+package dev.woori.wooriLearn.domain.auth.jwt;
 
-import dev.woori.wooriLearn.config.exception.CommonException;
-import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.domain.user.entity.Role;
+import dev.woori.wooriLearn.config.jwt.TokenInfo;
+import dev.woori.wooriLearn.domain.auth.entity.Role;
 import io.jsonwebtoken.Header;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -17,7 +16,7 @@ import java.util.Date;
 
 @Slf4j
 @Component
-public class JwtUtil {
+public class JwtIssuer {
     private final SecretKey secretKey;
 
     @Value("${spring.jwt.access-expiration}")
@@ -26,44 +25,8 @@ public class JwtUtil {
     @Value("${spring.jwt.refresh-expiration}")
     private long refreshTokenExpiration;
 
-    public JwtUtil(@Value("${spring.jwt.secret}") String secret) {
+    public JwtIssuer(@Value("${spring.jwt.secret}") String secret) {
         secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-    }
-
-    public String getUsername(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(secretKey)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
-    }
-
-    public Role getRole(String token) {
-        String role = Jwts.parserBuilder()
-                .setSigningKey(secretKey)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .get("role", String.class);
-        try{
-            return Role.valueOf(role);
-        }catch (IllegalArgumentException e){
-            throw new CommonException(ErrorCode.INVALID_REQUEST);
-        }
-    }
-
-    public boolean validateToken(String token) {
-        try {
-            Jwts.parserBuilder()
-                    .setSigningKey(secretKey)
-                    .build()
-                    .parseClaimsJws(token);
-            return true;
-        } catch (Exception e) {
-            log.warn("[JwtUtil] Token validation failed: {} - {}", e.getClass().getSimpleName(), e.getMessage());
-            return false;
-        }
     }
 
     public String generateAccessToken(String username, Role role) {
@@ -89,5 +52,4 @@ public class JwtUtil {
 
         return new TokenInfo(token, expiration);
     }
-
 }

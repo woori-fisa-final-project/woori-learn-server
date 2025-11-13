@@ -2,16 +2,16 @@ package dev.woori.wooriLearn.domain.auth.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.config.jwt.JwtUtil;
+import dev.woori.wooriLearn.config.jwt.JwtInfo;
+import dev.woori.wooriLearn.domain.auth.jwt.JwtIssuer;
+import dev.woori.wooriLearn.config.jwt.JwtValidator;
 import dev.woori.wooriLearn.config.security.Encoder;
 import dev.woori.wooriLearn.domain.auth.dto.*;
+import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
-import dev.woori.wooriLearn.domain.auth.repository.RefreshTokenRepository;
-import dev.woori.wooriLearn.domain.user.entity.Role;
-import dev.woori.wooriLearn.domain.user.entity.Users;
-import dev.woori.wooriLearn.domain.user.repository.UserRepository;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwtException;
+import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
+import dev.woori.wooriLearn.domain.auth.port.RefreshTokenPort;
+import dev.woori.wooriLearn.domain.auth.entity.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,11 +26,12 @@ import java.time.Instant;
 @Transactional
 public class AuthService {
 
-    private final UserRepository userRepository;
+    private final AuthUserPort authUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final Encoder encoder;
-    private final JwtUtil jwtUtil;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final JwtIssuer jwtIssuer;
+    private final JwtValidator jwtValidator;
+    private final RefreshTokenPort refreshTokenRepository;
 
     /**
      * id와 pw를 확인 후 사용자임이 확인되면 jwt 토큰을 발급합니다.
@@ -38,7 +39,7 @@ public class AuthService {
      * @return loginResDto - access token / refresh token
      */
     public LoginResDto login(LoginReqDto loginReqDto) {
-        Users user = userRepository.findByUserId(loginReqDto.userId())
+        AuthUsers user = authUserRepository.findByUserId(loginReqDto.userId())
                 .orElseThrow(() -> new CommonException(ErrorCode.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다."));
 
         if(!passwordEncoder.matches(loginReqDto.password(), user.getPassword())){
@@ -55,18 +56,11 @@ public class AuthService {
      */
     public LoginResDto refresh(RefreshReqDto refreshReqDto) {
         String refreshToken = refreshReqDto.refreshToken();
-        String username;
-        Role role;
 
         // 토큰 만료 및 유효성 검증
-        try {
-            username = jwtUtil.getUsername(refreshToken);
-            role = jwtUtil.getRole(refreshToken);
-        } catch (ExpiredJwtException e) {
-            throw new CommonException(ErrorCode.TOKEN_EXPIRED, "토큰이 만료되었습니다.");
-        } catch (JwtException | IllegalArgumentException e) {
-            throw new CommonException(ErrorCode.UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다.");
-        }
+        JwtInfo jwtInfo = jwtValidator.parseToken(refreshToken);
+        String username = jwtInfo.username();
+        Role role = jwtInfo.role();
 
         // 토큰 존재 여부 검증
         RefreshToken token = refreshTokenRepository.findByUsername(username)
@@ -93,8 +87,8 @@ public class AuthService {
 
     public LoginResDto generateAndSaveToken(String username, Role role){
         // jwt 토큰 저장 로직
-        String accessToken = jwtUtil.generateAccessToken(username, role);
-        var refreshTokenInfo = jwtUtil.generateRefreshToken(username, role);
+        String accessToken = jwtIssuer.generateAccessToken(username, role);
+        var refreshTokenInfo = jwtIssuer.generateRefreshToken(username, role);
         String refreshToken = refreshTokenInfo.token();
         Instant refreshTokenExpiration = refreshTokenInfo.expiration();
 
