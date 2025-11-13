@@ -92,20 +92,22 @@ public class EdubankapiTransferService {
         transactionHistoryRepository.save(withdrawHistory);
         transactionHistoryRepository.save(depositHistory);
 
-        // 5️. 응답 DTO 구성
-        EdubankapiTransferResponseDto response = EdubankapiTransferResponseDto.builder()
-                .transactionId("TX-" + UUID.randomUUID().toString().substring(0, 8))
-                .transactionDate(now)
-                .counterpartyName(request.counterpartyName())
-                .amount(request.amount())
-                .balance(fromAccount.getBalance())
-                .message("이체가 완료되었습니다.")
-                .build();
+        // 5️. 응답 DTO 구성 (하이픈 포함된 계좌번호 응답)
+        EdubankapiTransferResponseDto response = EdubankapiTransferResponseDto.of(
+                "TX-" + UUID.randomUUID().toString().substring(0, 8),
+                now,
+                request.counterpartyName(),
+                request.amount(),
+                fromAccount.getBalance(),
+                "이체가 완료되었습니다.",
+                fromAccount.getAccountNumber() // DB 원본 계좌번호 (하이픈 없음)
+        );
 
         log.info("[계좌이체 완료] from={} to={} amount={} fromBalanceAfter={}",
                 fromAccount.getAccountNumber(), toAccount.getAccountNumber(), request.amount(), fromAccount.getBalance());
 
         return response;
+
     }
 
     /**

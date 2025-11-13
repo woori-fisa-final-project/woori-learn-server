@@ -6,7 +6,6 @@ import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiAccountDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransactionHistoryDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransferRequestDto;
-import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransferResponseDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiAccountService;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiTransferService;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +20,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/accounts")
+@RequestMapping("/educaccount/accounts")
 @RequiredArgsConstructor
 public class EdubankapiAccountController {
 
