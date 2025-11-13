@@ -94,4 +94,5 @@ public record AutoPaymentCreateRequest(
                 ", accountPassword='****'" +
                 ']';
     }
+
 }
