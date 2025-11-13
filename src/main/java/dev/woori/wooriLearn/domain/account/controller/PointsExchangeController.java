@@ -4,8 +4,6 @@ import dev.woori.wooriLearn.domain.account.dto.PointsHistorySearchRequestDto;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
-import dev.woori.wooriLearn.common.SortDirection;
-import dev.woori.wooriLearn.common.HistoryStatus;
 import dev.woori.wooriLearn.config.response.PageResponse;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;

@@ -1,7 +1,6 @@
 package dev.woori.wooriLearn.domain.account.service;
 
 import dev.woori.wooriLearn.common.HistoryStatus;
-import dev.woori.wooriLearn.common.SortDirection;
 import dev.woori.wooriLearn.common.SearchPeriod;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
@@ -22,7 +21,6 @@ import jakarta.persistence.PessimisticLockException;
 import jakarta.persistence.QueryTimeoutException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.PessimisticLockingFailureException;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;

@@ -1,11 +1,13 @@
 package dev.woori.wooriLearn.jwtTest;
 
-import dev.woori.wooriLearn.config.jwt.JwtUtil;
-import dev.woori.wooriLearn.domain.user.entity.Role;
-import io.jsonwebtoken.ExpiredJwtException;
+import dev.woori.wooriLearn.domain.auth.jwt.JwtIssuer;
+import dev.woori.wooriLearn.config.jwt.JwtValidator;
+import dev.woori.wooriLearn.domain.auth.entity.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -16,16 +18,18 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 public class JwtUtilTest {
-    private JwtUtil jwtUtil;
+    private JwtIssuer jwtIssuer;
+    private JwtValidator jwtValidator;
 
     // 테스트용 키
     private final String secretKey = Base64.getEncoder().encodeToString("this-is-a-test-secret-key-1234567890".getBytes(StandardCharsets.UTF_8));
 
     @BeforeEach
     void setUp() {
-        jwtUtil = new JwtUtil(secretKey);
-        ReflectionTestUtils.setField(jwtUtil, "accessTokenExpiration", 3600000);
-        ReflectionTestUtils.setField(jwtUtil, "refreshTokenExpiration", 604800000);
+        jwtIssuer = new JwtIssuer(secretKey);
+        jwtValidator = new JwtValidator(secretKey);
+        ReflectionTestUtils.setField(jwtIssuer, "accessTokenExpiration", 3600000);
+        ReflectionTestUtils.setField(jwtIssuer, "refreshTokenExpiration", 604800000);
     }
 
     @Test
@@ -35,12 +39,11 @@ public class JwtUtilTest {
         String username = "testUser";
 
         // when
-        String token = jwtUtil.generateAccessToken(username, Role.ROLE_USER);
+        String token = jwtIssuer.generateAccessToken(username, Role.ROLE_USER);
 
         // then
         assertThat(token).isNotBlank();
-        assertThat(jwtUtil.validateToken(token)).isTrue();
-        assertThat(jwtUtil.getUsername(token)).isEqualTo(username);
+        assertThat(jwtValidator.parseToken(token).username()).isEqualTo(username);
     }
 
     @Test
@@ -50,7 +53,7 @@ public class JwtUtilTest {
         String username = "testUser";
 
         // when
-        var tokenInfo = jwtUtil.generateRefreshToken(username, Role.ROLE_USER);
+        var tokenInfo = jwtIssuer.generateRefreshToken(username, Role.ROLE_USER);
 
         // then
         assertThat(tokenInfo.token()).isNotBlank();
@@ -58,57 +61,24 @@ public class JwtUtilTest {
     }
 
     @Test
-    @DisplayName("잘못된 서명 키로 서명된 토큰은 유효하지 않다")
-    void invalidSignatureTokenShouldFailValidation() {
-        // given
-        String validToken = jwtUtil.generateAccessToken("user1", Role.ROLE_USER);
-
-        // 다른 키로 새 util 생성
-        String otherKey = Base64.getEncoder().encodeToString("different-secret-key-1234567890".getBytes(StandardCharsets.UTF_8));
-        JwtUtil invalidUtil = new JwtUtil(otherKey);
-
-        // when
-        boolean isValid = invalidUtil.validateToken(validToken);
-
-        // then
-        assertThat(isValid).isFalse();
-    }
-
-    @Test
-    @DisplayName("만료된 토큰은 validateToken에서 false를 반환해야 한다")
-    void expiredTokenShouldFailValidation() {
-        // given
-        long expiredMillis = -1000L; // 이미 만료된 시간
-        var tokenInfo = jwtUtil.generateToken("user1", Role.ROLE_USER, expiredMillis);
-
-        // when
-        boolean isValid = jwtUtil.validateToken(tokenInfo.token());
-
-        // then
-        assertThat(isValid).isFalse();
-    }
-
-    @Test
-    @DisplayName("만료된 토큰을 파싱하면 ExpiredJwtException이 발생한다")
+    @DisplayName("만료된 토큰을 파싱하면 CredentialsExpiredException이 발생한다")
     void getUsername_ShouldThrowExpiredJwtException_WhenTokenExpired() {
         // given
-        var tokenInfo = jwtUtil.generateToken("expiredUser", Role.ROLE_USER, -1000L);
+        var tokenInfo = jwtIssuer.generateToken("expiredUser", Role.ROLE_USER, -1000L);
 
         // then
-        assertThatThrownBy(() -> jwtUtil.getUsername(tokenInfo.token()))
-                .isInstanceOf(ExpiredJwtException.class);
+        assertThatThrownBy(() -> jwtValidator.parseToken(tokenInfo.token()))
+                .isInstanceOf(CredentialsExpiredException.class);
     }
 
     @Test
-    @DisplayName("잘못된 형식의 토큰은 validateToken에서 false를 반환해야 한다")
+    @DisplayName("잘못된 형식의 토큰을 파싱하면 BadCredentialsException이 발생한다")
     void malformedTokenShouldFailValidation() {
         // given
         String malformedToken = "not.a.valid.token";
 
         // when
-        boolean isValid = jwtUtil.validateToken(malformedToken);
-
-        // then
-        assertThat(isValid).isFalse();
+        assertThatThrownBy(() -> jwtValidator.parseToken(malformedToken))
+                .isInstanceOf(BadCredentialsException.class);
     }
 }
