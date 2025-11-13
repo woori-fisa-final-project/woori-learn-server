@@ -3,13 +3,13 @@ package dev.woori.wooriLearn.config.security;
 import dev.woori.wooriLearn.config.filter.JwtFilter;
 import dev.woori.wooriLearn.config.jwt.JwtAuthenticationEntryPoint;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -37,12 +37,12 @@ public class SecurityConfig {
 
     // 관리자만 접근 가능한 엔드포인트 목록
     private static final List<String> adminList = List.of(
-            "/admin/*"
+            "/admin/**"
     );
 
-    // 개발 모드에서는 인증 적용 x
+    // 개발 모드와 테스트 모드에서는 인증 적용 x
     @Bean
-    @Profile("dev")
+    @Profile({"dev", "test"})
     public SecurityFilterChain devFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
@@ -51,7 +51,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Profile("!dev")
+    @Profile("!dev & !test")
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable) // API 테스트용, 실제 서비스면 토큰 기반 CSRF 설정 필요
@@ -71,5 +71,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
 }

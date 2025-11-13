@@ -77,6 +77,43 @@ public class AutoPaymentService {
         return AutoPaymentResponse.of(savedAutoPayment, request.educationalAccountId());
     }
 
+    @Transactional
+    public AutoPayment cancelAutoPayment(Long autoPaymentId, Long educationalAccountId) {
+        log.info("자동이체 해지 시작 - 자동이체ID: {}, 교육용계좌ID: {}",
+                autoPaymentId, educationalAccountId);
+
+        // 1. 자동이체 조회
+        AutoPayment autoPayment = autoPaymentRepository.findById(autoPaymentId)
+                .orElseThrow(() -> {
+                    log.error("자동이체 조회 실패 - ID: {}", autoPaymentId);
+                    return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                            "자동이체 정보를 찾을 수 없습니다.");
+                });
+
+        // 2. 소유자 확인
+        if (!autoPayment.isOwnedBy(educationalAccountId)) {
+            log.warn("자동이체 소유자 불일치 - 자동이체ID: {}, 요청계좌ID: {}, 실제계좌ID: {}",
+                    autoPaymentId, educationalAccountId, autoPayment.getEducationalAccount().getId());
+            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                    "자동이체 정보를 찾을 수 없습니다.");
+        }
+
+        // 3. 이미 해지된 경우
+        if (autoPayment.isCancelled()) {
+            log.warn("이미 해지된 자동이체 - ID: {}", autoPaymentId);
+            throw new CommonException(ErrorCode.INVALID_REQUEST,
+                    "이미 해지된 자동이체입니다.");
+        }
+
+        // 4. 해지 처리
+        autoPayment.cancel();
+
+        log.info("자동이체 해지 완료 - ID: {}, 교육용계좌ID: {}", autoPaymentId, educationalAccountId);
+
+        return autoPayment;
+
+    }
+
     private EducationalAccount findAndValidateAccount(Long accountId, String password) {
         EducationalAccount account = edubankapiAccountRepository.findById(accountId)
                 .orElseThrow(() -> {
