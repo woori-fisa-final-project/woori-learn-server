@@ -42,7 +42,7 @@ public class ScenarioController {
      * - 없으면 시나리오의 시작 스텝을 반환
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated() and #userId == authentication.name")
     public ResponseEntity<BaseResponse<?>> resume(
             @AuthenticationPrincipal String username,
             @P("userId") @PathVariable("userId") String userId,
@@ -61,7 +61,7 @@ public class ScenarioController {
      * - 사용자 진행률은 "최대값"으로만 갱신, 배드브랜치에서는 진행률 동결
      */
     @PutMapping(value = "/progress", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated() and #userId == authentication.name")
     public ResponseEntity<BaseResponse<?>> saveCheckpoint(
             @AuthenticationPrincipal String username,
             @P("userId") @PathVariable("userId") String userId,
@@ -87,7 +87,7 @@ public class ScenarioController {
      * - 마지막 스텝: COMPLETED, 진행률 100% 기록 + 재개 지점은 시작 스텝으로 복귀
      */
     @PostMapping(value = "/next-step", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated() and #userId == authentication.name")
     public ResponseEntity<BaseResponse<?>> nextStep(
             @AuthenticationPrincipal String username,
             @P("userId") @PathVariable("userId") String userId,
