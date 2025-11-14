@@ -50,17 +50,6 @@ class AutoPaymentServiceTest {
     private AutoPaymentCreateRequest validRequest;
     private AutoPayment mockAutoPayment;
 
-    @Test
-    @DisplayName("1234의 BCrypt 해시 생성")
-    void generateBCryptHash() {
-        String password = "1234";
-        String encoded = passwordEncoder.encode(password);
-        System.out.println("=====================================");
-        System.out.println("1234의 BCrypt 해시: " + encoded);
-        System.out.println("검증: " + passwordEncoder.matches("1234", encoded));
-        System.out.println("=====================================");
-    }
-
     @BeforeEach
     void setUp() {
         Users mockUser = Users.builder()

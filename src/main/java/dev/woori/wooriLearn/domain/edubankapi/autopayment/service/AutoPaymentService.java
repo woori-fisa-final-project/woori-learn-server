@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -30,6 +31,8 @@ public class AutoPaymentService {
     private final PasswordEncoder passwordEncoder;
 
     private static final String ALL_STATUS = "ALL";
+
+    private static final int END_OF_MONTH_CODE = 99;
 
     public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status, String currentUserId) {
         // 권한 체크: 요청한 계좌가 현재 사용자의 것인지 확인
@@ -74,14 +77,26 @@ public class AutoPaymentService {
                 request.educationalAccountId(),
                 request.accountPassword()
         );
-        // 2. 자동이체 생성
-        AutoPayment autoPayment = AutoPayment.create(request, educationalAccount);
 
-        // 3. 저장
+        int finalDesignatedDate = resolveDesignatedDate(request);
+
+        // 4. 자동이체 엔티티 생성
+        // DTO 대신 변환된 designatedDate와 나머지 정보를 넘기기 위해 엔티티 생성 방식을 수정할 필요가 있을 수 있습니다.
+        // 현재 엔티티 생성 방식(AutoPayment.create(request, educationalAccount))을
+        // 오버로드하거나 빌더 패턴을 사용하여 finalDesignatedDate를 명시적으로 전달해야 합니다.
+        // 여기서는 finalDesignatedDate를 반영한 새로운 요청 객체를 생성했다고 가정하고 진행합니다.
+
+        AutoPayment autoPayment = AutoPayment.createWithResolvedDate(
+                request,
+                educationalAccount,
+                finalDesignatedDate
+        );
+
+        // 5. 저장
         AutoPayment savedAutoPayment = autoPaymentRepository.save(autoPayment);
 
-        log.info("자동이체 등록 완료 - ID: {}, 교육용계좌ID: {}",
-                savedAutoPayment.getId(), request.educationalAccountId());
+        log.info("자동이체 등록 완료 - ID: {}, 교육용계좌ID: {}, 최종지정일: {}",
+                savedAutoPayment.getId(), request.educationalAccountId(), finalDesignatedDate);
 
         return AutoPaymentResponse.of(savedAutoPayment, request.educationalAccountId());
     }
@@ -127,6 +142,27 @@ public class AutoPaymentService {
 
     }
 
+    /**
+     * 지정일(designatedDate)을 정책에 따라 실제 날짜로 변환합니다.
+     * 99일 경우, 시작일(startDate)의 월을 기준으로 말일을 계산합니다.
+     * * @param request 자동이체 등록 요청 DTO
+     * @return 정책이 적용된 실제 지정일 (1 ~ 31)
+     */
+    private int resolveDesignatedDate(AutoPaymentCreateRequest request) {
+        int designatedDate = request.designatedDate();
+        LocalDate startDate = request.startDate();
+
+        if (designatedDate == END_OF_MONTH_CODE) {
+            // 99일 경우, 시작일(startDate)의 월의 마지막 날짜를 계산
+            int lastDay = startDate.lengthOfMonth();
+            log.debug("지정일 99 처리: 시작일 {}의 말일은 {}일입니다.", startDate, lastDay);
+            return lastDay;
+        }
+
+        // 1~31일 경우, 그 값 그대로 사용
+        return designatedDate;
+    }
+
     private EducationalAccount findAndValidateAccount(Long accountId, String password) {
         EducationalAccount account = edubankapiAccountRepository.findById(accountId)
                 .orElseThrow(() -> {
@@ -140,8 +176,6 @@ public class AutoPaymentService {
     }
 
     private void validateAccountPassword(EducationalAccount account, String inputPassword) {
-        log.info("비밀번호 검증 시작 - 계좌ID: {}, 입력값: '{}', DB해시: '{}'",
-                account.getId(), inputPassword, account.getAccountPassword());
 
         if (!passwordEncoder.matches(inputPassword, account.getAccountPassword())) {
             log.warn("계좌 비밀번호 불일치 - 계좌ID: {}", account.getId());
