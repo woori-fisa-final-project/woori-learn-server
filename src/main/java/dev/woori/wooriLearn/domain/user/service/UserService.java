@@ -71,7 +71,8 @@ public class UserService {
     }
 
     public UserInfoResDto getUserInfo(String userId){
-        Users user = userRepository.findByUserId(userId).orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
+        Users user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
         return UserInfoResDto.builder()
                 .nickname(user.getNickname())
                 .point(user.getPoints())
@@ -79,12 +80,14 @@ public class UserService {
     }
 
     public void changeNickname(String userId, ChangeNicknameReqDto request){
-        Users user = userRepository.findByUserId(userId).orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
+        Users user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
         user.updateNickname(request.nickname());
     }
 
     public void changePassword(String userId, ChangePasswdReqDto request) {
-        AuthUsers user = authUserRepository.findByUserId(userId).orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
+        AuthUsers user = authUserRepository.findByUserId(userId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
         user.updatePassword(passwordEncoder.encode(request.password()));
     }
 }
