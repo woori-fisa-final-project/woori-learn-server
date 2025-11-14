@@ -20,4 +20,7 @@ public class Scenario {
 
     @OneToMany(mappedBy = "scenario", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ScenarioStep> steps;
+
+    @Column(name = "total_normal_steps", nullable = false)
+    private Integer totalNormalSteps;
 }

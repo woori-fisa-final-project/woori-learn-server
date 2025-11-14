@@ -11,9 +11,10 @@ import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressSaveResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
 import dev.woori.wooriLearn.domain.scenario.entity.*;
-import dev.woori.wooriLearn.domain.scenario.model.AdvanceStatus;
-import dev.woori.wooriLearn.domain.scenario.model.StepType;
-import dev.woori.wooriLearn.domain.scenario.repository.*;
+import dev.woori.wooriLearn.domain.scenario.repository.ScenarioCompletedRepository;
+import dev.woori.wooriLearn.domain.scenario.repository.ScenarioProgressRepository;
+import dev.woori.wooriLearn.domain.scenario.repository.ScenarioRepository;
+import dev.woori.wooriLearn.domain.scenario.repository.ScenarioStepRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,19 @@ import java.util.*;
 
 /**
  * 시나리오 진행(재개/다음 스텝/체크포인트 저장)을 담당하는 서비스
+ *
+ * 진행률 계산 규칙:
+ * - Scenario.totalNormalSteps : "정상 루트"에 포함되는 스텝 개수
+ * - ScenarioStep.normalIndex  : "정상 루트"에서의 순번(1-base)
+ * - 진행률 = (normalIndex / totalNormalSteps) * 100
+ *
+ * normalIndex == null 인 스텝은 정상 루트에 포함되지 않음
+ *
+ * 배드 브랜치 규칙:
+ * - meta.branch == "bad" 인 스텝은 배드 브랜치로 간주
+ * - meta.badEnding == true 인 스텝은 배드 엔딩으로 간주
+ * - 배드 브랜치에 있는 동안은 진행률을 "동결" (증가시키지 않음)
+ * - 배드 엔딩 스텝의 nextStep 은 복귀 지점(보통 CHOICE 스텝)으로 설정
  */
 @Service
 @RequiredArgsConstructor
@@ -30,295 +44,170 @@ public class ScenarioProgressService {
 
     private final ScenarioRepository scenarioRepository;
     private final ScenarioStepRepository stepRepository;
-    private final ScenarioProgressListRepository progressRepository;
+    private final ScenarioProgressRepository progressRepository;
     private final ScenarioCompletedRepository completedRepository;
     private final ObjectMapper objectMapper;
 
-    /** 진행 재개: 저장된 진행 이력이 있으면 해당 스텝, 없으면 시작 스텝 */
+    // 스텝 타입/상태에 따라 적절한 StepProcessor를 찾아주는 Resolver
+    private final StepProcessorResolver stepProcessorResolver;
+
+    /**
+     * 시나리오 진행 재개
+     *
+     * - 사용자의 ScenarioProgress가 존재하면: 해당 진행 스텝에서 재개
+     * - 없다면: 시나리오의 시작 스텝부터 시작
+     */
     @Transactional(readOnly = true)
     public ProgressResumeResDto resume(Users user, Long scenarioId) {
+        // 1) 시나리오 존재 여부 검증
         Scenario scenario = scenarioRepository.findById(scenarioId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "시나리오가 존재하지 않습니다. id=" + scenarioId));
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "시나리오가 존재하지 않습니다. id=" + scenarioId
+                ));
 
-        // 진행 이력이 있으면 저장된 스텝으로, 없으면 시작 스텝으로
+        // 2) 유저의 진행 이력 조회 -> 있으면 해당 스텝, 없으면 시작 스텝 계산
         ScenarioStep step = progressRepository.findByUserAndScenario(user, scenario)
-                .map(ScenarioProgressList::getStep)
+                .map(ScenarioProgress::getStep)
                 .orElseGet(() -> {
                     Map<Long, ScenarioStep> byId = preloadStepsAsMap(scenarioId);
                     Long startId = inferStartStepId(byId);
                     ScenarioStep start = byId.get(startId);
                     if (start == null) {
-                        throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenarioId);
+                        throw new CommonException(
+                                ErrorCode.INTERNAL_SERVER_ERROR,
+                                "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenarioId
+                        );
                     }
                     return start;
                 });
 
+        // 3) 현재 스텝을 클라이언트 응답 DTO로 매핑
         return mapStep(step);
     }
 
     /**
      * 다음 스텝으로 진행
      *
-     * CHOICE 스텝
-     *      - 미선택 -> CHOICE_REQUIRED(선택 필요)
-     *      - 오루트 -> next가 없으면 BAD_ENDING, 있으면 그 next로 이동(진행률 동결)
-     *      - 정루트 -> next(or 일반 nextStep)로 이동(진행률 갱신)
-     *      - 마지막 -> COMPLETED(진행률 100), 재개 지점은 시작 스텝
-     *
-     * 배드브랜치
-     *      - 배드엔딩(meta.badEnding==true) → BAD_ENDING
-     *      - 그 외 → 다음 배드 스텝으로 이동(있다면), 없으면 BAD_ENDING
-     *      - 배드 브랜치에서는 항상 진행률 동결
-     *
-     * 퀴즈 스텝
-     *      - 미제출/오답 → QUIZ_REQUIRED/QUIZ_WRONG (현재 스텝 유지)
-     *      - 정답 → 일반 next로 진행(진행률 갱신)
-     *
-     * 일반 스텝
-     *      - next가 없으면 COMPLETED(진행률 100) 처리
-     *      - next가 있으면 진행률 갱신 후 이동
+     * - StepProcessorResolver가 현재 스텝 타입/상태에 맞는 처리기를 선택하고
+     * - 개별 Processor가 실제 로직(CHOICE/배드 브랜치/퀴즈/일반)을 수행
      */
     @Transactional
     public AdvanceResDto advance(Users user, Long scenarioId, Long nowStepId, Integer answer) {
-        // 시나리오/스텝 선검증
+        // 1) 시나리오 검증
         Scenario scenario = scenarioRepository.findById(scenarioId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "시나리오가 존재하지 않습니다. id=" + scenarioId));
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "시나리오가 존재하지 않습니다. id=" + scenarioId
+                ));
 
+        // 2) 해당 시나리오의 모든 스텝을 한 번에 로딩(Map 형태로 보관)
         Map<Long, ScenarioStep> byId = preloadStepsAsMap(scenarioId);
 
+        // 3) 현재 스텝 검증
         ScenarioStep current = byId.get(nowStepId);
         if (current == null || !Objects.equals(current.getScenario().getId(), scenarioId)) {
-            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "스텝이 존재하지 않거나 시나리오와 불일치. stepId=" + nowStepId);
+            throw new CommonException(
+                    ErrorCode.ENTITY_NOT_FOUND,
+                    "스텝이 존재하지 않거나 시나리오와 불일치. stepId=" + nowStepId
+            );
         }
 
-        // 사용자 진행 레코드 로드
-        ScenarioProgressList progress = progressRepository.findByUserAndScenario(user, scenario)
-                .orElseGet(() -> ScenarioProgressList.builder()
-                        .user(user).scenario(scenario).step(current).progressRate(0.0).build());
+        // 4) 사용자 진행 엔티티 조회(없으면 새로 생성)
+        ScenarioProgress progress = progressRepository.findByUserAndScenario(user, scenario)
+                .orElseGet(() -> ScenarioProgress.builder()
+                        .user(user)
+                        .scenario(scenario)
+                        .step(current)
+                        .progressRate(0.0)
+                        .build());
 
-        // CHOICE
-        if (current.getType() == StepType.CHOICE) {
-            return handleChoiceStep(user, scenario, byId, current, answer, progress);
-        }
+        // 현재 스텝이 배드 브랜치/배드 엔딩인지 미리 계산
+        boolean badBranch = isBadBranch(current);
+        boolean badEnding = isBadEnding(current);
 
-        // 배드 브랜치
-        if (isBadBranch(current)) {
-            return handleBadBranchStep(byId, current, progress);
-        }
+        // 5) Processor 에 넘길 Context 구성
+        StepContext ctx = new StepContext(user, scenario, current, answer, byId, progress, badBranch, badEnding);
 
-        // 퀴즈 - 미제출/오답이면 여기서 바로 반환
-        AdvanceResDto quizGateResult = handleQuizGateIfPresent(current, answer, progress);
-        if (quizGateResult != null) {
-            return quizGateResult;
-        }
-
-        // 일반 next
-        return handleNormalStep(user, scenario, byId, current, progress);
+        // 6) 스텝 타입/상태에 맞는 Processor 선택 & 실행
+        StepProcessor processor = stepProcessorResolver.resolve(ctx);
+        return processor.process(ctx, this);
     }
 
     /**
-     * 체크포인트 저장
-     * - 배드 브랜치: 진행률 동결(스텝만 저장)
-     * - 정상: 정상 그래프 기반 % 계산, 최대값 유지
+     * 현재 스텝을 "체크포인트"로 저장
+     *
+     * - 배드 브랜치/배드 엔딩이면: 진행률 동결, 위치만 저장
+     * - 그 외: 시나리오의 normalIndex / totalNormalSteps 기반으로 진행률 계산
      */
     @Transactional
     public ProgressSaveResDto saveCheckpoint(Users user, Long scenarioId, Long nowStepId) {
+        // 1) 시나리오 검증
         Scenario scenario = scenarioRepository.findById(scenarioId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "시나리오가 존재하지 않습니다. id=" + scenarioId));
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "시나리오가 존재하지 않습니다. id=" + scenarioId
+                ));
 
+        // 2) 스텝 맵 로딩
         Map<Long, ScenarioStep> byId = preloadStepsAsMap(scenarioId);
 
+        // 3) 현재 스텝 검증
         ScenarioStep step = byId.get(nowStepId);
-        if (step == null) throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "스텝이 존재하지 않거나 시나리오와 불일치. stepId=" + nowStepId);
-
-        ScenarioProgressList progress = progressRepository.findByUserAndScenario(user, scenario)
-                .orElseGet(() -> ScenarioProgressList.builder()
-                        .user(user).scenario(scenario).progressRate(0.0).build());
-
-        if (isBadBranch(step)) {
-            // 배드에서는 진행률 동결, 위치만 저장
-            progress.moveToStep(step);
-            progressRepository.save(progress);
-            return new ProgressSaveResDto(scenarioId, step.getId(), progress.getProgressRate());
+        if (step == null || !Objects.equals(step.getScenario().getId(), scenarioId)) {
+            throw new CommonException(
+                    ErrorCode.ENTITY_NOT_FOUND,
+                    "스텝이 존재하지 않거나 시나리오와 불일치. stepId=" + nowStepId
+            );
         }
 
-        // 배드 브랜치면 진행률 동결
-        boolean forceFreeze = isBadBranch(step);
-        double finalRate = updateProgressAndSave(progress, step, byId, forceFreeze);
+        // 4) 진행 엔티티 조회/생성
+        ScenarioProgress progress = progressRepository.findByUserAndScenario(user, scenario)
+                .orElseGet(() -> ScenarioProgress.builder()
+                        .user(user)
+                        .scenario(scenario)
+                        .progressRate(0.0)
+                        .build());
+
+        // 배드 브랜치/엔딩이면 진행률 동결
+        boolean forceFreeze = isBadBranch(step) || isBadEnding(step);
+        double finalRate = updateProgressAndSave(progress, step, scenario, forceFreeze);
 
         return new ProgressSaveResDto(scenarioId, step.getId(), finalRate);
     }
 
-    // =================
-    //  스텝 유형별 핸들러
-    // =================
-
-    /** CHOICE 스텝 처리 */
-    private AdvanceResDto handleChoiceStep(
-            Users user,
-            Scenario scenario,
-            Map<Long, ScenarioStep> byId,
-            ScenarioStep current,
-            Integer answer,
-            ScenarioProgressList progress
-    ) {
-        if (answer == null) {
-            // 선택지 미제출 → 현재 스텝 유지
-            progress.moveToStep(current);
-            progressRepository.save(progress);
-            return new AdvanceResDto(AdvanceStatus.CHOICE_REQUIRED, mapStep(current), null);
-        }
-
-        ChoiceInfo choice = parseChoice(current, answer);
-
-        if (!choice.good()) {
-            // 오루트 진입: next가 없으면 즉시 배드엔딩, 있으면 그 next로 이동(진행률 동결)
-            Long nextId = choice.nextStepId();
-            if (nextId == null) {
-                progress.moveToStep(current);
-                progressRepository.save(progress);
-                return new AdvanceResDto(AdvanceStatus.BAD_ENDING, mapStep(current), null);
-            }
-            ScenarioStep nextWrong = byId.get(nextId);
-            if (nextWrong == null) {
-                throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "잘못된 경로 next가 존재하지 않습니다. id=" + nextId);
-            }
-            // 오루트에서는 진행률을 올리지 않음(동결)
-            updateProgressAndSave(progress, nextWrong, byId, true);
-            return new AdvanceResDto(AdvanceStatus.ADVANCED_FROZEN, mapStep(nextWrong), null);
-        }
-
-        // 정루트: 명시적 next가 있으면 우선, 없으면 일반 nextStep 사용
-        Long nextId = (choice.nextStepId() != null)
-                ? choice.nextStepId()
-                : (current.getNextStep() != null ? current.getNextStep().getId() : null);
-
-        if (nextId == null) {
-            // 정루트의 마지막 → 완료 처리 + 다음 재개는 시작 스텝
-            ensureCompletedOnce(user, scenario);
-            double rate = monotonicRate(progress, 100.0);
-
-            Long startId = inferStartStepId(byId);
-            ScenarioStep start = byId.get(startId);
-            if (start == null) throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenario.getId());
-
-            progress.moveToStep(start, rate);
-            progressRepository.save(progress);
-            return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
-        }
-
-        ScenarioStep next = byId.get(nextId);
-        if (next == null) throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "다음 스텝이 존재하지 않습니다. id=" + nextId);
-
-        // 정상 그래프 내부면 진행률 갱신, 외부면 동결(스텝만 이동)
-        updateProgressAndSave(progress, next, byId, false);
-        return new AdvanceResDto(AdvanceStatus.ADVANCED, mapStep(next), null);
-    }
-
-    /** 배드 브랜치 처리 */
-    private AdvanceResDto handleBadBranchStep(
-            Map<Long, ScenarioStep> byId,
-            ScenarioStep current,
-            ScenarioProgressList progress
-    ) {
-        if (isBadEnding(current)) {
-            // 백트래킹 탐색으로 CHOICE 앵커를 찾고, 없으면 시작 스텝으로 복귀
-            ScenarioStep anchorChoice = findChoiceAnchorForBadBranch(byId, current.getId());
-            if (anchorChoice == null) anchorChoice = byId.get(inferStartStepId(byId));
-            updateProgressAndSave(progress, anchorChoice, byId, true);
-            return new AdvanceResDto(AdvanceStatus.BAD_ENDING, mapStep(current), null);
-        }
-
-        // 오루트 중간 스텝 → 다음 배드 스텝이 있으면 그쪽으로, 없으면 BAD_ENDING 동일 처리
-        ScenarioStep next = current.getNextStep() != null ? byId.get(current.getNextStep().getId()) : null;
-        if (next == null) {
-            ScenarioStep anchorChoice = findChoiceAnchorForBadBranch(byId, current.getId());
-            if (anchorChoice == null) anchorChoice = byId.get(inferStartStepId(byId));
-            updateProgressAndSave(progress, anchorChoice, byId, true);
-            return new AdvanceResDto(AdvanceStatus.BAD_ENDING, mapStep(current), null);
-        }
-
-        updateProgressAndSave(progress, next, byId, true);
-        return new AdvanceResDto(AdvanceStatus.ADVANCED_FROZEN, mapStep(next), null);
-    }
-
-    /** 퀴즈 게이트 처리 */
-    private AdvanceResDto handleQuizGateIfPresent(
-            ScenarioStep current,
-            Integer answer,
-            ScenarioProgressList progress
-    ) {
-        Quiz quiz = current.getQuiz();
-        if (quiz == null) return null;
-
-        boolean isCorrect = answer != null && Objects.equals(quiz.getAnswer(), answer);
-        if (!isCorrect) {
-            // 미제출/오답 → 현재 스텝 유지
-            updateProgressAndSave(progress, current, null, true);
-            progressRepository.save(progress);
-            AdvanceStatus status = (answer == null) ? AdvanceStatus.QUIZ_REQUIRED : AdvanceStatus.QUIZ_WRONG;
-            return new AdvanceResDto(status, mapStep(current), mapQuiz(quiz));
-        }
-        return null;
-    }
-
-    /** 일반 next 처리 */
-    private AdvanceResDto handleNormalStep(
-            Users user,
-            Scenario scenario,
-            Map<Long, ScenarioStep> byId,
-            ScenarioStep current,
-            ScenarioProgressList progress
-    ) {
-        ScenarioStep next = current.getNextStep() != null ? byId.get(current.getNextStep().getId()) : null;
-        if (next == null) {
-            // 정루트 상의 마지막 → 완료
-            ensureCompletedOnce(user, scenario);
-            double rate = monotonicRate(progress, 100.0);
-
-            Long startId = inferStartStepId(byId);
-            ScenarioStep start = byId.get(startId);
-            if (start == null) throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenario.getId());
-
-            progress.moveToStep(start, rate);
-            progressRepository.save(progress);
-            return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
-        }
-
-        updateProgressAndSave(progress, next, byId, false);
-        return new AdvanceResDto(AdvanceStatus.ADVANCED, mapStep(next), null);
-    }
-
     /**
-     * 진행률 계산(정상 그래프 기반) + 단조 증가 보장 + 위치 저장을 한 번에 처리
-     * @param progress   현재 사용자 진행 엔티티
-     * @param newStep    이동할 스텝
-     * @param byId       시나리오 내 모든 스텝 맵(정상 진행률 갱신 시 필요). 동결이면 null 가능
-     * @param forceFreeze true면 진행률 갱신 없이 스텝만 이동(배드 브랜치/미제출 등)
-     * @return 최종 progressRate
+     * 진행률 계산 + 단조 증가 보장 + 위치 저장을 한 번에 처리하는 헬퍼 메서드
+     *
+     * @param progress      사용자 진행 엔티티
+     * @param newStep       이동할 스텝
+     * @param scenario      시나리오(진행률 계산에 필요). forceFreeze=true 이면 null 가능
+     * @param forceFreeze   true면 진행률을 변경하지 않고 "위치만" 저장
+     * @return 최종 progressRate 값
      */
-    private double updateProgressAndSave(ScenarioProgressList progress,
-                                         ScenarioStep newStep,
-                                         Map<Long, ScenarioStep> byId,
-                                         boolean forceFreeze) {
+    double updateProgressAndSave(ScenarioProgress progress,
+                                 ScenarioStep newStep,
+                                 Scenario scenario,
+                                 boolean forceFreeze) {
 
         double finalRate;
-        if (forceFreeze) {
-            // 진행률 변화 없이 위치만 저장
+        if (forceFreeze || scenario == null) {
+            // 진행률 동결 모드: 위치만 갱신
             progress.moveToStep(newStep);
             progressRepository.save(progress);
-            finalRate = progress.getProgressRate() == null ? 0.0 : progress.getProgressRate();
+            finalRate = (progress.getProgressRate() == null) ? 0.0 : progress.getProgressRate();
             return finalRate;
         }
 
-        // 정상 진행률 갱신 경로
-        Double computed = computeProgressRateOnNormalGraph(byId, newStep.getId());
+        // 정상 루트 상에서의 진행률 계산
+        Double computed = computeProgressRateOnNormalPath(scenario, newStep);
         if (computed == null) {
-            // 정상 그래프 밖 → 동결
+            // 정상 루트에 속하지 않는 스텝(배드/연습용 등) → 진행률 동결
             progress.moveToStep(newStep);
             progressRepository.save(progress);
-            finalRate = progress.getProgressRate() == null ? 0.0 : progress.getProgressRate();
+            finalRate = (progress.getProgressRate() == null) ? 0.0 : progress.getProgressRate();
         } else {
+            // 진행률 후보 값과 기존 값 중 "더 큰 값"으로 단조 증가 보장
             double rate = monotonicRate(progress, computed);
             progress.moveToStep(newStep, rate);
             progressRepository.save(progress);
@@ -327,174 +216,98 @@ public class ScenarioProgressService {
         return finalRate;
     }
 
-    // ===========
-    //  진행률 계산
-    // ===========
-
-    /** 정상 경로 그래프 기반 진행률 계산 */
-    private Double computeProgressRateOnNormalGraph(Map<Long, ScenarioStep> byId, Long nowStepId) {
-        // 그래프 구축(정상 노드/엣지만)
-        Graph g = buildNormalGraph(byId);
-
-        if (!g.nodes.contains(nowStepId)) {
-            return null; // 정상 경로 외 → 진행률 갱신하지 않음
-        }
-
-        // 시작 노드(진입차수 0) 집합
-        Set<Long> starts = new HashSet<>();
-        for (Long n : g.nodes) {
-            if (g.indegree.getOrDefault(n, 0) == 0) starts.add(n);
-        }
-        if (starts.isEmpty()) {
-            Long minId = g.nodes.stream().min(Long::compareTo).orElse(null);
-            if (minId != null) starts.add(minId);
-        }
-
-        // BFS로 레벨(거리) 계산
-        Map<Long, Integer> level = new HashMap<>();
-        Deque<Long> dq = new ArrayDeque<>();
-        for (Long s : starts) {
-            level.put(s, 0);
-            dq.add(s);
-        }
-        while (!dq.isEmpty()) {
-            Long u = dq.poll();
-            int lu = level.get(u);
-            for (Long v : g.adj.getOrDefault(u, Collections.emptySet())) {
-                int cand = lu + 1;
-                if (!level.containsKey(v) || cand < level.get(v)) {
-                    level.put(v, cand);
-                    dq.add(v);
-                }
-            }
-        }
-
-        if (!level.containsKey(nowStepId)) {
+    /**
+     * normalIndex / totalNormalSteps 기반 진행률 계산
+     *
+     * - totalNormalSteps 또는 normalIndex 가 null/0 이면 정상 루트가 아니라고 보고 null 반환
+     */
+    Double computeProgressRateOnNormalPath(Scenario scenario, ScenarioStep step) {
+        if (scenario == null || step == null) {
             return null;
         }
+        Integer total = scenario.getTotalNormalSteps();
+        Integer idx = step.getNormalIndex();
 
-        int maxLevel = 0;
-        for (Long n : g.nodes) {
-            Integer lv = level.get(n);
-            if (lv != null) maxLevel = Math.max(maxLevel, lv);
+        if (total == null || total <= 0 || idx == null || idx <= 0) {
+            return null; // 정상 루트에 포함되지 않는 스텝
         }
 
-        // 레벨 기반 진행률 = (level(now)+1)/(maxLevel+1) * 100
-        int nowLv = level.get(nowStepId);
-        int denom = Math.max(1, maxLevel + 1);
-        double pct = ((nowLv + 1) * 100.0) / denom;
+        double pct = (idx * 100.0) / total;
         return Math.min(100.0, Math.max(0.0, pct));
     }
 
-    /** 정상 경로 그래프 구성(배드 노드/엣지 제외, CHOICE.good 및 일반 nextStep만 포함) */
-    private Graph buildNormalGraph(Map<Long, ScenarioStep> byId) {
-        Set<Long> nodes = new HashSet<>();
-        Map<Long, Set<Long>> adj = new HashMap<>();
-        Map<Long, Integer> indegree = new HashMap<>();
-
-        // 정상 노드 수집
-        for (ScenarioStep s : byId.values()) {
-            if (isBadBranch(s)) continue; // 배드 노드는 제외
-            nodes.add(s.getId());
-        }
-
-        // 엣지 구성
-        for (ScenarioStep s : byId.values()) {
-            if (!nodes.contains(s.getId())) continue; // 배드 노드 제외
-
-            if (s.getType() == StepType.CHOICE) {
-                try {
-                    JsonNode root = objectMapper.readTree(s.getContent());
-                    JsonNode choices = findChoicesArray(root);
-                    boolean anyGoodEdge = false;
-                    if (choices != null) {
-                        for (JsonNode c : choices) {
-                            boolean good = c.path("good").asBoolean(false);
-                            if (!good || !c.hasNonNull("next")) continue;
-                            long nxt = c.get("next").asLong();
-                            ScenarioStep target = byId.get(nxt);
-                            if (target != null && !isBadBranch(target)) {
-                                addEdge(nodes, adj, indegree, s.getId(), target.getId());
-                                anyGoodEdge = true;
-                            }
-                        }
-                    }
-                    // choices가 없거나 good edge가 1개도 없으면 nextStep로 대체
-                    if (!anyGoodEdge && s.getNextStep() != null && !isBadBranch(s.getNextStep())) {
-                        addEdge(nodes, adj, indegree, s.getId(), s.getNextStep().getId());
-                    }
-                } catch (JsonProcessingException ignored) {
-                    // 파싱 실패 시에도 nextStep로 대체 시도
-                    if (s.getNextStep() != null && !isBadBranch(s.getNextStep())) {
-                        addEdge(nodes, adj, indegree, s.getId(), s.getNextStep().getId());
-                    }
-                }
-            } else {
-                if (s.getNextStep() != null && !isBadBranch(s.getNextStep())) {
-                    addEdge(nodes, adj, indegree, s.getId(), s.getNextStep().getId());
-                }
-            }
-        }
-
-        // indegree 보정: 고립 노드/시작 노드 기록
-        for (Long n : nodes) indegree.putIfAbsent(n, 0);
-
-        return new Graph(nodes, adj, indegree);
-    }
-
-    // 엣지 추가 헬퍼
-    private void addEdge(Set<Long> nodes,
-                         Map<Long, Set<Long>> adj,
-                         Map<Long, Integer> indegree,
-                         long u, long v) {
-        if (!nodes.contains(u) || !nodes.contains(v)) return;
-        Set<Long> set = adj.computeIfAbsent(u, k -> new LinkedHashSet<>());
-        set.add(v);
-        indegree.put(v, indegree.getOrDefault(v, 0) + 1);
-        indegree.putIfAbsent(u, indegree.getOrDefault(u, 0));
-    }
-
-    private record Graph(Set<Long> nodes, Map<Long, Set<Long>> adj, Map<Long, Integer> indegree) {}
-
-    /** 모든 스텝을 한 번에 로드하여 Map으로 반환 (JOIN FETCH로 N+1 회피) */
-    private Map<Long, ScenarioStep> preloadStepsAsMap(Long scenarioId) {
+    /**
+     * 한 시나리오의 모든 스텝을 한 번에 로딩해서 Map 형태로 반환
+     *
+     * - N+1 문제를 피하기 위해 findByScenarioIdWithNextStep (JOIN FETCH) 사용
+     */
+    Map<Long, ScenarioStep> preloadStepsAsMap(Long scenarioId) {
         List<ScenarioStep> steps = stepRepository.findByScenarioIdWithNextStep(scenarioId);
         if (steps.isEmpty()) {
-            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "스텝이 비어있습니다. scenarioId=" + scenarioId);
+            throw new CommonException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "스텝이 비어있습니다. scenarioId=" + scenarioId
+            );
         }
         Map<Long, ScenarioStep> byId = new LinkedHashMap<>();
-        for (ScenarioStep s : steps) byId.putIfAbsent(s.getId(), s);
+        for (ScenarioStep s : steps) {
+            byId.putIfAbsent(s.getId(), s);
+        }
         return byId;
     }
 
-    /** 시작 스텝 추론: nextStep으로 참조되지 않은 스텝 중 id 최솟값 */
-    private Long inferStartStepId(Map<Long, ScenarioStep> byId) {
+    /**
+     * 시작 스텝 추론
+     *
+     * - 다른 스텝의 nextStep 으로 "참조되지 않는" 스텝 중 ID가 가장 작은 것을 시작점으로 선택
+     * - 모든 스텝이 참조되어 있다면(이상 케이스), 단순히 ID 최솟값을 반환
+     */
+    Long inferStartStepId(Map<Long, ScenarioStep> byId) {
         Set<Long> referenced = new HashSet<>();
         for (ScenarioStep s : byId.values()) {
-            if (s.getNextStep() != null) referenced.add(s.getNextStep().getId());
+            if (s.getNextStep() != null) {
+                referenced.add(s.getNextStep().getId());
+            }
         }
         return byId.keySet().stream()
                 .filter(id -> !referenced.contains(id))
                 .min(Long::compareTo)
                 .orElseGet(() -> byId.keySet().stream().min(Long::compareTo)
-                        .orElseThrow(() -> new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "시작 스텝을 계산할 수 없습니다.")));
+                        .orElseThrow(() -> new CommonException(
+                                ErrorCode.INTERNAL_SERVER_ERROR,
+                                "시작 스텝을 계산할 수 없습니다."
+                        )));
     }
 
-    /** 진행률 단조 증가(최대값 유지) */
-    private double monotonicRate(ScenarioProgressList progress, double candidate) {
+    /** 진행률을 0~100 범위로 자르고, 기존 진행률보다 "뒤로 가지 않도록" 하는 헬퍼 */
+    double monotonicRate(ScenarioProgress progress, double candidate) {
         double prev = (progress.getProgressRate() == null) ? 0.0 : progress.getProgressRate();
         double bounded = Math.min(100.0, Math.max(0.0, candidate));
         return Math.max(prev, bounded);
     }
 
-    /** 완료 이력 1회 보장(없을 때만 저장) */
-    private void ensureCompletedOnce(Users user, Scenario scenario) {
+    /** 동일 유저/시나리오에 대해 완료 이력을 1회만 저장하도록 보장 */
+    void ensureCompletedOnce(Users user, Scenario scenario) {
         if (!completedRepository.existsByUserAndScenario(user, scenario)) {
-            completedRepository.save(ScenarioCompleted.builder().user(user).scenario(scenario).build());
+            completedRepository.save(
+                    ScenarioCompleted.builder()
+                            .user(user)
+                            .scenario(scenario)
+                            .build()
+            );
         }
     }
 
-    private ProgressResumeResDto mapStep(ScenarioStep step) {
+    /** 외부 Processor 가 진행 엔티티 저장만 필요할 때 사용 */
+    void saveProgress(ScenarioProgress progress) {
+        progressRepository.save(progress);
+    }
+
+    /**
+     * ScenarioStep → ProgressResumeResDto 매핑
+     * - content JSON 문자열을 JsonNode 로 파싱해서 내려줌
+     */
+    ProgressResumeResDto mapStep(ScenarioStep step) {
         try {
             JsonNode contentNode = objectMapper.readTree(step.getContent());
             return new ProgressResumeResDto(
@@ -505,30 +318,43 @@ public class ScenarioProgressService {
                     contentNode
             );
         } catch (JsonProcessingException e) {
-            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "스텝 content JSON 파싱 실패. stepId=" + step.getId());
+            throw new CommonException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "스텝 content JSON 파싱 실패. stepId=" + step.getId()
+            );
         }
     }
 
-    private QuizResDto mapQuiz(Quiz quiz) {
+    /**
+     * Quiz 엔티티 → QuizResDto 매핑
+     * - options 의 JSON 배열 문자열을 List<String> 으로 파싱
+     */
+    QuizResDto mapQuiz(Quiz quiz) {
         try {
             var listType = TypeFactory.defaultInstance()
                     .constructCollectionType(List.class, String.class);
             List<String> opts = objectMapper.readValue(quiz.getOptions(), listType);
             return new QuizResDto(quiz.getId(), quiz.getQuestion(), opts);
         } catch (JsonProcessingException e) {
-            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "퀴즈 options 파싱 실패. quizId=" + quiz.getId());
+            throw new CommonException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "퀴즈 options 파싱 실패. quizId=" + quiz.getId()
+            );
         }
     }
 
-    private record ChoiceInfo(boolean good, Long nextStepId) {}
+    record ChoiceInfo(boolean good, Long nextStepId) {}
 
-    /** 다양한 위치/형태의 choices 배열을 찾아 반환 */
-    private JsonNode findChoicesArray(JsonNode root) {
-        if (root == null) return null;
+    JsonNode findChoicesArray(JsonNode root) {
+        if (root == null) {
+            return null;
+        }
 
         if (root.isObject()) {
             JsonNode choices = root.get("choices");
-            if (choices != null && choices.isArray()) return choices;
+            if (choices != null && choices.isArray()) {
+                return choices;
+            }
         }
 
         if (root.isArray()) {
@@ -536,7 +362,10 @@ public class ScenarioProgressService {
             for (int i = 0; i < root.size() - 1; i++) {
                 JsonNode cur = root.get(i);
                 JsonNode nxt = root.get(i + 1);
-                if (cur.isTextual() && "choices".equalsIgnoreCase(cur.asText()) && nxt != null && nxt.isArray()) {
+                if (cur.isTextual()
+                        && "choices".equalsIgnoreCase(cur.asText())
+                        && nxt != null
+                        && nxt.isArray()) {
                     return nxt;
                 }
             }
@@ -544,27 +373,42 @@ public class ScenarioProgressService {
             for (JsonNode el : root) {
                 if (el.isObject()) {
                     JsonNode choices = el.get("choices");
-                    if (choices != null && choices.isArray()) return choices;
+                    if (choices != null && choices.isArray()) {
+                        return choices;
+                    }
                 }
             }
         }
         return null;
     }
 
-    private ChoiceInfo parseChoice(ScenarioStep step, int answerIndex) {
+    /**
+     * CHOICE 스텝의 content JSON 에서
+     * answerIndex 에 해당하는 선택지를 파싱하여 ChoiceInfo 로 매핑
+     */
+    ChoiceInfo parseChoice(ScenarioStep step, int answerIndex) {
         JsonNode root;
         try {
             root = objectMapper.readTree(step.getContent());
         } catch (JsonProcessingException e) {
-            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "CHOICE content 파싱 실패. stepId=" + step.getId());
+            throw new CommonException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "CHOICE content 파싱 실패. stepId=" + step.getId()
+            );
         }
 
         JsonNode choices = findChoicesArray(root);
         if (choices == null || !choices.isArray()) {
-            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "CHOICE 스텝에 choices 배열이 없습니다. stepId=" + step.getId());
+            throw new CommonException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "CHOICE 스텝에 choices 배열이 없습니다. stepId=" + step.getId()
+            );
         }
         if (answerIndex < 0 || answerIndex >= choices.size()) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "선택 인덱스 범위 초과. index=" + answerIndex);
+            throw new CommonException(
+                    ErrorCode.INVALID_REQUEST,
+                    "선택 인덱스 범위 초과. index=" + answerIndex
+            );
         }
 
         JsonNode choice = choices.get(answerIndex);
@@ -574,59 +418,35 @@ public class ScenarioProgressService {
         return new ChoiceInfo(good, next);
     }
 
-    /** 배드브랜치 여부(meta.branch=="bad") */
-    private boolean isBadBranch(ScenarioStep step) {
+    /**
+     * 배드 브랜치 여부 판단
+     * - content.meta.branch == "bad" 이면 true
+     */
+    boolean isBadBranch(ScenarioStep step) {
         return getMetaNode(step)
                 .map(meta -> "bad".equalsIgnoreCase(meta.path("branch").asText(null)))
                 .orElse(false);
     }
 
-    /** 배드엔딩 여부(meta.badEnding==true) */
-    private boolean isBadEnding(ScenarioStep step) {
+    /**
+     * 배드 엔딩 여부 판단
+     * - content.meta.badEnding == true 이면 true
+     */
+    boolean isBadEnding(ScenarioStep step) {
         return getMetaNode(step)
                 .map(meta -> meta.path("badEnding").asBoolean(false))
                 .orElse(false);
     }
 
-    private Optional<JsonNode> getMetaNode(ScenarioStep step) {
+    Optional<JsonNode> getMetaNode(ScenarioStep step) {
         try {
             JsonNode root = objectMapper.readTree(step.getContent());
-            JsonNode meta = (root.isArray() && !root.isEmpty()) ? root.get(0).get("meta") : root.get("meta");
+            JsonNode meta = (root.isArray() && !root.isEmpty())
+                    ? root.get(0).get("meta")
+                    : root.get("meta");
             return Optional.ofNullable(meta);
         } catch (JsonProcessingException e) {
             return Optional.empty();
         }
-    }
-
-    /** 배드 브랜치를 시작시킨 CHOICE(앵커) 탐색 */
-    private ScenarioStep findChoiceAnchorForBadBranch(Map<Long, ScenarioStep> byId, Long badStepId) {
-        for (ScenarioStep s : byId.values()) {
-            if (s.getType() != StepType.CHOICE) continue;
-
-            try {
-                JsonNode root = objectMapper.readTree(s.getContent());
-                JsonNode choices = findChoicesArray(root);
-                if (choices == null || !choices.isArray()) continue;
-
-                for (JsonNode c : choices) {
-                    boolean good = c.path("good").asBoolean(false);
-                    if (good) continue; // 앵커는 오루트 분기만
-                    if (!c.hasNonNull("next")) continue;
-
-                    long startId = c.get("next").asLong();
-
-                    Set<Long> visited = new HashSet<>();
-                    ScenarioStep cur = byId.get(startId);
-                    while (cur != null && !visited.contains(cur.getId())) {
-                        if (Objects.equals(cur.getId(), badStepId)) {
-                            return s;
-                        }
-                        visited.add(cur.getId());
-                        cur = (cur.getNextStep() != null) ? byId.get(cur.getNextStep().getId()) : null;
-                    }
-                }
-            } catch (JsonProcessingException ignored) {}
-        }
-        return null;
     }
 }
