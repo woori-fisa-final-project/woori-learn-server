@@ -96,135 +96,24 @@ public class ScenarioProgressService {
                 .orElseGet(() -> ScenarioProgressList.builder()
                         .user(user).scenario(scenario).step(current).progressRate(0.0).build());
 
-        // CHOICE 처리
+        // CHOICE
         if (current.getType() == StepType.CHOICE) {
-            if (answer == null) {
-                // 선택지 미제출 → 현재 스텝 유지
-                progress.moveToStep(current);
-                progressRepository.save(progress);
-                return new AdvanceResDto(AdvanceStatus.CHOICE_REQUIRED, mapStep(current), null);
-            }
-
-            ChoiceInfo choice = parseChoice(current, answer);
-
-            if (!choice.good()) {
-                // 오루트 진입: next가 없으면 즉시 배드엔딩, 있으면 그 next로 이동(진행률 동결)
-                Long nextId = choice.nextStepId();
-                if (nextId == null) {
-                    progress.moveToStep(current);
-                    progressRepository.save(progress);
-                    return new AdvanceResDto(AdvanceStatus.BAD_ENDING, mapStep(current), null);
-                }
-                ScenarioStep nextWrong = byId.get(nextId);
-                if (nextWrong == null) {
-                    throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "잘못된 경로 next가 존재하지 않습니다. id=" + nextId);
-                }
-                // 배드 루트에서는 진행률을 올리지 않음(동결)
-                progress.moveToStep(nextWrong);
-                progressRepository.save(progress);
-                return new AdvanceResDto(AdvanceStatus.ADVANCED_FROZEN, mapStep(nextWrong), null);
-            }
-
-            // 정루트: 명시적 next가 있으면 우선, 없으면 일반 nextStep 사용
-            Long nextId = (choice.nextStepId() != null)
-                    ? choice.nextStepId()
-                    : (current.getNextStep() != null ? current.getNextStep().getId() : null);
-
-            if (nextId == null) {
-                // 정루트의 마지막 → 완료 처리 + 다음 재개는 시작 스텝
-                ensureCompletedOnce(user, scenario);
-                double rate = monotonicRate(progress, 100.0);
-
-                Long startId = inferStartStepId(byId);
-                ScenarioStep start = byId.get(startId);
-                if (start == null) throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenarioId);
-
-                progress.moveToStep(start, rate);
-                progressRepository.save(progress);
-                return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
-            }
-
-            ScenarioStep next = byId.get(nextId);
-            if (next == null) throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "다음 스텝이 존재하지 않습니다. id=" + nextId);
-
-            // 정상 그래프 내부면 진행률 갱신, 외부면 동결(스텝만 이동)
-            Double computed = computeProgressRateOnNormalGraph(byId, next.getId());
-            if (computed == null) {
-                progress.moveToStep(next);
-            } else {
-                double rate = monotonicRate(progress, computed);
-                progress.moveToStep(next, rate);
-            }
-            progressRepository.save(progress);
-            return new AdvanceResDto(AdvanceStatus.ADVANCED, mapStep(next), null);
+            return handleChoiceStep(user, scenario, byId, current, answer, progress);
         }
 
         // 배드 브랜치
         if (isBadBranch(current)) {
-            if (isBadEnding(current)) {
-                // 백트래킹 탐색으로 CHOICE 앵커를 찾고, 없으면 시작 스텝으로 복귀
-                ScenarioStep anchorChoice = findChoiceAnchorForBadBranch(byId, current.getId());
-                if (anchorChoice == null) anchorChoice = byId.get(inferStartStepId(byId));
-                progress.moveToStep(anchorChoice);
-                progressRepository.save(progress);
-                return new AdvanceResDto(AdvanceStatus.BAD_ENDING, mapStep(current), null);
-            }
-
-            // 배드 중간 스텝 → 다음 배드 스텝이 있으면 그쪽으로, 없으면 BAD_ENDING 동일 처리
-            ScenarioStep next = current.getNextStep() != null ? byId.get(current.getNextStep().getId()) : null;
-            if (next == null) {
-                ScenarioStep anchorChoice = findChoiceAnchorForBadBranch(byId, current.getId());
-                if (anchorChoice == null) anchorChoice = byId.get(inferStartStepId(byId));
-                progress.moveToStep(anchorChoice);
-                progressRepository.save(progress);
-                return new AdvanceResDto(AdvanceStatus.BAD_ENDING, mapStep(current), null);
-            }
-
-            // 진행률 동결
-            progress.moveToStep(next);
-            progressRepository.save(progress);
-            return new AdvanceResDto(AdvanceStatus.ADVANCED_FROZEN, mapStep(next), null);
+            return handleBadBranchStep(byId, current, progress);
         }
 
-        // 퀴즈
-        Quiz quiz = current.getQuiz();
-        if (quiz != null) {
-            boolean isCorrect = answer != null && Objects.equals(quiz.getAnswer(), answer);
-            if (!isCorrect) {
-                // 미제출/오답 → 현재 스텝 유지
-                progress.moveToStep(current);
-                progressRepository.save(progress);
-                AdvanceStatus status = (answer == null) ? AdvanceStatus.QUIZ_REQUIRED : AdvanceStatus.QUIZ_WRONG;
-                return new AdvanceResDto(status, mapStep(current), mapQuiz(quiz));
-            }
+        // 퀴즈 - 미제출/오답이면 여기서 바로 반환
+        AdvanceResDto quizGateResult = handleQuizGateIfPresent(current, answer, progress);
+        if (quizGateResult != null) {
+            return quizGateResult;
         }
 
         // 일반 next
-        ScenarioStep next = current.getNextStep() != null ? byId.get(current.getNextStep().getId()) : null;
-        if (next == null) {
-            // 정루트 상의 마지막 → 완료
-            ensureCompletedOnce(user, scenario);
-            double rate = monotonicRate(progress, 100.0);
-
-            Long startId = inferStartStepId(byId);
-            ScenarioStep start = byId.get(startId);
-            if (start == null) throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenarioId);
-
-            progress.moveToStep(start, rate);
-            progressRepository.save(progress);
-            return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
-        }
-
-        // 정상 그래프 내부면 갱신, 외부면 동결
-        Double computed = computeProgressRateOnNormalGraph(byId, next.getId());
-        if (computed == null) {
-            progress.moveToStep(next);
-        } else {
-            double rate = monotonicRate(progress, computed);
-            progress.moveToStep(next, rate);
-        }
-        progressRepository.save(progress);
-        return new AdvanceResDto(AdvanceStatus.ADVANCED, mapStep(next), null);
+        return handleNormalStep(user, scenario, byId, current, progress);
     }
 
     /**
@@ -253,23 +142,196 @@ public class ScenarioProgressService {
             return new ProgressSaveResDto(scenarioId, step.getId(), progress.getProgressRate());
         }
 
-        Double computed = computeProgressRateOnNormalGraph(byId, nowStepId);
-        if (computed == null) {
-            // 정상 그래프 바깥 → 진행률 동결
-            progress.moveToStep(step);
+        // 배드 브랜치면 진행률 동결
+        boolean forceFreeze = isBadBranch(step);
+        double finalRate = updateProgressAndSave(progress, step, byId, forceFreeze);
+
+        return new ProgressSaveResDto(scenarioId, step.getId(), finalRate);
+    }
+
+    // =================
+    //  스텝 유형별 핸들러
+    // =================
+
+    /** CHOICE 스텝 처리 */
+    private AdvanceResDto handleChoiceStep(
+            Users user,
+            Scenario scenario,
+            Map<Long, ScenarioStep> byId,
+            ScenarioStep current,
+            Integer answer,
+            ScenarioProgressList progress
+    ) {
+        if (answer == null) {
+            // 선택지 미제출 → 현재 스텝 유지
+            progress.moveToStep(current);
             progressRepository.save(progress);
-            return new ProgressSaveResDto(scenarioId, nowStepId, progress.getProgressRate());
-        } else {
-            double rate = monotonicRate(progress, computed);
-            progress.moveToStep(step, rate);
-            progressRepository.save(progress);
-            return new ProgressSaveResDto(scenarioId, nowStepId, rate);
+            return new AdvanceResDto(AdvanceStatus.CHOICE_REQUIRED, mapStep(current), null);
         }
+
+        ChoiceInfo choice = parseChoice(current, answer);
+
+        if (!choice.good()) {
+            // 오루트 진입: next가 없으면 즉시 배드엔딩, 있으면 그 next로 이동(진행률 동결)
+            Long nextId = choice.nextStepId();
+            if (nextId == null) {
+                progress.moveToStep(current);
+                progressRepository.save(progress);
+                return new AdvanceResDto(AdvanceStatus.BAD_ENDING, mapStep(current), null);
+            }
+            ScenarioStep nextWrong = byId.get(nextId);
+            if (nextWrong == null) {
+                throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "잘못된 경로 next가 존재하지 않습니다. id=" + nextId);
+            }
+            // 오루트에서는 진행률을 올리지 않음(동결)
+            updateProgressAndSave(progress, nextWrong, byId, true);
+            return new AdvanceResDto(AdvanceStatus.ADVANCED_FROZEN, mapStep(nextWrong), null);
+        }
+
+        // 정루트: 명시적 next가 있으면 우선, 없으면 일반 nextStep 사용
+        Long nextId = (choice.nextStepId() != null)
+                ? choice.nextStepId()
+                : (current.getNextStep() != null ? current.getNextStep().getId() : null);
+
+        if (nextId == null) {
+            // 정루트의 마지막 → 완료 처리 + 다음 재개는 시작 스텝
+            ensureCompletedOnce(user, scenario);
+            double rate = monotonicRate(progress, 100.0);
+
+            Long startId = inferStartStepId(byId);
+            ScenarioStep start = byId.get(startId);
+            if (start == null) throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenario.getId());
+
+            progress.moveToStep(start, rate);
+            progressRepository.save(progress);
+            return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
+        }
+
+        ScenarioStep next = byId.get(nextId);
+        if (next == null) throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "다음 스텝이 존재하지 않습니다. id=" + nextId);
+
+        // 정상 그래프 내부면 진행률 갱신, 외부면 동결(스텝만 이동)
+        updateProgressAndSave(progress, next, byId, false);
+        return new AdvanceResDto(AdvanceStatus.ADVANCED, mapStep(next), null);
+    }
+
+    /** 배드 브랜치 처리 */
+    private AdvanceResDto handleBadBranchStep(
+            Map<Long, ScenarioStep> byId,
+            ScenarioStep current,
+            ScenarioProgressList progress
+    ) {
+        if (isBadEnding(current)) {
+            // 백트래킹 탐색으로 CHOICE 앵커를 찾고, 없으면 시작 스텝으로 복귀
+            ScenarioStep anchorChoice = findChoiceAnchorForBadBranch(byId, current.getId());
+            if (anchorChoice == null) anchorChoice = byId.get(inferStartStepId(byId));
+            updateProgressAndSave(progress, anchorChoice, byId, true);
+            return new AdvanceResDto(AdvanceStatus.BAD_ENDING, mapStep(current), null);
+        }
+
+        // 오루트 중간 스텝 → 다음 배드 스텝이 있으면 그쪽으로, 없으면 BAD_ENDING 동일 처리
+        ScenarioStep next = current.getNextStep() != null ? byId.get(current.getNextStep().getId()) : null;
+        if (next == null) {
+            ScenarioStep anchorChoice = findChoiceAnchorForBadBranch(byId, current.getId());
+            if (anchorChoice == null) anchorChoice = byId.get(inferStartStepId(byId));
+            updateProgressAndSave(progress, anchorChoice, byId, true);
+            return new AdvanceResDto(AdvanceStatus.BAD_ENDING, mapStep(current), null);
+        }
+
+        updateProgressAndSave(progress, next, byId, true);
+        return new AdvanceResDto(AdvanceStatus.ADVANCED_FROZEN, mapStep(next), null);
+    }
+
+    /** 퀴즈 게이트 처리 */
+    private AdvanceResDto handleQuizGateIfPresent(
+            ScenarioStep current,
+            Integer answer,
+            ScenarioProgressList progress
+    ) {
+        Quiz quiz = current.getQuiz();
+        if (quiz == null) return null;
+
+        boolean isCorrect = answer != null && Objects.equals(quiz.getAnswer(), answer);
+        if (!isCorrect) {
+            // 미제출/오답 → 현재 스텝 유지
+            updateProgressAndSave(progress, current, null, true);
+            progressRepository.save(progress);
+            AdvanceStatus status = (answer == null) ? AdvanceStatus.QUIZ_REQUIRED : AdvanceStatus.QUIZ_WRONG;
+            return new AdvanceResDto(status, mapStep(current), mapQuiz(quiz));
+        }
+        return null;
+    }
+
+    /** 일반 next 처리 */
+    private AdvanceResDto handleNormalStep(
+            Users user,
+            Scenario scenario,
+            Map<Long, ScenarioStep> byId,
+            ScenarioStep current,
+            ScenarioProgressList progress
+    ) {
+        ScenarioStep next = current.getNextStep() != null ? byId.get(current.getNextStep().getId()) : null;
+        if (next == null) {
+            // 정루트 상의 마지막 → 완료
+            ensureCompletedOnce(user, scenario);
+            double rate = monotonicRate(progress, 100.0);
+
+            Long startId = inferStartStepId(byId);
+            ScenarioStep start = byId.get(startId);
+            if (start == null) throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenario.getId());
+
+            progress.moveToStep(start, rate);
+            progressRepository.save(progress);
+            return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
+        }
+
+        updateProgressAndSave(progress, next, byId, false);
+        return new AdvanceResDto(AdvanceStatus.ADVANCED, mapStep(next), null);
     }
 
     /**
-     * 정상 경로 그래프 기반 진행률 계산
+     * 진행률 계산(정상 그래프 기반) + 단조 증가 보장 + 위치 저장을 한 번에 처리
+     * @param progress   현재 사용자 진행 엔티티
+     * @param newStep    이동할 스텝
+     * @param byId       시나리오 내 모든 스텝 맵(정상 진행률 갱신 시 필요). 동결이면 null 가능
+     * @param forceFreeze true면 진행률 갱신 없이 스텝만 이동(배드 브랜치/미제출 등)
+     * @return 최종 progressRate
      */
+    private double updateProgressAndSave(ScenarioProgressList progress,
+                                         ScenarioStep newStep,
+                                         Map<Long, ScenarioStep> byId,
+                                         boolean forceFreeze) {
+
+        double finalRate;
+        if (forceFreeze) {
+            // 진행률 변화 없이 위치만 저장
+            progress.moveToStep(newStep);
+            progressRepository.save(progress);
+            finalRate = progress.getProgressRate() == null ? 0.0 : progress.getProgressRate();
+            return finalRate;
+        }
+
+        // 정상 진행률 갱신 경로
+        Double computed = computeProgressRateOnNormalGraph(byId, newStep.getId());
+        if (computed == null) {
+            // 정상 그래프 밖 → 동결
+            progress.moveToStep(newStep);
+            progressRepository.save(progress);
+            finalRate = progress.getProgressRate() == null ? 0.0 : progress.getProgressRate();
+        } else {
+            double rate = monotonicRate(progress, computed);
+            progress.moveToStep(newStep, rate);
+            progressRepository.save(progress);
+            finalRate = rate;
+        }
+        return finalRate;
+    }
+
+    // ===========
+    //  진행률 계산
+    // ===========
+
+    /** 정상 경로 그래프 기반 진행률 계산 */
     private Double computeProgressRateOnNormalGraph(Map<Long, ScenarioStep> byId, Long nowStepId) {
         // 그래프 구축(정상 노드/엣지만)
         Graph g = buildNormalGraph(byId);
@@ -330,23 +392,13 @@ public class ScenarioProgressService {
         Map<Long, Set<Long>> adj = new HashMap<>();
         Map<Long, Integer> indegree = new HashMap<>();
 
-        // 1) 정상 노드 수집
+        // 정상 노드 수집
         for (ScenarioStep s : byId.values()) {
             if (isBadBranch(s)) continue; // 배드 노드는 제외
             nodes.add(s.getId());
         }
 
-        // 2) 엣지 추가 헬퍼
-        final var addEdge = new Object() {
-            void add(long u, long v) {
-                if (!nodes.contains(u) || !nodes.contains(v)) return;
-                adj.computeIfAbsent(u, k -> new LinkedHashSet<>()).add(v);
-                indegree.put(v, indegree.getOrDefault(v, 0) + 1);
-                indegree.putIfAbsent(u, indegree.getOrDefault(u, 0));
-            }
-        };
-
-        // 3) 엣지 구성
+        // 엣지 구성
         for (ScenarioStep s : byId.values()) {
             if (!nodes.contains(s.getId())) continue; // 배드 노드 제외
 
@@ -362,24 +414,24 @@ public class ScenarioProgressService {
                             long nxt = c.get("next").asLong();
                             ScenarioStep target = byId.get(nxt);
                             if (target != null && !isBadBranch(target)) {
-                                addEdge.add(s.getId(), target.getId());
+                                addEdge(nodes, adj, indegree, s.getId(), target.getId());
                                 anyGoodEdge = true;
                             }
                         }
                     }
                     // choices가 없거나 good edge가 1개도 없으면 nextStep로 대체
                     if (!anyGoodEdge && s.getNextStep() != null && !isBadBranch(s.getNextStep())) {
-                        addEdge.add(s.getId(), s.getNextStep().getId());
+                        addEdge(nodes, adj, indegree, s.getId(), s.getNextStep().getId());
                     }
                 } catch (JsonProcessingException ignored) {
                     // 파싱 실패 시에도 nextStep로 대체 시도
                     if (s.getNextStep() != null && !isBadBranch(s.getNextStep())) {
-                        addEdge.add(s.getId(), s.getNextStep().getId());
+                        addEdge(nodes, adj, indegree, s.getId(), s.getNextStep().getId());
                     }
                 }
             } else {
                 if (s.getNextStep() != null && !isBadBranch(s.getNextStep())) {
-                    addEdge.add(s.getId(), s.getNextStep().getId());
+                    addEdge(nodes, adj, indegree, s.getId(), s.getNextStep().getId());
                 }
             }
         }
@@ -388,6 +440,18 @@ public class ScenarioProgressService {
         for (Long n : nodes) indegree.putIfAbsent(n, 0);
 
         return new Graph(nodes, adj, indegree);
+    }
+
+    // 엣지 추가 헬퍼
+    private void addEdge(Set<Long> nodes,
+                         Map<Long, Set<Long>> adj,
+                         Map<Long, Integer> indegree,
+                         long u, long v) {
+        if (!nodes.contains(u) || !nodes.contains(v)) return;
+        Set<Long> set = adj.computeIfAbsent(u, k -> new LinkedHashSet<>());
+        set.add(v);
+        indegree.put(v, indegree.getOrDefault(v, 0) + 1);
+        indegree.putIfAbsent(u, indegree.getOrDefault(u, 0));
     }
 
     private record Graph(Set<Long> nodes, Map<Long, Set<Long>> adj, Map<Long, Integer> indegree) {}
@@ -512,23 +576,25 @@ public class ScenarioProgressService {
 
     /** 배드브랜치 여부(meta.branch=="bad") */
     private boolean isBadBranch(ScenarioStep step) {
-        try {
-            JsonNode root = objectMapper.readTree(step.getContent());
-            JsonNode meta = (root.isArray() && root.size() > 0) ? root.get(0).get("meta") : root.get("meta");
-            return meta != null && "bad".equalsIgnoreCase(meta.path("branch").asText(null));
-        } catch (JsonProcessingException e) {
-            return false;
-        }
+        return getMetaNode(step)
+                .map(meta -> "bad".equalsIgnoreCase(meta.path("branch").asText(null)))
+                .orElse(false);
     }
 
     /** 배드엔딩 여부(meta.badEnding==true) */
     private boolean isBadEnding(ScenarioStep step) {
+        return getMetaNode(step)
+                .map(meta -> meta.path("badEnding").asBoolean(false))
+                .orElse(false);
+    }
+
+    private Optional<JsonNode> getMetaNode(ScenarioStep step) {
         try {
             JsonNode root = objectMapper.readTree(step.getContent());
-            JsonNode meta = (root.isArray() && root.size() > 0) ? root.get(0).get("meta") : root.get("meta");
-            return meta != null && meta.path("badEnding").asBoolean(false);
+            JsonNode meta = (root.isArray() && !root.isEmpty()) ? root.get(0).get("meta") : root.get("meta");
+            return Optional.ofNullable(meta);
         } catch (JsonProcessingException e) {
-            return false;
+            return Optional.empty();
         }
     }
 
