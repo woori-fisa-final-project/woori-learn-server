@@ -25,4 +25,7 @@ public class AuthUsers extends BaseEntity {
     @Column(nullable = false)
     private Role role;
 
+    public void updatePassword(String password) {
+        this.password = password;
+    }
 }

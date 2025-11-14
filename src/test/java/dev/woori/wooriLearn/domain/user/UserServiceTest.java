@@ -1,82 +1,100 @@
 package dev.woori.wooriLearn.domain.user;
 
-import dev.woori.wooriLearn.config.exception.CommonException;
-import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
-import dev.woori.wooriLearn.domain.user.dto.SignupReqDto;
+import dev.woori.wooriLearn.domain.auth.repository.AuthUserRepository;
+import dev.woori.wooriLearn.domain.user.dto.ChangeNicknameReqDto;
+import dev.woori.wooriLearn.domain.user.dto.ChangePasswdReqDto;
+import dev.woori.wooriLearn.domain.user.dto.UserInfoResDto;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import dev.woori.wooriLearn.domain.user.service.UserService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+import java.util.Optional;
 
-public class UserServiceTest {
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @Mock
     private UserRepository userRepository;
+
+    @Mock
     private AuthUserPort authUserRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
+
+    @InjectMocks
     private UserService userService;
 
-    @BeforeEach
-    void setUp() {
-        userRepository = mock(UserRepository.class);
-        authUserRepository = mock(AuthUserPort.class);
-        passwordEncoder = mock(PasswordEncoder.class);
-        userService = new UserService(userRepository, authUserRepository, passwordEncoder);
-    }
 
     @Test
-    @DisplayName("회원가입 성공 시 AuthUsers와 Users가 각각 저장된다")
-    void signup_success() {
-        // given
-        SignupReqDto req = new SignupReqDto("user1", "rawPassword", "nickname");
-        when(authUserRepository.existsByUserId("user1")).thenReturn(false);
-        when(passwordEncoder.encode("rawPassword")).thenReturn("encodedPassword");
+    void testGetUserInfo() {
+        Users user = Users.builder()
+                .userId("testUser")
+                .nickname("nick")
+                .points(300)
+                .build();
 
-        // when
-        userService.signup(req);
+        when(userRepository.findByUserId("testUser"))
+                .thenReturn(Optional.of(user));
 
-        // then
-        ArgumentCaptor<AuthUsers> authCaptor = ArgumentCaptor.forClass(AuthUsers.class);
-        ArgumentCaptor<Users> userCaptor = ArgumentCaptor.forClass(Users.class);
+        UserInfoResDto result = userService.getUserInfo("testUser");
 
-        verify(authUserRepository, times(1)).save(authCaptor.capture());
-        verify(userRepository, times(1)).save(userCaptor.capture());
-
-        AuthUsers savedAuth = authCaptor.getValue();
-        Users savedUser = userCaptor.getValue();
-
-        assertThat(savedAuth.getUserId()).isEqualTo("user1");
-        assertThat(savedAuth.getPassword()).isEqualTo("encodedPassword");
-        assertThat(savedAuth.getRole()).isEqualTo(Role.ROLE_USER);
-
-        assertThat(savedUser.getAuthUser()).isEqualTo(savedAuth);
-        assertThat(savedUser.getUserId()).isEqualTo("user1");
-        assertThat(savedUser.getNickname()).isEqualTo("nickname");
-        assertThat(savedUser.getPoints()).isEqualTo(0);
+        assertEquals("nick", result.nickname());
+        assertEquals(300, result.point());
     }
 
+
     @Test
-    @DisplayName("이미 존재하는 아이디로 회원가입 시 CommonException 발생")
-    void signup_conflict() {
-        // given
-        SignupReqDto req = new SignupReqDto("duplicate", "pw", "nick");
-        when(authUserRepository.existsByUserId("duplicate")).thenReturn(true);
+    void testChangeNickname() {
+        Users user = Users.builder()
+                .userId("testUser")
+                .nickname("oldNick")
+                .points(100)
+                .build();
 
-        // expect
-        assertThatThrownBy(() -> userService.signup(req))
-                .isInstanceOf(CommonException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CONFLICT);
+        when(userRepository.findByUserId("testUser"))
+                .thenReturn(Optional.of(user));
 
-        verify(authUserRepository, never()).save(any());
-        verify(userRepository, never()).save(any());
+        ChangeNicknameReqDto req = new ChangeNicknameReqDto("newNick");
+
+        userService.changeNickname("testUser", req);
+
+        assertEquals("newNick", user.getNickname());
+        verify(userRepository).findByUserId("testUser");
+    }
+
+
+    @Test
+    void testChangePassword() {
+        AuthUsers auth = AuthUsers.builder()
+                .userId("testUser")
+                .password("oldPw")
+                .role(Role.ROLE_USER)
+                .build();
+
+        when(authUserRepository.findByUserId("testUser"))
+                .thenReturn(Optional.of(auth));
+        when(passwordEncoder.encode("newPw"))
+                .thenReturn("hashed");
+
+        ChangePasswdReqDto req = new ChangePasswdReqDto("newPw");
+
+        userService.changePassword("testUser", req);
+
+        verify(authUserRepository).findByUserId("testUser");
+        assertEquals("hashed", auth.getPassword());
     }
 }

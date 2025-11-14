@@ -47,4 +47,8 @@ public class Users extends BaseEntity {
         }
         this.points -= amount;
     }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
 }

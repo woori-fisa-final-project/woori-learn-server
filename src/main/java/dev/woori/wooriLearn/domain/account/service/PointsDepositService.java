@@ -24,9 +24,6 @@ public class PointsDepositService {
 
     @Transactional
     public PointsDepositResponseDto depositPoints(String username, PointsDepositRequestDto dto) {
-
-
-
         Users user = userRepository.findByUserIdForUpdate(username)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 

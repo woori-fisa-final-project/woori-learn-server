@@ -1,6 +1,5 @@
 package dev.woori.wooriLearn.domain.edubankapi.entity;
 
-import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
