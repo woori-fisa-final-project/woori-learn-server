@@ -394,8 +394,8 @@ class AutoPaymentServiceTest {
 
         // then
         assertThat(exception).isNotNull();
-        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN);
-        assertThat(exception.getMessage()).contains("접근 권한이 없습니다");
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
+        assertThat(exception.getMessage()).contains("자동이체 정보를 찾을 수 없습니다");
 
         verify(edubankapiAccountRepository).findById(2L);
     }
