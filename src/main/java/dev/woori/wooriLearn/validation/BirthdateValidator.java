@@ -63,8 +63,6 @@ public class BirthdateValidator implements ConstraintValidator<ValidBirthdate, S
         // 만 나이 계산
         int age = Period.between(birth, today).getYears();
         // 최소 나이 제한 적용
-        if (minAgeYears > 0 && age < minAgeYears) return false;
-
-        return true;
+        return minAgeYears <= 0 || age >= minAgeYears;
     }
 }

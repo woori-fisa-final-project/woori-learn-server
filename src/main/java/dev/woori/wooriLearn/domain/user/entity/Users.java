@@ -1,6 +1,7 @@
 package dev.woori.wooriLearn.domain.user.entity;
 
 import dev.woori.wooriLearn.config.BaseEntity;
+import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import jakarta.persistence.*;
@@ -12,16 +13,16 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class Users extends BaseEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false, unique = true)
-    private String userId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "auth_user_id", nullable = false)
+    private AuthUsers authUser;
 
     @Column(nullable = false)
-    private String password;
+    private String userId;
 
     @Column(nullable = false)
     private String nickname;
@@ -29,22 +30,6 @@ public class Users extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Integer points = 0;
-
-    @Column(nullable = false)
-    private boolean accountNonExpired = true;
-
-    @Column(nullable = false)
-    private boolean accountNonLocked = true;
-
-    @Column(nullable = false)
-    private boolean credentialsNonExpired = true;
-
-    @Column(nullable = false)
-    private boolean enabled = true;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role;
 
     public void addPoints(Integer amount) {
         if (amount == null || amount <= 0) {
@@ -61,5 +46,9 @@ public class Users extends BaseEntity {
             throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족합니다.");
         }
         this.points -= amount;
+    }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
     }
 }

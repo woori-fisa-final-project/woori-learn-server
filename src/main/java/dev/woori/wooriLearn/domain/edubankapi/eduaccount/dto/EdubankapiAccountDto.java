@@ -12,20 +12,19 @@ import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 
 
 public record EdubankapiAccountDto(
+        Long id,
         String accountName,
         String accountNumber,
         Integer balance
 ) {
-
-
     /*
         정적 팩토리 메서드
         컨트롤러와 클라이언트에 필요한 필드만 노출하기 위해 DTO 매핑
         엔티티 -> DTO로 변환
      */
-
     public static EdubankapiAccountDto from(EducationalAccount account){
         return new EdubankapiAccountDto(
+                account.getId(),
                 account.getAccountName(),
                 account.getAccountNumber(),
                 account.getBalance()

@@ -6,15 +6,14 @@ import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiAccountDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransactionHistoryDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransferRequestDto;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.TransactionListReqDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiAccountService;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiTransferService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 
 
@@ -26,7 +25,8 @@ public class EdubankapiAccountController {
 
     // final을 통해 생성자 자동 주입
     private final EdubankapiAccountService edubankapiAccountService;
-
+    // 실제 계좌이체 로직(출금, 입금, 예외처리 등)은 Service에서 수행
+    private final EdubankapiTransferService transferService;
 
     /**
      *   계좌 목록 조회
@@ -56,21 +56,17 @@ public class EdubankapiAccountController {
      *      @RequestParm : accountId, period, startDate, endDate, type가 쿼리로 들어오기 때문에 사용
      */
     @GetMapping("/transactions")
-    public ResponseEntity<BaseResponse<?>> getTransactionList(
-            @RequestParam Long accountId,                                           // 계좌번호
-            @RequestParam(required = false) String period,                           // 조회기간 1M/3M/6M/1년, 없으면 1월
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate, // 직접 시작일 지정
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,   // 직접 종료일 지정
-            @RequestParam(required = false, defaultValue = "ALL") String type        // 거래구분 필터 기본 전체 보기
-            ) {
+    public ResponseEntity<BaseResponse<?>> getTransactionList(TransactionListReqDto request) {
         List<EdubankapiTransactionHistoryDto> transactions =
-                edubankapiAccountService.getTransactionList(accountId, period, startDate, endDate, type);
+                edubankapiAccountService.getTransactionList(
+                        request.accountId(),
+                        request.periodOrDefault(),
+                        request.startDate(),
+                        request.endDate(),
+                        request.typeOrDefault());
 
         return ApiResponse.success(SuccessCode.OK, transactions);
     }
-
-    // 실제 계좌이체 로직(출금, 입금, 예외처리 등)은 Service에서 수행
-    private final EdubankapiTransferService transferService;
 
     /**
      *      계좌이체 실행

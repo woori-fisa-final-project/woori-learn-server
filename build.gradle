@@ -81,7 +81,8 @@ jacocoTestReport {
                     '**/entity/**',           // Entity
                     '**/exception/**',        // Exception
                     '**/*Application.class',  // 메인 클래스
-                    '**/response/**'          // 공통 응답
+                    '**/response/**',          // 공통 응답
+                    '**/adapter'
             ])
         }))
     }
