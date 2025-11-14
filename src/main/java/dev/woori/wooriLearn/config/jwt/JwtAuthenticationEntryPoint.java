@@ -1,8 +1,6 @@
 package dev.woori.wooriLearn.config.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.config.response.BaseResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
