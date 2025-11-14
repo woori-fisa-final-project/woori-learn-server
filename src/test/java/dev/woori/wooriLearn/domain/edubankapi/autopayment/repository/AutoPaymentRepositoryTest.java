@@ -1,9 +1,10 @@
 package dev.woori.wooriLearn.domain.edubankapi.autopayment.repository;
 
+import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
+import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment.AutoPaymentStatus;
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
-import dev.woori.wooriLearn.domain.user.entity.Role;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,13 +37,19 @@ class AutoPaymentRepositoryTest {
 
     @BeforeEach
     void setUp() {
+        AuthUsers authUsers = AuthUsers.builder()
+                .userId("userId")
+                .password("encodedPassword")
+                .role(Role.ROLE_USER)
+                .build();
+        entityManager.persist(authUsers);
+
         // Users 엔티티를 먼저 생성하고 저장
         testUser = Users.builder()
-                .userId("testuser")
-                .password("encodedPassword")
+                .authUser(authUsers)
+                .userId("userId")
                 .nickname("테스트유저")
                 .points(1000)
-                .role(Role.ROLE_USER)
                 .build();
         entityManager.persist(testUser);
 

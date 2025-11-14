@@ -7,8 +7,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -31,7 +32,8 @@ public class SecurityConfig {
     // 인증 없이도 접근 가능한 엔드포인트 목록
     private static final List<String> whiteList = List.of(
             "/auth/login", // 로그인
-            "/auth/signup" // 회원가입
+            "/auth/signup", // 회원가입
+            "/auth/verify" // 아이디 중복체크
     );
 
     // 관리자만 접근 가능한 엔드포인트 목록
@@ -45,6 +47,7 @@ public class SecurityConfig {
     public SecurityFilterChain devFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                 .build();
     }
@@ -54,6 +57,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable) // API 테스트용, 실제 서비스면 토큰 기반 CSRF 설정 필요
+                .cors(Customizer.withDefaults()) // 임시로 cors 허용
                 .sessionManagement(sessionManagementConfigurer ->
                         sessionManagementConfigurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 사용 안함
                 .authorizeHttpRequests(auth -> auth
