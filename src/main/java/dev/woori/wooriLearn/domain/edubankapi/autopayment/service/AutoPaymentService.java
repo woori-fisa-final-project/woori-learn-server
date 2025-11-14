@@ -31,7 +31,9 @@ public class AutoPaymentService {
 
     private static final String ALL_STATUS = "ALL";
 
-    public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status) {
+    public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status, String currentUserId) {
+        // 권한 체크: 요청한 계좌가 현재 사용자의 것인지 확인
+        validateAccountOwnership(educationalAccountId, currentUserId);
         List<AutoPayment> autoPayments;
 
         if (ALL_STATUS.equalsIgnoreCase(status)) {
@@ -47,7 +49,7 @@ public class AutoPaymentService {
                 .toList();
     }
 
-    public AutoPaymentResponse getAutoPaymentDetail(Long autoPaymentId) {
+    public AutoPaymentResponse getAutoPaymentDetail(Long autoPaymentId, String currentUserId) {
         AutoPayment autoPayment = autoPaymentRepository.findById(autoPaymentId)
                 .orElseThrow(() -> {
                     log.error("자동이체 정보 조회 실패 - ID: {}", autoPaymentId);
@@ -55,12 +57,19 @@ public class AutoPaymentService {
                             "자동이체 정보를 찾을 수 없습니다.");
                 });
 
-        return AutoPaymentResponse.of(autoPayment, autoPayment.getEducationalAccount().getId());
+        // 권한 체크: 이 자동이체가 현재 사용자의 계좌에 속하는지 확인
+        Long accountId = autoPayment.getEducationalAccount().getId();
+        validateAccountOwnership(accountId, currentUserId);
+
+        return AutoPaymentResponse.of(autoPayment, accountId);
     }
 
     @Transactional
-    public AutoPaymentResponse createAutoPayment(AutoPaymentCreateRequest request) {
-        // 1. 교육용 계좌 조회 및 검증
+    public AutoPaymentResponse createAutoPayment(AutoPaymentCreateRequest request, String currentUserId) {
+        // 1. 권한 체크: 출금 계좌가 현재 사용자의 것인지 확인
+        validateAccountOwnership(request.educationalAccountId(), currentUserId);
+
+        // 2. 교육용 계좌 조회 및 검증
         EducationalAccount educationalAccount = findAndValidateAccount(
                 request.educationalAccountId(),
                 request.accountPassword()
@@ -78,9 +87,9 @@ public class AutoPaymentService {
     }
 
     @Transactional
-    public AutoPayment cancelAutoPayment(Long autoPaymentId, Long educationalAccountId) {
-        log.info("자동이체 해지 시작 - 자동이체ID: {}, 교육용계좌ID: {}",
-                autoPaymentId, educationalAccountId);
+    public AutoPayment cancelAutoPayment(Long autoPaymentId, Long educationalAccountId, String currentUserId) {
+        log.info("자동이체 해지 시작 - 자동이체ID: {}, 교육용계좌ID: {}, 사용자ID: {}",
+                autoPaymentId, educationalAccountId, currentUserId);
 
         // 1. 자동이체 조회
         AutoPayment autoPayment = autoPaymentRepository.findById(autoPaymentId)
@@ -90,10 +99,14 @@ public class AutoPaymentService {
                             "자동이체 정보를 찾을 수 없습니다.");
                 });
 
-        // 2. 소유자 확인
+        // 2. 권한 체크: 이 자동이체가 현재 사용자의 계좌에 속하는지 확인
+        Long actualAccountId = autoPayment.getEducationalAccount().getId();
+        validateAccountOwnership(actualAccountId, currentUserId);
+
+        // 3. 소유자 확인 (educationalAccountId 파라미터 검증)
         if (!autoPayment.isOwnedBy(educationalAccountId)) {
             log.warn("자동이체 소유자 불일치 - 자동이체ID: {}, 요청계좌ID: {}, 실제계좌ID: {}",
-                    autoPaymentId, educationalAccountId, autoPayment.getEducationalAccount().getId());
+                    autoPaymentId, educationalAccountId, actualAccountId);
             throw new CommonException(ErrorCode.ENTITY_NOT_FOUND,
                     "자동이체 정보를 찾을 수 없습니다.");
         }
@@ -145,5 +158,30 @@ public class AutoPaymentService {
             throw new CommonException(ErrorCode.INVALID_REQUEST,
                     "유효하지 않은 상태 값입니다. (사용 가능: " + AutoPaymentStatus.getAvailableValues() + ")");
         }
+    }
+
+    /**
+     * 계좌 소유자 권한 검증
+     * @param accountId 검증할 계좌 ID
+     * @param currentUserId 현재 로그인한 사용자 ID (username)
+     */
+    private void validateAccountOwnership(Long accountId, String currentUserId) {
+        EducationalAccount account = edubankapiAccountRepository.findById(accountId)
+                .orElseThrow(() -> {
+                    log.error("교육용 계좌 조회 실패 - 계좌ID: {}", accountId);
+                    return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                            "교육용 계좌를 찾을 수 없습니다.");
+                });
+
+        // 계좌 소유자의 userId와 현재 사용자의 userId 비교
+        String accountOwnerUserId = account.getUser().getUserId();
+        if (!accountOwnerUserId.equals(currentUserId)) {
+            log.warn("권한 없는 접근 시도 - 계좌ID: {}, 요청사용자: {}, 계좌소유자: {}",
+                    accountId, currentUserId, accountOwnerUserId);
+            throw new CommonException(ErrorCode.FORBIDDEN,
+                    "접근 권한이 없습니다.");
+        }
+
+        log.debug("계좌 소유자 권한 검증 성공 - 계좌ID: {}, 사용자ID: {}", accountId, currentUserId);
     }
 }
