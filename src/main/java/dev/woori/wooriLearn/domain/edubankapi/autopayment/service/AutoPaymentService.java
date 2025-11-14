@@ -78,14 +78,10 @@ public class AutoPaymentService {
                 request.accountPassword()
         );
 
+        // 3. 지정일 처리 로직 적용
         int finalDesignatedDate = resolveDesignatedDate(request);
 
         // 4. 자동이체 엔티티 생성
-        // DTO 대신 변환된 designatedDate와 나머지 정보를 넘기기 위해 엔티티 생성 방식을 수정할 필요가 있을 수 있습니다.
-        // 현재 엔티티 생성 방식(AutoPayment.create(request, educationalAccount))을
-        // 오버로드하거나 빌더 패턴을 사용하여 finalDesignatedDate를 명시적으로 전달해야 합니다.
-        // 여기서는 finalDesignatedDate를 반영한 새로운 요청 객체를 생성했다고 가정하고 진행합니다.
-
         AutoPayment autoPayment = AutoPayment.createWithResolvedDate(
                 request,
                 educationalAccount,
@@ -106,40 +102,49 @@ public class AutoPaymentService {
         log.info("자동이체 해지 시작 - 자동이체ID: {}, 교육용계좌ID: {}, 사용자ID: {}",
                 autoPaymentId, educationalAccountId, currentUserId);
 
-        // 1. 자동이체 조회
+        // 1. 요청된 계좌(educationalAccountId)가 현재 사용자 소유인지 선 검증
+        try {
+            validateAccountOwnership(educationalAccountId, currentUserId);
+        } catch (CommonException e) {
+            // 요청한 educationalAccountId가 존재하지 않거나 소유자가 아닌 경우
+            // 리소스가 없다는 ENTITY_NOT_FOUND를 반환하여 정보 노출 방지 (가장 안전한 방법)
+            if (e.getErrorCode() == ErrorCode.FORBIDDEN || e.getErrorCode() == ErrorCode.ENTITY_NOT_FOUND) {
+                log.warn("요청 계좌 소유권 검증 실패. 자동이체 ID 존재 여부 숨김 처리.");
+                throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "자동이체 정보를 찾을 수 없습니다.");
+            }
+            throw e; // 그 외 예외는 전파
+        }
+        // 2. 자동이체 조회
         AutoPayment autoPayment = autoPaymentRepository.findById(autoPaymentId)
                 .orElseThrow(() -> {
+                    // 자동이체 ID가 존재하지 않는 경우 ENTITY_NOT_FOUND 반환 (기존 로직 유지)
                     log.error("자동이체 조회 실패 - ID: {}", autoPaymentId);
                     return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
                             "자동이체 정보를 찾을 수 없습니다.");
                 });
 
-        // 2. 권한 체크: 이 자동이체가 현재 사용자의 계좌에 속하는지 확인
-        Long actualAccountId = autoPayment.getEducationalAccount().getId();
-        validateAccountOwnership(actualAccountId, currentUserId);
-
-        // 3. 소유자 확인 (educationalAccountId 파라미터 검증)
+        // 3. 소유자 일치 확인
         if (!autoPayment.isOwnedBy(educationalAccountId)) {
+            // ENTITY_NOT_FOUND를 반환하여, 이 autoPaymentId가 다른 계좌에 속한다는 정보를 숨깁니다.
             log.warn("자동이체 소유자 불일치 - 자동이체ID: {}, 요청계좌ID: {}, 실제계좌ID: {}",
-                    autoPaymentId, educationalAccountId, actualAccountId);
+                    autoPaymentId, educationalAccountId, autoPayment.getEducationalAccount().getId());
             throw new CommonException(ErrorCode.ENTITY_NOT_FOUND,
                     "자동이체 정보를 찾을 수 없습니다.");
         }
 
-        // 3. 이미 해지된 경우
+        // 4. 이미 해지된 경우
         if (autoPayment.isCancelled()) {
             log.warn("이미 해지된 자동이체 - ID: {}", autoPaymentId);
             throw new CommonException(ErrorCode.INVALID_REQUEST,
                     "이미 해지된 자동이체입니다.");
         }
 
-        // 4. 해지 처리
+        // 5. 해지 처리
         autoPayment.cancel();
 
         log.info("자동이체 해지 완료 - ID: {}, 교육용계좌ID: {}", autoPaymentId, educationalAccountId);
 
         return autoPayment;
-
     }
 
     /**
