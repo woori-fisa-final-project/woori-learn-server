@@ -52,6 +52,7 @@ public class EdubankapiAccountController {
      *      조회 기간 : 1M, 3M, 6M, 1Y
      *      거래 구분 : ALL, DEPOSIT, WITHDRAW
      *      미선택 시 최근 1개월, 최신순 30건
+     *
      *      @RequestParm : accountId, period, startDate, endDate, type가 쿼리로 들어오기 때문에 사용
      */
     @GetMapping("/transactions")
@@ -88,4 +89,6 @@ public class EdubankapiAccountController {
          */
         return ApiResponse.success(SuccessCode.OK, transferService.transfer(request));
     }
+
+
 }
