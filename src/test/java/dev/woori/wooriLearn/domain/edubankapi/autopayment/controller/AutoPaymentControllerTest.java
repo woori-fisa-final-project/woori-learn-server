@@ -70,7 +70,7 @@ class AutoPaymentControllerTest {
                 )
         );
 
-        given(autoPaymentService.getAutoPaymentList(educationalAccountId, status, anyString()))
+        given(autoPaymentService.getAutoPaymentList(eq(educationalAccountId), eq(status), eq("testuser")))
                 .willReturn(responses);
 
         // when & then
