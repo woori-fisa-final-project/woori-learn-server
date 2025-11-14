@@ -140,6 +140,9 @@ public class AutoPaymentService {
     }
 
     private void validateAccountPassword(EducationalAccount account, String inputPassword) {
+        log.info("비밀번호 검증 시작 - 계좌ID: {}, 입력값: '{}', DB해시: '{}'",
+                account.getId(), inputPassword, account.getAccountPassword());
+
         if (!passwordEncoder.matches(inputPassword, account.getAccountPassword())) {
             log.warn("계좌 비밀번호 불일치 - 계좌ID: {}", account.getId());
             throw new CommonException(ErrorCode.UNAUTHORIZED, "계좌 비밀번호가 일치하지 않습니다.");
@@ -175,6 +178,9 @@ public class AutoPaymentService {
 
         // 계좌 소유자의 userId와 현재 사용자의 userId 비교
         String accountOwnerUserId = account.getUser().getUserId();
+        log.info("계좌 소유권 검증 - 계좌ID: {}, 요청사용자: {}, 계좌소유자: {}",
+                accountId, currentUserId, accountOwnerUserId);
+
         if (!accountOwnerUserId.equals(currentUserId)) {
             log.warn("권한 없는 접근 시도 - 계좌ID: {}, 요청사용자: {}, 계좌소유자: {}",
                     accountId, currentUserId, accountOwnerUserId);

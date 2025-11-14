@@ -30,9 +30,11 @@ public class AutoPaymentController {
 
     /**
      * 인증 객체가 없으면 테스트 계정으로 처리
+     * TODO: 프로덕션 환경에서는 authentication이 null일 경우 예외 발생시켜야 함
      */
     private String getCurrentUserId(Authentication authentication) {
-        return (authentication != null) ? authentication.getName() : "1";  // 테스트용 사용자 ID
+        // 테스트용: DB에 실제로 존재하는 userId로 변경
+        return (authentication != null) ? authentication.getName() : "testuser";
     }
 
     @GetMapping("/list")
