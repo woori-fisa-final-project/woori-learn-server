@@ -27,11 +27,14 @@ public class ScenarioStep {
     @Column(nullable = false, columnDefinition = "json")
     private String content;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "next_step")
     private ScenarioStep nextStep;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quiz_id")
     private Quiz quiz;
+
+    @Column(name = "normal_index")
+    private Integer normalIndex;
 }

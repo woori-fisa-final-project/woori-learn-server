@@ -8,12 +8,12 @@ import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressSaveResDto;
 import dev.woori.wooriLearn.domain.scenario.entity.Quiz;
 import dev.woori.wooriLearn.domain.scenario.entity.Scenario;
-import dev.woori.wooriLearn.domain.scenario.entity.ScenarioProgressList;
+import dev.woori.wooriLearn.domain.scenario.entity.ScenarioProgress;
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.model.AdvanceStatus;
 import dev.woori.wooriLearn.domain.scenario.model.StepType;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioCompletedRepository;
-import dev.woori.wooriLearn.domain.scenario.repository.ScenarioProgressListRepository;
+import dev.woori.wooriLearn.domain.scenario.repository.ScenarioProgressRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioStepRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
@@ -38,7 +38,7 @@ class ScenarioProgressServiceTest {
 
     @Mock private ScenarioRepository scenarioRepository;
     @Mock private ScenarioStepRepository stepRepository;
-    @Mock private ScenarioProgressListRepository progressRepository;
+    @Mock private ScenarioProgressRepository progressRepository;
     @Mock private ScenarioCompletedRepository completedRepository;
 
     private ObjectMapper objectMapper;
@@ -95,7 +95,7 @@ class ScenarioProgressServiceTest {
         assertEquals(AdvanceStatus.ADVANCED, res.status());
         assertNotNull(res.step());
         assertEquals(102L, res.step().nowStepId());
-        verify(progressRepository).save(any(ScenarioProgressList.class));
+        verify(progressRepository).save(any(ScenarioProgress.class));
     }
 
     @Test
@@ -155,7 +155,7 @@ class ScenarioProgressServiceTest {
 
         assertEquals(AdvanceStatus.COMPLETED, res.status());
         // 저장은 됨, 삭제는 안 됨
-        verify(progressRepository, atLeastOnce()).save(any(ScenarioProgressList.class));
+        verify(progressRepository, atLeastOnce()).save(any(ScenarioProgress.class));
         verify(progressRepository, never()).deleteByUserAndScenario(any(), any());
         verify(completedRepository).save(any());
     }
@@ -275,7 +275,7 @@ class ScenarioProgressServiceTest {
         assertNotNull(res.step());
         assertEquals(201L, res.step().nowStepId());
 
-        ArgumentCaptor<ScenarioProgressList> cap = ArgumentCaptor.forClass(ScenarioProgressList.class);
+        ArgumentCaptor<ScenarioProgress> cap = ArgumentCaptor.forClass(ScenarioProgress.class);
         verify(progressRepository, atLeastOnce()).save(cap.capture());
         assertEquals(50.0, cap.getValue().getProgressRate(), 0.0001);
     }
@@ -308,7 +308,7 @@ class ScenarioProgressServiceTest {
         assertNotNull(res.step());
         assertEquals(105L, res.step().nowStepId());
 
-        ArgumentCaptor<ScenarioProgressList> cap = ArgumentCaptor.forClass(ScenarioProgressList.class);
+        ArgumentCaptor<ScenarioProgress> cap = ArgumentCaptor.forClass(ScenarioProgress.class);
         verify(progressRepository, atLeastOnce()).save(cap.capture());
         assertEquals(100.0, cap.getValue().getProgressRate(), 0.0001);
     }
@@ -337,8 +337,8 @@ class ScenarioProgressServiceTest {
         }
     }
 
-    private ScenarioProgressList progress(Users u, Scenario sc, ScenarioStep step, double rate) {
-        return ScenarioProgressList.builder()
+    private ScenarioProgress progress(Users u, Scenario sc, ScenarioStep step, double rate) {
+        return ScenarioProgress.builder()
                 .user(u).scenario(sc).step(step).progressRate(rate)
                 .build();
     }
