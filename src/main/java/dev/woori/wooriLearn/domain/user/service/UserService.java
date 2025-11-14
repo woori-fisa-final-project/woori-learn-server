@@ -85,6 +85,6 @@ public class UserService {
 
     public void changePassword(String userId, ChangePasswdReqDto request) {
         AuthUsers user = authUserRepository.findByUserId(userId).orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
-        user.updatePassword(request.password());
+        user.updatePassword(passwordEncoder.encode(request.password()));
     }
 }
