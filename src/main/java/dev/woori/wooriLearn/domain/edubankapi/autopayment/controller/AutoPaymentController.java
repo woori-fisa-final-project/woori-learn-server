@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,37 +28,59 @@ public class AutoPaymentController {
 
     private final AutoPaymentService autoPaymentService;
 
+    /**
+     * 인증 객체가 없으면 테스트 계정으로 처리
+     * TODO: 프로덕션 환경에서는 authentication이 null일 경우 예외 발생시켜야 함
+     */
+    private String getCurrentUserId(Authentication authentication) {
+        // 테스트용: DB에 실제로 존재하는 userId로 변경
+        return (authentication != null) ? authentication.getName() : "testuser";
+    }
+
     @GetMapping("/list")
     public ResponseEntity<BaseResponse<?>> getAutoPaymentList(
             @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            Authentication authentication) {
 
-        log.info("자동이체 목록 조회 요청 - 교육용계좌ID: {}, 상태: {}", educationalAccountId, status);
+        String currentUserId = getCurrentUserId(authentication);
 
-        List<AutoPaymentResponse> response = autoPaymentService.getAutoPaymentList(educationalAccountId, status);
+        log.info("자동이체 목록 조회 요청 - 교육용계좌ID: {}, 상태: {}, 사용자ID: {}",
+                educationalAccountId, status, currentUserId);
+
+        List<AutoPaymentResponse> response = autoPaymentService.getAutoPaymentList(
+                educationalAccountId, status, currentUserId);
 
         return ApiResponse.success(SuccessCode.OK, response);
     }
 
     @GetMapping("/detail/{autoPaymentId}")
     public ResponseEntity<BaseResponse<?>> getAutoPaymentDetail(
-            @PathVariable @Positive(message = "자동이체 ID는 양수여야 합니다.") Long autoPaymentId) {
+            @PathVariable @Positive(message = "자동이체 ID는 양수여야 합니다.") Long autoPaymentId,
+            Authentication authentication) {
 
-        log.info("자동이체 상세 조회 요청 - ID: {}", autoPaymentId);
+        String currentUserId = getCurrentUserId(authentication);
 
-        AutoPaymentResponse response = autoPaymentService.getAutoPaymentDetail(autoPaymentId);
+        log.info("자동이체 상세 조회 요청 - ID: {}, 사용자ID: {}", autoPaymentId, currentUserId);
+
+        AutoPaymentResponse response = autoPaymentService.getAutoPaymentDetail(
+                autoPaymentId, currentUserId);
 
         return ApiResponse.success(SuccessCode.OK, response);
     }
 
     @PostMapping
     public ResponseEntity<BaseResponse<?>> createAutoPayment(
-            @Valid @RequestBody AutoPaymentCreateRequest request) {
+            @Valid @RequestBody AutoPaymentCreateRequest request,
+            Authentication authentication) {
 
-        log.info("자동이체 등록 요청 - 교육용계좌ID: {}, 금액: {}",
-                request.educationalAccountId(), request.amount());
+        String currentUserId = getCurrentUserId(authentication);
 
-        AutoPaymentResponse response = autoPaymentService.createAutoPayment(request);
+        log.info("자동이체 등록 요청 - 교육용계좌ID: {}, 금액: {}, 사용자ID: {}",
+                request.educationalAccountId(), request.amount(), currentUserId);
+
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(
+                request, currentUserId);
 
         return ApiResponse.success(SuccessCode.CREATED, response);
     }
@@ -65,13 +88,22 @@ public class AutoPaymentController {
     @PostMapping("/{autoPaymentId}/cancel")
     public ResponseEntity<BaseResponse<?>> cancelAutoPayment(
             @PathVariable @Positive(message = "자동이체 ID는 양수여야 합니다.") Long autoPaymentId,
-            @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId) {
+            @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId,
+            Authentication authentication) {
 
-        log.info("자동이체 해지 요청 - 자동이체ID: {}, 교육용계좌ID: {}",
-                autoPaymentId, educationalAccountId);
+        String currentUserId = getCurrentUserId(authentication);
 
-        AutoPayment cancelledAutoPayment = autoPaymentService.cancelAutoPayment(autoPaymentId, educationalAccountId);
-        AutoPaymentResponse response = AutoPaymentResponse.of(cancelledAutoPayment, cancelledAutoPayment.getEducationalAccount().getId());
+        log.info("자동이체 해지 요청 - 자동이체ID: {}, 교육용계좌ID: {}, 사용자ID: {}",
+                autoPaymentId, educationalAccountId, currentUserId);
+
+        AutoPayment cancelledAutoPayment = autoPaymentService.cancelAutoPayment(
+                autoPaymentId, educationalAccountId, currentUserId);
+
+        AutoPaymentResponse response = AutoPaymentResponse.of(
+                cancelledAutoPayment,
+                cancelledAutoPayment.getEducationalAccount().getId()
+        );
+
         return ApiResponse.success(SuccessCode.OK, response);
     }
 }

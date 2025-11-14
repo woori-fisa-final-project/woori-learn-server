@@ -84,9 +84,10 @@ public class AutoPayment {
         return this.processingStatus == AutoPaymentStatus.CANCELLED;
     }
 
-    public static AutoPayment create(
+    public static AutoPayment createWithResolvedDate(
             AutoPaymentCreateRequest request,
-            EducationalAccount educationalAccount
+            EducationalAccount educationalAccount,
+            int resolvedDesignatedDate
     ) {
         return AutoPayment.builder()
                 .educationalAccount(educationalAccount)
@@ -96,7 +97,7 @@ public class AutoPayment {
                 .counterpartyName(request.counterpartyName())
                 .displayName(request.displayName())
                 .transferCycle(request.transferCycle())
-                .designatedDate(request.designatedDate())
+                .designatedDate(resolvedDesignatedDate)
                 .startDate(request.startDate())
                 .expirationDate(request.expirationDate())
                 .processingStatus(AutoPaymentStatus.ACTIVE)

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -31,7 +32,11 @@ public class AutoPaymentService {
 
     private static final String ALL_STATUS = "ALL";
 
-    public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status) {
+    private static final int END_OF_MONTH_CODE = 99;
+
+    public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status, String currentUserId) {
+        // 권한 체크: 요청한 계좌가 현재 사용자의 것인지 확인
+        validateAccountOwnership(educationalAccountId, currentUserId);
         List<AutoPayment> autoPayments;
 
         if (ALL_STATUS.equalsIgnoreCase(status)) {
@@ -47,7 +52,7 @@ public class AutoPaymentService {
                 .toList();
     }
 
-    public AutoPaymentResponse getAutoPaymentDetail(Long autoPaymentId) {
+    public AutoPaymentResponse getAutoPaymentDetail(Long autoPaymentId, String currentUserId) {
         AutoPayment autoPayment = autoPaymentRepository.findById(autoPaymentId)
                 .orElseThrow(() -> {
                     log.error("자동이체 정보 조회 실패 - ID: {}", autoPaymentId);
@@ -55,63 +60,112 @@ public class AutoPaymentService {
                             "자동이체 정보를 찾을 수 없습니다.");
                 });
 
-        return AutoPaymentResponse.of(autoPayment, autoPayment.getEducationalAccount().getId());
+        // 권한 체크: 이 자동이체가 현재 사용자의 계좌에 속하는지 확인
+        Long accountId = autoPayment.getEducationalAccount().getId();
+        validateAccountOwnership(accountId, currentUserId);
+
+        return AutoPaymentResponse.of(autoPayment, accountId);
     }
 
     @Transactional
-    public AutoPaymentResponse createAutoPayment(AutoPaymentCreateRequest request) {
-        // 1. 교육용 계좌 조회 및 검증
+    public AutoPaymentResponse createAutoPayment(AutoPaymentCreateRequest request, String currentUserId) {
+        // 1. 권한 체크: 출금 계좌가 현재 사용자의 것인지 확인
+        validateAccountOwnership(request.educationalAccountId(), currentUserId);
+
+        // 2. 교육용 계좌 조회 및 검증
         EducationalAccount educationalAccount = findAndValidateAccount(
                 request.educationalAccountId(),
                 request.accountPassword()
         );
-        // 2. 자동이체 생성
-        AutoPayment autoPayment = AutoPayment.create(request, educationalAccount);
 
-        // 3. 저장
+        // 3. 지정일 처리 로직 적용
+        int finalDesignatedDate = resolveDesignatedDate(request);
+
+        // 4. 자동이체 엔티티 생성
+        AutoPayment autoPayment = AutoPayment.createWithResolvedDate(
+                request,
+                educationalAccount,
+                finalDesignatedDate
+        );
+
+        // 5. 저장
         AutoPayment savedAutoPayment = autoPaymentRepository.save(autoPayment);
 
-        log.info("자동이체 등록 완료 - ID: {}, 교육용계좌ID: {}",
-                savedAutoPayment.getId(), request.educationalAccountId());
+        log.info("자동이체 등록 완료 - ID: {}, 교육용계좌ID: {}, 최종지정일: {}",
+                savedAutoPayment.getId(), request.educationalAccountId(), finalDesignatedDate);
 
         return AutoPaymentResponse.of(savedAutoPayment, request.educationalAccountId());
     }
 
     @Transactional
-    public AutoPayment cancelAutoPayment(Long autoPaymentId, Long educationalAccountId) {
-        log.info("자동이체 해지 시작 - 자동이체ID: {}, 교육용계좌ID: {}",
-                autoPaymentId, educationalAccountId);
+    public AutoPayment cancelAutoPayment(Long autoPaymentId, Long educationalAccountId, String currentUserId) {
+        log.info("자동이체 해지 시작 - 자동이체ID: {}, 교육용계좌ID: {}, 사용자ID: {}",
+                autoPaymentId, educationalAccountId, currentUserId);
 
-        // 1. 자동이체 조회
+        // 1. 요청된 계좌(educationalAccountId)가 현재 사용자 소유인지 선 검증
+        try {
+            validateAccountOwnership(educationalAccountId, currentUserId);
+        } catch (CommonException e) {
+            // 요청한 educationalAccountId가 존재하지 않거나 소유자가 아닌 경우
+            // 리소스가 없다는 ENTITY_NOT_FOUND를 반환하여 정보 노출 방지 (가장 안전한 방법)
+            if (e.getErrorCode() == ErrorCode.FORBIDDEN || e.getErrorCode() == ErrorCode.ENTITY_NOT_FOUND) {
+                log.warn("요청 계좌 소유권 검증 실패. 자동이체 ID 존재 여부 숨김 처리.");
+                throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "자동이체 정보를 찾을 수 없습니다.");
+            }
+            throw e; // 그 외 예외는 전파
+        }
+        // 2. 자동이체 조회
         AutoPayment autoPayment = autoPaymentRepository.findById(autoPaymentId)
                 .orElseThrow(() -> {
+                    // 자동이체 ID가 존재하지 않는 경우 ENTITY_NOT_FOUND 반환 (기존 로직 유지)
                     log.error("자동이체 조회 실패 - ID: {}", autoPaymentId);
                     return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
                             "자동이체 정보를 찾을 수 없습니다.");
                 });
 
-        // 2. 소유자 확인
+        // 3. 소유자 일치 확인
         if (!autoPayment.isOwnedBy(educationalAccountId)) {
+            // ENTITY_NOT_FOUND를 반환하여, 이 autoPaymentId가 다른 계좌에 속한다는 정보를 숨깁니다.
             log.warn("자동이체 소유자 불일치 - 자동이체ID: {}, 요청계좌ID: {}, 실제계좌ID: {}",
                     autoPaymentId, educationalAccountId, autoPayment.getEducationalAccount().getId());
             throw new CommonException(ErrorCode.ENTITY_NOT_FOUND,
                     "자동이체 정보를 찾을 수 없습니다.");
         }
 
-        // 3. 이미 해지된 경우
+        // 4. 이미 해지된 경우
         if (autoPayment.isCancelled()) {
             log.warn("이미 해지된 자동이체 - ID: {}", autoPaymentId);
             throw new CommonException(ErrorCode.INVALID_REQUEST,
                     "이미 해지된 자동이체입니다.");
         }
 
-        // 4. 해지 처리
+        // 5. 해지 처리
         autoPayment.cancel();
 
         log.info("자동이체 해지 완료 - ID: {}, 교육용계좌ID: {}", autoPaymentId, educationalAccountId);
 
         return autoPayment;
+    }
 
+    /**
+     * 지정일(designatedDate)을 정책에 따라 실제 날짜로 변환합니다.
+     * 99일 경우, 시작일(startDate)의 월을 기준으로 말일을 계산합니다.
+     * * @param request 자동이체 등록 요청 DTO
+     * @return 정책이 적용된 실제 지정일 (1 ~ 31)
+     */
+    private int resolveDesignatedDate(AutoPaymentCreateRequest request) {
+        int designatedDate = request.designatedDate();
+        LocalDate startDate = request.startDate();
+
+        if (designatedDate == END_OF_MONTH_CODE) {
+            // 99일 경우, 시작일(startDate)의 월의 마지막 날짜를 계산
+            int lastDay = startDate.lengthOfMonth();
+            log.debug("지정일 99 처리: 시작일 {}의 말일은 {}일입니다.", startDate, lastDay);
+            return lastDay;
+        }
+
+        // 1~31일 경우, 그 값 그대로 사용
+        return designatedDate;
     }
 
     private EducationalAccount findAndValidateAccount(Long accountId, String password) {
@@ -127,6 +181,7 @@ public class AutoPaymentService {
     }
 
     private void validateAccountPassword(EducationalAccount account, String inputPassword) {
+
         if (!passwordEncoder.matches(inputPassword, account.getAccountPassword())) {
             log.warn("계좌 비밀번호 불일치 - 계좌ID: {}", account.getId());
             throw new CommonException(ErrorCode.UNAUTHORIZED, "계좌 비밀번호가 일치하지 않습니다.");
@@ -145,5 +200,33 @@ public class AutoPaymentService {
             throw new CommonException(ErrorCode.INVALID_REQUEST,
                     "유효하지 않은 상태 값입니다. (사용 가능: " + AutoPaymentStatus.getAvailableValues() + ")");
         }
+    }
+
+    /**
+     * 계좌 소유자 권한 검증
+     * @param accountId 검증할 계좌 ID
+     * @param currentUserId 현재 로그인한 사용자 ID (username)
+     */
+    private void validateAccountOwnership(Long accountId, String currentUserId) {
+        EducationalAccount account = edubankapiAccountRepository.findById(accountId)
+                .orElseThrow(() -> {
+                    log.error("교육용 계좌 조회 실패 - 계좌ID: {}", accountId);
+                    return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                            "교육용 계좌를 찾을 수 없습니다.");
+                });
+
+        // 계좌 소유자의 userId와 현재 사용자의 userId 비교
+        String accountOwnerUserId = account.getUser().getUserId();
+        log.info("계좌 소유권 검증 - 계좌ID: {}, 요청사용자: {}, 계좌소유자: {}",
+                accountId, currentUserId, accountOwnerUserId);
+
+        if (!accountOwnerUserId.equals(currentUserId)) {
+            log.warn("권한 없는 접근 시도 - 계좌ID: {}, 요청사용자: {}, 계좌소유자: {}",
+                    accountId, currentUserId, accountOwnerUserId);
+            throw new CommonException(ErrorCode.FORBIDDEN,
+                    "접근 권한이 없습니다.");
+        }
+
+        log.debug("계좌 소유자 권한 검증 성공 - 계좌ID: {}, 사용자ID: {}", accountId, currentUserId);
     }
 }
