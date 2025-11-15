@@ -1,7 +1,10 @@
 package dev.woori.wooriLearn.config.response;
 
 import dev.woori.wooriLearn.config.exception.ErrorCode;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
+
+import java.time.Duration;
 
 public class ApiResponse {
     public static <T> ResponseEntity<BaseResponse<?>> success(final SuccessCode successCode) {
@@ -24,5 +27,15 @@ public class ApiResponse {
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .body(BaseResponse.of(errorCode, message));
+    }
+
+    public static <T> ResponseEntity<BaseResponse<?>> successWithCache(
+            final SuccessCode successCode,
+            final T data,
+            final Duration duration
+    ) {
+        return ResponseEntity.status(successCode.getStatus())
+                .cacheControl(CacheControl.maxAge(duration).cachePublic())
+                .body(BaseResponse.of(successCode, data));
     }
 }
