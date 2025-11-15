@@ -8,6 +8,7 @@ import dev.woori.wooriLearn.domain.scenario.dto.ProgressSaveResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.content.*;
 import dev.woori.wooriLearn.domain.scenario.entity.*;
+import dev.woori.wooriLearn.domain.scenario.model.AdvanceStatus;
 import dev.woori.wooriLearn.domain.scenario.model.ChoiceInfo;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioCompletedRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioProgressRepository;
@@ -114,8 +115,13 @@ public class ScenarioProgressService {
                         .build());
 
         // 현재 스텝이 배드 브랜치/배드 엔딩인지 미리 계산
-        boolean badBranch = isBadBranch(current);
-        boolean badEnding = isBadEnding(current);
+        Optional<StepMetaDto> metaOpt = contentService.getMeta(current);
+        boolean badBranch = metaOpt
+                .map(meta -> "bad".equalsIgnoreCase(meta.branch()))
+                .orElse(false);
+        boolean badEnding = metaOpt
+                .map(meta -> Boolean.TRUE.equals(meta.badEnding()))
+                .orElse(false);
 
         // 5) Processor 에 넘길 Context 구성
         StepContext ctx = new StepContext(user, scenario, current, answer, byId, progress, badBranch, badEnding, startStepId);
@@ -162,9 +168,15 @@ public class ScenarioProgressService {
                         .build());
 
         // 배드 브랜치/엔딩이면 진행률 동결
-        boolean forceFreeze = isBadBranch(step) || isBadEnding(step);
+        Optional<StepMetaDto> metaOpt = contentService.getMeta(step);
+        boolean forceFreeze = metaOpt
+                .map(meta ->
+                        "bad".equalsIgnoreCase(meta.branch())
+                                || Boolean.TRUE.equals(meta.badEnding())
+                )
+                .orElse(false);
+        
         double finalRate = updateProgressAndSave(progress, step, scenario, forceFreeze);
-
         return new ProgressSaveResDto(scenarioId, step.getId(), finalRate);
     }
 
@@ -270,6 +282,32 @@ public class ScenarioProgressService {
     /** 외부 Processor 가 진행 엔티티 저장만 필요할 때 사용 */
     void saveProgress(ScenarioProgress progress) {
         progressRepository.save(progress);
+    }
+
+    AdvanceResDto handleScenarioCompletion(StepContext ctx) {
+        Scenario scenario = ctx.scenario();
+        ScenarioProgress progress = ctx.progress();
+
+        // 1) 완료 이력 한 번만 저장
+        ensureCompletedOnce(ctx.user(), scenario);
+
+        // 2) 진행률 100%로 올리되, 이전 값보다 뒤로 가지 않도록 보장
+        double rate = monotonicRate(progress, 100.0);
+
+        // 3) 시작 스텝으로 복귀
+        ScenarioStep start = ctx.startStep();
+        if (start == null) {
+            throw new CommonException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenario.getId()
+            );
+        }
+
+        progress.moveToStep(start, rate);
+        saveProgress(progress);
+
+        // 4) 프론트에는 COMPLETED 상태만 전달 (다음 스텝은 없음)
+        return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
     }
 
     /**

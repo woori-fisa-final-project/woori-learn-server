@@ -60,20 +60,7 @@ public class ChoiceStepProcessor implements StepProcessor {
 
         if (nextId == null) {
             // 정루트 마지막 → 완료 처리 + 재개 지점은 시작 스텝
-            service.ensureCompletedOnce(ctx.user(), scenario);
-            double rate = service.monotonicRate(progress, 100.0);
-
-            ScenarioStep start = ctx.startStep();
-            if (start == null) {
-                throw new CommonException(
-                        ErrorCode.INTERNAL_SERVER_ERROR,
-                        "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenario.getId()
-                );
-            }
-
-            progress.moveToStep(start, rate);
-            service.saveProgress(progress);
-            return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
+            return service.handleScenarioCompletion(ctx);
         }
 
         ScenarioStep next = byId.get(nextId);

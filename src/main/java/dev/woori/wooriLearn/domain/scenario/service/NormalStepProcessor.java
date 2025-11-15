@@ -1,7 +1,5 @@
 package dev.woori.wooriLearn.domain.scenario.service;
 
-import dev.woori.wooriLearn.config.exception.CommonException;
-import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
 import dev.woori.wooriLearn.domain.scenario.entity.Scenario;
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioProgress;
@@ -27,21 +25,7 @@ public class NormalStepProcessor implements StepProcessor {
                 : null;
 
         if (next == null) {
-            // 정루트 상의 마지막 → 완료
-            service.ensureCompletedOnce(user, scenario);
-            double rate = service.monotonicRate(progress, 100.0);
-
-            ScenarioStep start = ctx.startStep();
-            if (start == null) {
-                throw new CommonException(
-                        ErrorCode.INTERNAL_SERVER_ERROR,
-                        "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenario.getId()
-                );
-            }
-
-            progress.moveToStep(start, rate);
-            service.saveProgress(progress);
-            return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
+            return service.handleScenarioCompletion(ctx);
         }
 
         service.updateProgressAndSave(progress, next, scenario, false);
