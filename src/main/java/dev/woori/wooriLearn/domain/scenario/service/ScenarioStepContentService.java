@@ -114,7 +114,7 @@ public class ScenarioStepContentService {
     }
 
     /** 각 StepType 에 맞는 DTO로 content 파싱 후 meta 추출 */
-    private Optional<StepMetaDto> getMeta(ScenarioStep step) {
+    public Optional<StepMetaDto> getMeta(ScenarioStep step) {
         try {
             return switch (step.getType()) {
                 case CHOICE -> Optional.empty(); // CHOICE에는 meta 사용 안 함
