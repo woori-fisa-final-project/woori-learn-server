@@ -12,8 +12,13 @@ public record StepContext(
         Scenario scenario,
         ScenarioStep current,
         Integer answer,
-        Map<Long, ScenarioStep> stepsById,
+        Map<Long, ScenarioStep> byId,
         ScenarioProgress progress,
         boolean badBranch,
-        boolean badEnding
-) {}
+        boolean badEnding,
+        Long startStepId
+) {
+    public ScenarioStep startStep() {
+        return byId.get(startStepId);
+    }
+}

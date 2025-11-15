@@ -17,7 +17,7 @@ public class BadBranchStepProcessor implements StepProcessor {
     @Override
     public AdvanceResDto process(StepContext ctx, ScenarioProgressService service) {
         Scenario scenario = ctx.scenario();
-        Map<Long, ScenarioStep> byId = ctx.stepsById();
+        Map<Long, ScenarioStep> byId = ctx.byId();
         ScenarioStep current = ctx.current();
         ScenarioProgress progress = ctx.progress();
 
@@ -30,8 +30,7 @@ public class BadBranchStepProcessor implements StepProcessor {
             }
             // nextStep 이 비어있으면 시작 스텝으로 복귀
             if (anchor == null) {
-                Long startId = service.inferStartStepId(byId);
-                anchor = byId.get(startId);
+                anchor = ctx.startStep();
             }
             if (anchor == null) {
                 throw new CommonException(
@@ -54,8 +53,7 @@ public class BadBranchStepProcessor implements StepProcessor {
 
         if (next == null) {
             // 다음 스텝도 없는데 배드 브랜치 → 방어적으로 BAD_ENDING + 시작 스텝 복귀
-            Long startId = service.inferStartStepId(byId);
-            ScenarioStep anchor = byId.get(startId);
+            ScenarioStep anchor = ctx.startStep();
             if (anchor == null) {
                 throw new CommonException(
                         ErrorCode.INTERNAL_SERVER_ERROR,

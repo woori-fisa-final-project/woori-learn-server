@@ -18,7 +18,7 @@ public class NormalStepProcessor implements StepProcessor {
     public AdvanceResDto process(StepContext ctx, ScenarioProgressService service) {
         var user = ctx.user();
         Scenario scenario = ctx.scenario();
-        Map<Long, ScenarioStep> byId = ctx.stepsById();
+        Map<Long, ScenarioStep> byId = ctx.byId();
         ScenarioStep current = ctx.current();
         ScenarioProgress progress = ctx.progress();
 
@@ -31,8 +31,7 @@ public class NormalStepProcessor implements StepProcessor {
             service.ensureCompletedOnce(user, scenario);
             double rate = service.monotonicRate(progress, 100.0);
 
-            Long startId = service.inferStartStepId(byId);
-            ScenarioStep start = byId.get(startId);
+            ScenarioStep start = ctx.startStep();
             if (start == null) {
                 throw new CommonException(
                         ErrorCode.INTERNAL_SERVER_ERROR,

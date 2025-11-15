@@ -1,6 +1,5 @@
 package dev.woori.wooriLearn.domain.scenario.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
@@ -22,7 +21,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,9 +39,6 @@ class ScenarioProgressServiceTest {
     @Mock private ScenarioProgressRepository progressRepository;
     @Mock private ScenarioCompletedRepository completedRepository;
 
-    private ObjectMapper objectMapper;
-
-    @InjectMocks
     private ScenarioProgressService service;
 
     private Users user;
@@ -51,12 +46,34 @@ class ScenarioProgressServiceTest {
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
+        var objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        var contentService = new ScenarioStepContentService(objectMapper);
+
+        var normalStepProcessor = new NormalStepProcessor();
+        var choiceStepProcessor = new ChoiceStepProcessor();
+        var badBranchStepProcessor = new BadBranchStepProcessor();
+        var quizGateStepProcessor = new QuizGateStepProcessor(normalStepProcessor);
+        var stepProcessorResolver = new StepProcessorResolver(
+                choiceStepProcessor,
+                badBranchStepProcessor,
+                quizGateStepProcessor,
+                normalStepProcessor
+        );
+
         service = new ScenarioProgressService(
-                scenarioRepository, stepRepository, progressRepository, completedRepository, objectMapper
+                scenarioRepository,
+                stepRepository,
+                progressRepository,
+                completedRepository,
+                stepProcessorResolver,
+                contentService
         );
         user = Users.builder().id(10L).userId("user").build();
-        scenario = new Scenario(1L, "title", null);
+        scenario = Scenario.builder()
+                .id(1L)
+                .title("title")
+                .totalNormalSteps(4)
+                .build();
     }
 
     @Test
@@ -64,12 +81,14 @@ class ScenarioProgressServiceTest {
     void resume_noProgress_infersStart() {
         // main chain: 101(start) -> 102
         ScenarioStep s102 = step(102L, StepType.DIALOG, "{\"b\":2}");
+        setNormalIndex(s102, 2);
         ScenarioStep s101 = step(101L, StepType.DIALOG, "{\"a\":1}");
+        setNormalIndex(s101, 1);
         linkNext(s101, s102);
 
         when(scenarioRepository.findById(1L)).thenReturn(Optional.of(scenario));
         when(progressRepository.findByUserAndScenario(user, scenario)).thenReturn(Optional.empty());
-        when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of(s101, s102));
+        when(stepRepository.findStartStepOrFail(1L)).thenReturn(s101);
 
         ProgressResumeResDto res = service.resume(user, 1L);
 
@@ -88,6 +107,7 @@ class ScenarioProgressServiceTest {
 
         when(scenarioRepository.findById(1L)).thenReturn(Optional.of(scenario));
         when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of(s101, s102));
+        when(stepRepository.findStartStepOrFail(1L)).thenReturn(s101);
         when(progressRepository.findByUserAndScenario(user, scenario)).thenReturn(Optional.empty());
 
         AdvanceResDto res = service.advance(user, 1L, 101L, null);
@@ -110,6 +130,7 @@ class ScenarioProgressServiceTest {
         when(scenarioRepository.findById(1L)).thenReturn(Optional.of(scenario));
         // byId 로딩 필요
         when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of(s101));
+        when(stepRepository.findStartStepOrFail(1L)).thenReturn(s101);
         when(progressRepository.findByUserAndScenario(user, scenario)).thenReturn(Optional.empty());
 
         AdvanceResDto res = service.advance(user, 1L, 101L, null);
@@ -131,6 +152,7 @@ class ScenarioProgressServiceTest {
 
         when(scenarioRepository.findById(1L)).thenReturn(Optional.of(scenario));
         when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of(s101));
+        when(stepRepository.findStartStepOrFail(1L)).thenReturn(s101);
 
         AdvanceResDto res = service.advance(user, 1L, 101L, 0);
 
@@ -148,6 +170,7 @@ class ScenarioProgressServiceTest {
 
         when(scenarioRepository.findById(1L)).thenReturn(Optional.of(scenario));
         when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of(lastAndStart));
+        when(stepRepository.findStartStepOrFail(1L)).thenReturn(lastAndStart);
         when(progressRepository.findByUserAndScenario(user, scenario)).thenReturn(Optional.empty());
         when(completedRepository.existsByUserAndScenario(user, scenario)).thenReturn(false);
 
@@ -156,7 +179,6 @@ class ScenarioProgressServiceTest {
         assertEquals(AdvanceStatus.COMPLETED, res.status());
         // 저장은 됨, 삭제는 안 됨
         verify(progressRepository, atLeastOnce()).save(any(ScenarioProgress.class));
-        verify(progressRepository, never()).deleteByUserAndScenario(any(), any());
         verify(completedRepository).save(any());
     }
 
@@ -170,14 +192,18 @@ class ScenarioProgressServiceTest {
          * bad branch: 201 -> 202(badEnding)
          */
         ScenarioStep s105 = step(105L, StepType.DIALOG, "{\"t\":\"end\"}");
+        setNormalIndex(s105, 4);
         ScenarioStep s104 = step(104L, StepType.CHOICE, """
             {"title":"how","choices":[
               {"good":true,"next":105,"text":"정상"},
               {"good":false,"next":201,"text":"수상"}
             ]}
             """);
+        setNormalIndex(s104, 3);
         ScenarioStep s102 = step(102L, StepType.DIALOG, "{\"b\":2}");
+        setNormalIndex(s102, 2);
         ScenarioStep s101 = step(101L, StepType.DIALOG, "{\"a\":1}");
+        setNormalIndex(s101, 1);
         linkNext(s101, s102);
         linkNext(s102, s104);
 
@@ -264,6 +290,7 @@ class ScenarioProgressServiceTest {
 
         when(scenarioRepository.findById(1L)).thenReturn(Optional.of(scenario));
         when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of(s101, s104, s201));
+        when(stepRepository.findStartStepOrFail(1L)).thenReturn(s101);
 
         // 기존 진행률 50%
         when(progressRepository.findByUserAndScenario(user, scenario))
@@ -284,6 +311,7 @@ class ScenarioProgressServiceTest {
     @DisplayName("advance: CHOICE에서 정답 선택 → ADVANCED, 진행률 증가(최대 100)")
     void advance_choiceGood_increaseTo100() {
         ScenarioStep s105 = step(105L, StepType.DIALOG, "{\"t\":\"end\"}");
+        setNormalIndex(s105, 4);
         ScenarioStep s104 = step(104L, StepType.CHOICE, """
             {"title":"how","choices":[
               {"good":true,"next":105,"text":"정상"},
@@ -297,6 +325,7 @@ class ScenarioProgressServiceTest {
 
         when(scenarioRepository.findById(1L)).thenReturn(Optional.of(scenario));
         when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of(s101, s102, s104, s105));
+        when(stepRepository.findStartStepOrFail(1L)).thenReturn(s101);
 
         // 직전 진행률 50%
         when(progressRepository.findByUserAndScenario(user, scenario))
@@ -325,6 +354,16 @@ class ScenarioProgressServiceTest {
     private ScenarioStep step(Long id, StepType type, String content) {
         return ScenarioStep.builder()
                 .id(id).scenario(scenario).type(type).content(content).build();
+    }
+
+    private void setNormalIndex(ScenarioStep step, int index) {
+        try {
+            Field f = ScenarioStep.class.getDeclaredField("normalIndex");
+            f.setAccessible(true);
+            f.set(step, index);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void linkNext(ScenarioStep from, ScenarioStep to) {

@@ -10,6 +10,4 @@ import java.util.Optional;
 
 public interface ScenarioProgressRepository extends JpaRepository<ScenarioProgress, Long> {
     Optional<ScenarioProgress> findByUserAndScenario(Users user, Scenario scenario);
-    @Modifying
-    void deleteByUserAndScenario(Users user, Scenario scenario);
 }
