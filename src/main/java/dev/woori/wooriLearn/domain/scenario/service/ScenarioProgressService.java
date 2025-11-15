@@ -1,16 +1,14 @@
 package dev.woori.wooriLearn.domain.scenario.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressSaveResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
+import dev.woori.wooriLearn.domain.scenario.dto.content.*;
 import dev.woori.wooriLearn.domain.scenario.entity.*;
+import dev.woori.wooriLearn.domain.scenario.model.ChoiceInfo;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioCompletedRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioProgressRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioRepository;
@@ -46,10 +44,12 @@ public class ScenarioProgressService {
     private final ScenarioStepRepository stepRepository;
     private final ScenarioProgressRepository progressRepository;
     private final ScenarioCompletedRepository completedRepository;
-    private final ObjectMapper objectMapper;
 
     // 스텝 타입/상태에 따라 적절한 StepProcessor를 찾아주는 Resolver
     private final StepProcessorResolver stepProcessorResolver;
+
+    // content JSON 파싱/DTO 매핑 전담 서비스
+    private final ScenarioStepContentService contentService;
 
     /**
      * 시나리오 진행 재개
@@ -69,18 +69,7 @@ public class ScenarioProgressService {
         // 2) 유저의 진행 이력 조회 -> 있으면 해당 스텝, 없으면 시작 스텝 계산
         ScenarioStep step = progressRepository.findByUserAndScenario(user, scenario)
                 .map(ScenarioProgress::getStep)
-                .orElseGet(() -> {
-                    Map<Long, ScenarioStep> byId = preloadStepsAsMap(scenarioId);
-                    Long startId = inferStartStepId(byId);
-                    ScenarioStep start = byId.get(startId);
-                    if (start == null) {
-                        throw new CommonException(
-                                ErrorCode.INTERNAL_SERVER_ERROR,
-                                "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenarioId
-                        );
-                    }
-                    return start;
-                });
+                .orElseGet(() -> stepRepository.findStartStepOrFail(scenarioId));
 
         // 3) 현재 스텝을 클라이언트 응답 DTO로 매핑
         return mapStep(step);
@@ -103,6 +92,8 @@ public class ScenarioProgressService {
 
         // 2) 해당 시나리오의 모든 스텝을 한 번에 로딩(Map 형태로 보관)
         Map<Long, ScenarioStep> byId = preloadStepsAsMap(scenarioId);
+
+        Long startStepId = stepRepository.findStartStepOrFail(scenarioId).getId();
 
         // 3) 현재 스텝 검증
         ScenarioStep current = byId.get(nowStepId);
@@ -127,7 +118,7 @@ public class ScenarioProgressService {
         boolean badEnding = isBadEnding(current);
 
         // 5) Processor 에 넘길 Context 구성
-        StepContext ctx = new StepContext(user, scenario, current, answer, byId, progress, badBranch, badEnding);
+        StepContext ctx = new StepContext(user, scenario, current, answer, byId, progress, badBranch, badEnding, startStepId);
 
         // 6) 스텝 타입/상태에 맞는 Processor 선택 & 실행
         StepProcessor processor = stepProcessorResolver.resolve(ctx);
@@ -233,7 +224,7 @@ public class ScenarioProgressService {
         }
 
         double pct = (idx * 100.0) / total;
-        return Math.min(100.0, Math.max(0.0, pct));
+        return normalizeProgress(pct);
     }
 
     /**
@@ -256,34 +247,11 @@ public class ScenarioProgressService {
         return byId;
     }
 
-    /**
-     * 시작 스텝 추론
-     *
-     * - 다른 스텝의 nextStep 으로 "참조되지 않는" 스텝 중 ID가 가장 작은 것을 시작점으로 선택
-     * - 모든 스텝이 참조되어 있다면(이상 케이스), 단순히 ID 최솟값을 반환
-     */
-    Long inferStartStepId(Map<Long, ScenarioStep> byId) {
-        Set<Long> referenced = new HashSet<>();
-        for (ScenarioStep s : byId.values()) {
-            if (s.getNextStep() != null) {
-                referenced.add(s.getNextStep().getId());
-            }
-        }
-        return byId.keySet().stream()
-                .filter(id -> !referenced.contains(id))
-                .min(Long::compareTo)
-                .orElseGet(() -> byId.keySet().stream().min(Long::compareTo)
-                        .orElseThrow(() -> new CommonException(
-                                ErrorCode.INTERNAL_SERVER_ERROR,
-                                "시작 스텝을 계산할 수 없습니다."
-                        )));
-    }
-
     /** 진행률을 0~100 범위로 자르고, 기존 진행률보다 "뒤로 가지 않도록" 하는 헬퍼 */
     double monotonicRate(ScenarioProgress progress, double candidate) {
         double prev = (progress.getProgressRate() == null) ? 0.0 : progress.getProgressRate();
-        double bounded = Math.min(100.0, Math.max(0.0, candidate));
-        return Math.max(prev, bounded);
+        double roundedCandidate = normalizeProgress(candidate);
+        return Math.max(prev, roundedCandidate);
     }
 
     /** 동일 유저/시나리오에 대해 완료 이력을 1회만 저장하도록 보장 */
@@ -308,21 +276,7 @@ public class ScenarioProgressService {
      * - content JSON 문자열을 JsonNode 로 파싱해서 내려줌
      */
     ProgressResumeResDto mapStep(ScenarioStep step) {
-        try {
-            JsonNode contentNode = objectMapper.readTree(step.getContent());
-            return new ProgressResumeResDto(
-                    step.getScenario().getId(),
-                    step.getId(),
-                    step.getType(),
-                    step.getQuiz() != null ? step.getQuiz().getId() : null,
-                    contentNode
-            );
-        } catch (JsonProcessingException e) {
-            throw new CommonException(
-                    ErrorCode.INTERNAL_SERVER_ERROR,
-                    "스텝 content JSON 파싱 실패. stepId=" + step.getId()
-            );
-        }
+        return contentService.mapStep(step);
     }
 
     /**
@@ -330,102 +284,21 @@ public class ScenarioProgressService {
      * - options 의 JSON 배열 문자열을 List<String> 으로 파싱
      */
     QuizResDto mapQuiz(Quiz quiz) {
-        try {
-            var listType = TypeFactory.defaultInstance()
-                    .constructCollectionType(List.class, String.class);
-            List<String> opts = objectMapper.readValue(quiz.getOptions(), listType);
-            return new QuizResDto(quiz.getId(), quiz.getQuestion(), opts);
-        } catch (JsonProcessingException e) {
-            throw new CommonException(
-                    ErrorCode.INTERNAL_SERVER_ERROR,
-                    "퀴즈 options 파싱 실패. quizId=" + quiz.getId()
-            );
-        }
+        return contentService.mapQuiz(quiz);
     }
 
-    record ChoiceInfo(boolean good, Long nextStepId) {}
-
-    JsonNode findChoicesArray(JsonNode root) {
-        if (root == null) {
-            return null;
-        }
-
-        if (root.isObject()) {
-            JsonNode choices = root.get("choices");
-            if (choices != null && choices.isArray()) {
-                return choices;
-            }
-        }
-
-        if (root.isArray()) {
-            // ["choices", [...]] 패턴
-            for (int i = 0; i < root.size() - 1; i++) {
-                JsonNode cur = root.get(i);
-                JsonNode nxt = root.get(i + 1);
-                if (cur.isTextual()
-                        && "choices".equalsIgnoreCase(cur.asText())
-                        && nxt != null
-                        && nxt.isArray()) {
-                    return nxt;
-                }
-            }
-            // 배열 내 오브젝트의 {"choices":[...]} 패턴
-            for (JsonNode el : root) {
-                if (el.isObject()) {
-                    JsonNode choices = el.get("choices");
-                    if (choices != null && choices.isArray()) {
-                        return choices;
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * CHOICE 스텝의 content JSON 에서
-     * answerIndex 에 해당하는 선택지를 파싱하여 ChoiceInfo 로 매핑
-     */
     ChoiceInfo parseChoice(ScenarioStep step, int answerIndex) {
-        JsonNode root;
-        try {
-            root = objectMapper.readTree(step.getContent());
-        } catch (JsonProcessingException e) {
-            throw new CommonException(
-                    ErrorCode.INTERNAL_SERVER_ERROR,
-                    "CHOICE content 파싱 실패. stepId=" + step.getId()
-            );
-        }
-
-        JsonNode choices = findChoicesArray(root);
-        if (choices == null || !choices.isArray()) {
-            throw new CommonException(
-                    ErrorCode.INTERNAL_SERVER_ERROR,
-                    "CHOICE 스텝에 choices 배열이 없습니다. stepId=" + step.getId()
-            );
-        }
-        if (answerIndex < 0 || answerIndex >= choices.size()) {
-            throw new CommonException(
-                    ErrorCode.INVALID_REQUEST,
-                    "선택 인덱스 범위 초과. index=" + answerIndex
-            );
-        }
-
-        JsonNode choice = choices.get(answerIndex);
-        boolean good = choice.path("good").asBoolean(false);
-        Long next = choice.hasNonNull("next") ? choice.get("next").asLong() : null;
-
-        return new ChoiceInfo(good, next);
+        return contentService.parseChoice(step, answerIndex);
     }
 
     /**
      * 배드 브랜치 여부 판단
      * - content.meta.branch == "bad" 이면 true
+     *
+     * CHOICE 스텝은 meta 자체가 없으므로 항상 false
      */
     boolean isBadBranch(ScenarioStep step) {
-        return getMetaNode(step)
-                .map(meta -> "bad".equalsIgnoreCase(meta.path("branch").asText(null)))
-                .orElse(false);
+        return contentService.isBadBranch(step);
     }
 
     /**
@@ -433,20 +306,12 @@ public class ScenarioProgressService {
      * - content.meta.badEnding == true 이면 true
      */
     boolean isBadEnding(ScenarioStep step) {
-        return getMetaNode(step)
-                .map(meta -> meta.path("badEnding").asBoolean(false))
-                .orElse(false);
+        return contentService.isBadEnding(step);
     }
 
-    Optional<JsonNode> getMetaNode(ScenarioStep step) {
-        try {
-            JsonNode root = objectMapper.readTree(step.getContent());
-            JsonNode meta = (root.isArray() && !root.isEmpty())
-                    ? root.get(0).get("meta")
-                    : root.get("meta");
-            return Optional.ofNullable(meta);
-        } catch (JsonProcessingException e) {
-            return Optional.empty();
-        }
+    // 진행률을 0~100 사이로 자르고, 소수점 1자리까지 반올림
+    private double normalizeProgress(double value) {
+        double bounded = Math.min(100.0, Math.max(0.0, value));
+        return Math.round(bounded * 10.0) / 10.0; // 소수점 1자리
     }
 }

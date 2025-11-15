@@ -58,7 +58,9 @@ class ScenarioDocServiceTest {
     @DisplayName("스텝이 비어있으면 INTERNAL_SERVER_ERROR")
     void getScenarioDoc_emptySteps() {
         // given
-        when(scenarioRepository.findById(1L)).thenReturn(Optional.of(new Scenario(1L, "title", null)));
+        when(scenarioRepository.findById(1L)).thenReturn(Optional.of(
+                Scenario.builder().id(1L).title("title").build()
+        ));
         when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of());
 
         // when
@@ -72,7 +74,10 @@ class ScenarioDocServiceTest {
     @DisplayName("정상 변환 - 시작 스텝 포함 전체 문서 반환")
     void getScenarioDoc_success() {
         // given
-        Scenario scenario = new Scenario(1L, "title", null);
+        Scenario scenario = Scenario.builder()
+                .id(1L)
+                .title("title")
+                .build();
 
         // 스텝 s1 -> s2 구조
         ScenarioStep s2 = ScenarioStep.builder()
@@ -113,7 +118,10 @@ class ScenarioDocServiceTest {
     @DisplayName("content JSON 파싱 실패시 INTERNAL_SERVER_ERROR")
     void getScenarioDoc_parseFail() {
         // given
-        Scenario scenario = new Scenario(1L, "title", null);
+        Scenario scenario = Scenario.builder()
+                .id(1L)
+                .title("title")
+                .build();
 
         // 잘못된 JSON 문자열을 가진 스텝
         ScenarioStep s1 = ScenarioStep.builder()

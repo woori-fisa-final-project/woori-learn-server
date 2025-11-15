@@ -7,6 +7,7 @@ import dev.woori.wooriLearn.domain.scenario.entity.Scenario;
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioProgress;
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.model.AdvanceStatus;
+import dev.woori.wooriLearn.domain.scenario.model.ChoiceInfo;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -18,7 +19,7 @@ public class ChoiceStepProcessor implements StepProcessor {
     public AdvanceResDto process(StepContext ctx, ScenarioProgressService service) {
         ScenarioStep current = ctx.current();
         Scenario scenario = ctx.scenario();
-        Map<Long, ScenarioStep> byId = ctx.stepsById();
+        Map<Long, ScenarioStep> byId = ctx.byId();
         ScenarioProgress progress = ctx.progress();
         Integer answer = ctx.answer();
 
@@ -28,7 +29,7 @@ public class ChoiceStepProcessor implements StepProcessor {
             return new AdvanceResDto(AdvanceStatus.CHOICE_REQUIRED, service.mapStep(current), null);
         }
 
-        ScenarioProgressService.ChoiceInfo choice = service.parseChoice(current, answer);
+        ChoiceInfo choice = service.parseChoice(current, answer);
 
         // 오루트
         if (!choice.good()) {
@@ -62,8 +63,7 @@ public class ChoiceStepProcessor implements StepProcessor {
             service.ensureCompletedOnce(ctx.user(), scenario);
             double rate = service.monotonicRate(progress, 100.0);
 
-            Long startId = service.inferStartStepId(byId);
-            ScenarioStep start = byId.get(startId);
+            ScenarioStep start = ctx.startStep();
             if (start == null) {
                 throw new CommonException(
                         ErrorCode.INTERNAL_SERVER_ERROR,
