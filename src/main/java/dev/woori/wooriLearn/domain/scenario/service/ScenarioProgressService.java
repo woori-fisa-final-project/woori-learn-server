@@ -27,7 +27,7 @@ import java.util.*;
  * 진행률 계산 규칙:
  * - Scenario.totalNormalSteps : "정상 루트"에 포함되는 스텝 개수
  * - ScenarioStep.normalIndex  : "정상 루트"에서의 순번(1-base)
- * - 진행률 = (normalIndex / totalNormalSteps) * 100
+ * - 진행률 : 0 ~ 100 사이의 수, 소수점 첫째자리까지
  *
  * normalIndex == null 인 스텝은 정상 루트에 포함되지 않음
  *
@@ -55,8 +55,17 @@ public class ScenarioProgressService {
     /**
      * 시나리오 진행 재개
      *
-     * - 사용자의 ScenarioProgress가 존재하면: 해당 진행 스텝에서 재개
-     * - 없다면: 시나리오의 시작 스텝부터 시작
+     * - 사용자의 ScenarioProgress가 존재하면 해당 진행 스텝에서 재개
+     * - 없다면 시나리오의 시작 스텝부터 시작
+     */
+    /**
+     * 시나리오 진행 재개
+     * - 사용자의 ScenarioProgress가 존재하면 해당 진행 스텝에서 재개
+     * - 없다면 시나리오의 시작 스텝부터 시작
+     *
+     * @param user          현재 요청을 보낸 사용자
+     * @param scenarioId    재개할 시나리오 ID
+     * @return 현재 스텝 정보를 담은 DTO
      */
     @Transactional(readOnly = true)
     public ProgressResumeResDto resume(Users user, Long scenarioId) {
@@ -76,11 +85,17 @@ public class ScenarioProgressService {
         return mapStep(step);
     }
 
+
     /**
      * 다음 스텝으로 진행
-     *
-     * - StepProcessorResolver가 현재 스텝 타입/상태에 맞는 처리기를 선택하고
-     * - 개별 Processor가 실제 로직(CHOICE/배드 브랜치/퀴즈/일반)을 수행
+     * - 사용자의 진행 엔티티 조회/생성
+     * - 현재 스텝의 메타 정보를 한 번만 파싱하여 배트 브랜치/배드 엔딩 여부 확인
+     * - stepContext를 구성해 stepProcessorResolver에 전달
+     * @param user          현재 사용자
+     * @param scenarioId    진행 중인 시나리오 ID
+     * @param nowStepId     사용자가 머무르고 있는 현재 스텝 ID
+     * @param answer        사용자가 제출한 답(퀴즈/선택지)
+     * @return 다음 상태/스텝/퀴즈 정보를 담은 AdvanceResDto
      */
     @Transactional
     public AdvanceResDto advance(Users user, Long scenarioId, Long nowStepId, Integer answer) {
@@ -94,6 +109,7 @@ public class ScenarioProgressService {
         // 2) 해당 시나리오의 모든 스텝을 한 번에 로딩(Map 형태로 보관)
         Map<Long, ScenarioStep> byId = preloadStepsAsMap(scenarioId);
 
+        // 시작 스텝 ID
         Long startStepId = stepRepository.findStartStepOrFail(scenarioId).getId();
 
         // 3) 현재 스텝 검증
@@ -114,7 +130,7 @@ public class ScenarioProgressService {
                         .progressRate(0.0)
                         .build());
 
-        // 현재 스텝이 배드 브랜치/배드 엔딩인지 미리 계산
+        // 5) 메타 정보 한 번만 파싱하여 배드 브랜치/배드 엔딩 여부 확인
         Optional<StepMetaDto> metaOpt = contentService.getMeta(current);
         boolean badBranch = metaOpt
                 .map(meta -> "bad".equalsIgnoreCase(meta.branch()))
@@ -123,19 +139,23 @@ public class ScenarioProgressService {
                 .map(meta -> Boolean.TRUE.equals(meta.badEnding()))
                 .orElse(false);
 
-        // 5) Processor 에 넘길 Context 구성
+        // 6) Processor에 넘길 Context 구성
         StepContext ctx = new StepContext(user, scenario, current, answer, byId, progress, badBranch, badEnding, startStepId);
 
-        // 6) 스텝 타입/상태에 맞는 Processor 선택 & 실행
+        // 7) 스텝 타입/상태에 맞는 Processor 선택 & 실행
         StepProcessor processor = stepProcessorResolver.resolve(ctx);
         return processor.process(ctx, this);
     }
 
     /**
-     * 현재 스텝을 "체크포인트"로 저장
-     *
-     * - 배드 브랜치/배드 엔딩이면: 진행률 동결, 위치만 저장
-     * - 그 외: 시나리오의 normalIndex / totalNormalSteps 기반으로 진행률 계산
+     * 현재 스텝을 체크포인트로 저장
+     * ScenarioProgress 조회/생성
+     * 해당 스텝이 배드 브랜치 또는 배드 엔딩이면 진행률 동결
+     * 그 외의 경우 normalIndex / totalNormalSteps 기반으로 진행률 업데이트
+     * @param user          현재 사용자
+     * @param scenarioId    체크포인트를 저장할 시나리오 ID
+     * @param nowStepId     사용자가 머무르고 있는 스텝 ID
+     * @return 저장된 스텝 ID와 최종 진행률을 포함한 DTO
      */
     @Transactional
     public ProgressSaveResDto saveCheckpoint(Users user, Long scenarioId, Long nowStepId) {
@@ -167,7 +187,7 @@ public class ScenarioProgressService {
                         .progressRate(0.0)
                         .build());
 
-        // 배드 브랜치/엔딩이면 진행률 동결
+        // 5) 메타 정보를 기준으로 배드 브랜치/배드 엔딩 여부 확인
         Optional<StepMetaDto> metaOpt = contentService.getMeta(step);
         boolean forceFreeze = metaOpt
                 .map(meta ->
@@ -175,7 +195,7 @@ public class ScenarioProgressService {
                                 || Boolean.TRUE.equals(meta.badEnding())
                 )
                 .orElse(false);
-        
+
         double finalRate = updateProgressAndSave(progress, step, scenario, forceFreeze);
         return new ProgressSaveResDto(scenarioId, step.getId(), finalRate);
     }
@@ -186,7 +206,7 @@ public class ScenarioProgressService {
      * @param progress      사용자 진행 엔티티
      * @param newStep       이동할 스텝
      * @param scenario      시나리오(진행률 계산에 필요). forceFreeze=true 이면 null 가능
-     * @param forceFreeze   true면 진행률을 변경하지 않고 "위치만" 저장
+     * @param forceFreeze   true면 진행률을 변경하지 않고 위치만 저장
      * @return 최종 progressRate 값
      */
     double updateProgressAndSave(ScenarioProgress progress,
@@ -196,7 +216,7 @@ public class ScenarioProgressService {
 
         double finalRate;
         if (forceFreeze || scenario == null) {
-            // 진행률 동결 모드: 위치만 갱신
+            // 진행률 동결 : 위치만 갱신
             progress.moveToStep(newStep);
             progressRepository.save(progress);
             finalRate = (progress.getProgressRate() == null) ? 0.0 : progress.getProgressRate();
@@ -206,12 +226,12 @@ public class ScenarioProgressService {
         // 정상 루트 상에서의 진행률 계산
         Double computed = computeProgressRateOnNormalPath(scenario, newStep);
         if (computed == null) {
-            // 정상 루트에 속하지 않는 스텝(배드/연습용 등) → 진행률 동결
+            // 정상 루트에 속하지 않는 스텝(배드/연습용 등) -> 진행률 동결
             progress.moveToStep(newStep);
             progressRepository.save(progress);
             finalRate = (progress.getProgressRate() == null) ? 0.0 : progress.getProgressRate();
         } else {
-            // 진행률 후보 값과 기존 값 중 "더 큰 값"으로 단조 증가 보장
+            // 진행률 후보 값과 기존 값 중 더 큰 값으로 단조 증가 보장
             double rate = monotonicRate(progress, computed);
             progress.moveToStep(newStep, rate);
             progressRepository.save(progress);
@@ -222,8 +242,10 @@ public class ScenarioProgressService {
 
     /**
      * normalIndex / totalNormalSteps 기반 진행률 계산
-     *
      * - totalNormalSteps 또는 normalIndex 가 null/0 이면 정상 루트가 아니라고 보고 null 반환
+     * @param scenario  진행 중인 시나리오
+     * @param step      진행률을 계산할 대상 스텝
+     * @return 진행률(%)
      */
     Double computeProgressRateOnNormalPath(Scenario scenario, ScenarioStep step) {
         if (scenario == null || step == null) {
@@ -242,8 +264,9 @@ public class ScenarioProgressService {
 
     /**
      * 한 시나리오의 모든 스텝을 한 번에 로딩해서 Map 형태로 반환
-     *
      * - N+1 문제를 피하기 위해 findByScenarioIdWithNextStep (JOIN FETCH) 사용
+     * @param scenarioId    대상 시나리오 ID
+     * @return key: stepId, value: ScenarioStep 엔티티
      */
     Map<Long, ScenarioStep> preloadStepsAsMap(Long scenarioId) {
         List<ScenarioStep> steps = stepRepository.findByScenarioIdWithNextStep(scenarioId);
@@ -260,7 +283,12 @@ public class ScenarioProgressService {
         return byId;
     }
 
-    /** 진행률을 0~100 범위로 자르고, 기존 진행률보다 "뒤로 가지 않도록" 하는 헬퍼 */
+    /**
+     * 진행률(0 ~ 100), 기존 진행률보다 뒤로 가지 않도록 하는 헬퍼
+     * @param progress  현재 진행 엔티티
+     * @param candidate 새로 계산된 진행률 후보값
+     * @return 이전 값과 후보 값 중 더 큰 값
+     */
     double monotonicRate(ScenarioProgress progress, double candidate) {
         double prev = (progress.getProgressRate() == null) ? 0.0 : progress.getProgressRate();
         double roundedCandidate = normalizeProgress(candidate);
@@ -279,7 +307,7 @@ public class ScenarioProgressService {
         }
     }
 
-    /** 외부 Processor 가 진행 엔티티 저장만 필요할 때 사용 */
+    /** 외부 Processor가 진행 엔티티 저장만 필요할 때 사용 */
     void saveProgress(ScenarioProgress progress) {
         progressRepository.save(progress);
     }
@@ -311,46 +339,38 @@ public class ScenarioProgressService {
     }
 
     /**
-     * ScenarioStep → ProgressResumeResDto 매핑
-     * - content JSON 문자열을 JsonNode 로 파싱해서 내려줌
+     * ScenarioStep -> ProgressResumeResDto 매핑
+     * - 실제 JSON 파싱/구조환는 ScenarioStepContentService에 위임
+     * @param step 응답으로 내려줄 스텝 엔티티
+     * @return 재개용 DTO
      */
     ProgressResumeResDto mapStep(ScenarioStep step) {
         return contentService.mapStep(step);
     }
 
     /**
-     * Quiz 엔티티 → QuizResDto 매핑
+     * Quiz 엔티티 -> QuizResDto 매핑
      * - options 의 JSON 배열 문자열을 List<String> 으로 파싱
      */
     QuizResDto mapQuiz(Quiz quiz) {
         return contentService.mapQuiz(quiz);
     }
 
+    /**
+     * CHOICE 스텝 content에서 사용자가 선택한 인덱스에 해당하는 ChoiceOption을 파싱하여, ChoiceInfo로 변환
+     * @param step          CHOICE 타입 스텝
+     * @param answerIndex   사용자가 선택한 인덱스
+     * @return 선택 결과(정답 여부, 다음 스텝 ID)를 담은 ChoiceInfo
+     */
     ChoiceInfo parseChoice(ScenarioStep step, int answerIndex) {
         return contentService.parseChoice(step, answerIndex);
     }
 
     /**
-     * 배드 브랜치 여부 판단
-     * - content.meta.branch == "bad" 이면 true
-     *
-     * CHOICE 스텝은 meta 자체가 없으므로 항상 false
+     * 진행률 값(0 ~ 100), 소수점 첫째자리까지 반올림
      */
-    boolean isBadBranch(ScenarioStep step) {
-        return contentService.isBadBranch(step);
-    }
-
-    /**
-     * 배드 엔딩 여부 판단
-     * - content.meta.badEnding == true 이면 true
-     */
-    boolean isBadEnding(ScenarioStep step) {
-        return contentService.isBadEnding(step);
-    }
-
-    // 진행률을 0~100 사이로 자르고, 소수점 1자리까지 반올림
     private double normalizeProgress(double value) {
         double bounded = Math.min(100.0, Math.max(0.0, value));
-        return Math.round(bounded * 10.0) / 10.0; // 소수점 1자리
+        return Math.round(bounded * 10.0) / 10.0;
     }
 }

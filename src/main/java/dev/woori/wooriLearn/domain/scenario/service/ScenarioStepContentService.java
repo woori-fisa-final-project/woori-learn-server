@@ -23,13 +23,16 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 시나리오 스텝의 content(JSON 문자열)를 전담해서 파싱하고 각종 DTO/도메인 모델로 매핑해 주는 서비스
+ */
 @Service
 @RequiredArgsConstructor
 public class ScenarioStepContentService {
 
     private final ObjectMapper objectMapper;
 
-    /** ScenarioStep -> ProgressResumeResDto 로 매핑 (콘텐츠 JsonNode 포함) */
+    /** ScenarioStep -> ProgressResumeResDto 매핑 (콘텐츠 JsonNode 포함) */
     public ProgressResumeResDto mapStep(ScenarioStep step) {
         try {
             JsonNode contentNode = objectMapper.readTree(step.getContent());
@@ -63,7 +66,7 @@ public class ScenarioStepContentService {
         }
     }
 
-    /** CHOICE 스텝 content -> ChoiceInfo 로 파싱 */
+    /** CHOICE 스텝 content -> ChoiceInfo 파싱 */
     public ChoiceInfo parseChoice(ScenarioStep step, int answerIndex) {
         try {
             ChoiceContentDto content = objectMapper.readValue(
