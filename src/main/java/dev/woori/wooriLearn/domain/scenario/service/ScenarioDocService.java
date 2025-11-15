@@ -17,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * 시나리오 전체를 조회하는 서비스
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
