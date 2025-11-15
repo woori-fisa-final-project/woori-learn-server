@@ -144,8 +144,10 @@ public class ScenarioStepContentService {
                 }
             };
         } catch (JsonProcessingException e) {
-            // meta 구조가 아니거나 파싱 실패 시 → meta 없음
-            return Optional.empty();
+            throw new CommonException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "스텝 content JSON 파싱 실패. stepId=" + step.getId()
+            );
         }
     }
 }

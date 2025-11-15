@@ -157,6 +157,7 @@ public class ScenarioProgressService {
                 .orElseGet(() -> ScenarioProgress.builder()
                         .user(user)
                         .scenario(scenario)
+                        .step(step)
                         .progressRate(0.0)
                         .build());
 
