@@ -69,26 +69,24 @@ public class AutoPaymentService {
 
     @Transactional
     public AutoPaymentResponse createAutoPayment(AutoPaymentCreateRequest request, String currentUserId) {
-        // 1. 권한 체크: 출금 계좌가 현재 사용자의 것인지 확인
-        validateAccountOwnership(request.educationalAccountId(), currentUserId);
-
-        // 2. 교육용 계좌 조회 및 검증
-        EducationalAccount educationalAccount = findAndValidateAccount(
+        // 1. 교육용 계좌 조회, 소유권 확인 및 비밀번호 검증 (DB 조회 1회로 최적화)
+        EducationalAccount educationalAccount = findAndValidateAccountWithOwnership(
                 request.educationalAccountId(),
-                request.accountPassword()
+                request.accountPassword(),
+                currentUserId
         );
 
-        // 3. 지정일 처리 로직 적용
+        // 2. 지정일 처리 로직 적용
         int finalDesignatedDate = resolveDesignatedDate(request);
 
-        // 4. 자동이체 엔티티 생성
+        // 3. 자동이체 엔티티 생성
         AutoPayment autoPayment = AutoPayment.createWithResolvedDate(
                 request,
                 educationalAccount,
                 finalDesignatedDate
         );
 
-        // 5. 저장
+        // 4. 저장
         AutoPayment savedAutoPayment = autoPaymentRepository.save(autoPayment);
 
         log.info("자동이체 등록 완료 - ID: {}, 교육용계좌ID: {}, 최종지정일: {}",
@@ -166,6 +164,39 @@ public class AutoPaymentService {
 
         // 1~31일 경우, 그 값 그대로 사용
         return designatedDate;
+    }
+
+    /**
+     * 계좌 조회, 소유권 확인, 비밀번호 검증을 한 번에 수행 (DB 조회 최적화)
+     * @param accountId 계좌 ID
+     * @param password 계좌 비밀번호
+     * @param currentUserId 현재 사용자 ID
+     * @return 검증된 EducationalAccount
+     */
+    private EducationalAccount findAndValidateAccountWithOwnership(Long accountId, String password, String currentUserId) {
+        EducationalAccount account = edubankapiAccountRepository.findById(accountId)
+                .orElseThrow(() -> {
+                    log.error("교육용 계좌 조회 실패 - ID: {}", accountId);
+                    return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                            "교육용 계좌를 찾을 수 없습니다.");
+                });
+
+        // 소유권 확인
+        String accountOwnerUserId = account.getUser().getUserId();
+        log.info("계좌 소유권 검증 - 계좌ID: {}, 요청사용자: {}, 계좌소유자: {}",
+                accountId, currentUserId, accountOwnerUserId);
+
+        if (!accountOwnerUserId.equals(currentUserId)) {
+            log.warn("권한 없는 접근 시도 - 계좌ID: {}, 요청사용자: {}, 계좌소유자: {}",
+                    accountId, currentUserId, accountOwnerUserId);
+            throw new CommonException(ErrorCode.FORBIDDEN, "접근 권한이 없습니다.");
+        }
+
+        // 비밀번호 검증
+        validateAccountPassword(account, password);
+
+        log.debug("계좌 검증 완료 - 계좌ID: {}, 사용자ID: {}", accountId, currentUserId);
+        return account;
     }
 
     private EducationalAccount findAndValidateAccount(Long accountId, String password) {
