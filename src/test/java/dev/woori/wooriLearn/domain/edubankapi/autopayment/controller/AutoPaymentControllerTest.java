@@ -57,8 +57,10 @@ class AutoPaymentControllerTest {
                 new AutoPaymentResponse(
                         1L,
                         educationalAccountId,
-                        "1234567890",
-                        "001",
+                        "110-123-456789",  // accountNumber
+                        "우리은행",         // bankName
+                        "1234567890",      // depositNumber
+                        "001",             // depositBankCode
                         50000,
                         "김철수",
                         "용돈",
@@ -102,8 +104,10 @@ class AutoPaymentControllerTest {
         AutoPaymentResponse response = new AutoPaymentResponse(
                 autoPaymentId,
                 1L,
-                "1234567890",
-                "001",
+                "110-123-456789",  // accountNumber
+                "우리은행",         // bankName
+                "1234567890",      // depositNumber
+                "001",             // depositBankCode
                 50000,
                 "김철수",
                 "용돈",
@@ -155,8 +159,10 @@ class AutoPaymentControllerTest {
         AutoPaymentResponse response = new AutoPaymentResponse(
                 1L,
                 1L,
-                "1234567890",
-                "001",
+                "110-123-456789",  // accountNumber
+                "우리은행",         // bankName
+                "1234567890",      // depositNumber
+                "001",             // depositBankCode
                 50000,
                 "김철수",
                 "용돈",
