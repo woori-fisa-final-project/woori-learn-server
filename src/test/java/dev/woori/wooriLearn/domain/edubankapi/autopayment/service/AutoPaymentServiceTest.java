@@ -95,7 +95,7 @@ class AutoPaymentServiceTest {
     @DisplayName("자동이체 등록 성공")
     void createAutoPayment_Success() {
         // given
-        // validateAccountOwnership + findAndValidateAccount에서 총 2번 호출됨
+        // findAndValidateAccountWithOwnership에서 1번만 호출됨 (최적화)
         given(edubankapiAccountRepository.findById(anyLong()))
                 .willReturn(Optional.of(mockAccount));
         given(passwordEncoder.matches(anyString(), anyString()))
@@ -114,7 +114,7 @@ class AutoPaymentServiceTest {
         assertThat(response.startDate()).isEqualTo(LocalDate.of(2025, 1, 1));
         assertThat(response.expirationDate()).isEqualTo(LocalDate.of(2025, 12, 31));
 
-        verify(edubankapiAccountRepository, times(2)).findById(1L);  // 2번 호출 검증
+        verify(edubankapiAccountRepository, times(1)).findById(1L);  // 최적화로 1번만 호출됨
         verify(passwordEncoder).matches("1234", mockAccount.getAccountPassword());
         verify(autoPaymentRepository).save(any(AutoPayment.class));
     }
@@ -161,7 +161,7 @@ class AutoPaymentServiceTest {
         assertThat(response.startDate()).isEqualTo(sameDate);
         assertThat(response.expirationDate()).isEqualTo(sameDate);
 
-        verify(edubankapiAccountRepository, times(2)).findById(1L);
+        verify(edubankapiAccountRepository, times(1)).findById(1L);
         verify(autoPaymentRepository).save(any(AutoPayment.class));
     }
 
@@ -208,7 +208,7 @@ class AutoPaymentServiceTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
         assertThat(exception.getMessage()).contains("계좌 비밀번호가 일치하지 않습니다");
 
-        verify(edubankapiAccountRepository, times(2)).findById(1L);  // 2번 호출 검증
+        verify(edubankapiAccountRepository, times(1)).findById(1L);  // 최적화로 1번만 호출됨
         verify(passwordEncoder).matches("1234", mockAccount.getAccountPassword());
         verify(autoPaymentRepository, never()).save(any());
     }
@@ -342,6 +342,10 @@ class AutoPaymentServiceTest {
     @DisplayName("자동이체 해지 실패 - 존재하지 않음 (ENTITY_NOT_FOUND)")
     void cancelAutoPayment_Fail_NotFound() {
         // given
+        // 1. 먼저 계좌 소유권 검증을 통과해야 함
+        given(edubankapiAccountRepository.findById(1L))
+                .willReturn(Optional.of(mockAccount));
+        // 2. 그 다음 자동이체 조회 실패
         given(autoPaymentRepository.findById(anyLong()))
                 .willReturn(Optional.empty());
 
@@ -356,6 +360,7 @@ class AutoPaymentServiceTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
         assertThat(exception.getMessage()).contains("자동이체 정보를 찾을 수 없습니다");
 
+        verify(edubankapiAccountRepository).findById(1L);
         verify(autoPaymentRepository).findById(1L);
     }
 
@@ -375,15 +380,8 @@ class AutoPaymentServiceTest {
                 .user(otherUser)
                 .build();
 
-        AutoPayment otherAutoPayment = AutoPayment.builder()
-                .id(1L)
-                .educationalAccount(otherAccount)  // 다른 계좌!
-                .processingStatus(AutoPaymentStatus.ACTIVE)
-                .build();
-
-        given(autoPaymentRepository.findById(anyLong()))
-                .willReturn(Optional.of(otherAutoPayment));
-        given(edubankapiAccountRepository.findById(anyLong()))
+        // 계좌 소유권 검증에서 실패하므로 edubankapiAccountRepository만 모킹
+        given(edubankapiAccountRepository.findById(2L))
                 .willReturn(Optional.of(otherAccount));
 
         // when
@@ -398,6 +396,7 @@ class AutoPaymentServiceTest {
         assertThat(exception.getMessage()).contains("자동이체 정보를 찾을 수 없습니다");
 
         verify(edubankapiAccountRepository).findById(2L);
+        // autoPaymentRepository는 호출되지 않음 (소유권 검증에서 실패)
     }
 
     @Test
@@ -455,7 +454,7 @@ class AutoPaymentServiceTest {
 
         // then
         assertThat(response).isNotNull();
-        verify(edubankapiAccountRepository, times(2)).findById(1L);
+        verify(edubankapiAccountRepository, times(1)).findById(1L);
         verify(autoPaymentRepository).save(any(AutoPayment.class));
     }
 
@@ -484,7 +483,7 @@ class AutoPaymentServiceTest {
 
         // then
         assertThat(response).isNotNull();
-        verify(edubankapiAccountRepository, times(2)).findById(1L);
+        verify(edubankapiAccountRepository, times(1)).findById(1L);
         verify(autoPaymentRepository).save(any(AutoPayment.class));
     }
 
@@ -528,7 +527,7 @@ class AutoPaymentServiceTest {
         // then
         assertThat(response).isNotNull();
         assertThat(response.expirationDate()).isEqualTo(LocalDate.of(2024, 2, 29));
-        verify(edubankapiAccountRepository, times(2)).findById(1L);
+        verify(edubankapiAccountRepository, times(1)).findById(1L);
     }
 
     @Test
@@ -575,7 +574,7 @@ class AutoPaymentServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.startDate()).isEqualTo(startDate);
         assertThat(response.expirationDate()).isEqualTo(expirationDate);
-        verify(edubankapiAccountRepository, times(2)).findById(1L);
+        verify(edubankapiAccountRepository, times(1)).findById(1L);
     }
 
     @Test
@@ -619,7 +618,7 @@ class AutoPaymentServiceTest {
         // then
         assertThat(response).isNotNull();
         assertThat(response.amount()).isEqualTo(1);
-        verify(edubankapiAccountRepository, times(2)).findById(1L);
+        verify(edubankapiAccountRepository, times(1)).findById(1L);
     }
 
     @Test
@@ -663,7 +662,7 @@ class AutoPaymentServiceTest {
         // then
         assertThat(response).isNotNull();
         assertThat(response.amount()).isEqualTo(1_000_000);
-        verify(edubankapiAccountRepository, times(2)).findById(1L);
+        verify(edubankapiAccountRepository, times(1)).findById(1L);
     }
 
     @Test
@@ -709,7 +708,7 @@ class AutoPaymentServiceTest {
         // then
         assertThat(response).isNotNull();
         assertThat(response.displayName()).hasSize(30);
-        verify(edubankapiAccountRepository, times(2)).findById(1L);
+        verify(edubankapiAccountRepository, times(1)).findById(1L);
     }
 
     @Test
@@ -755,7 +754,7 @@ class AutoPaymentServiceTest {
         // then
         assertThat(response).isNotNull();
         assertThat(response.depositNumber()).hasSize(20);
-        verify(edubankapiAccountRepository, times(2)).findById(1L);
+        verify(edubankapiAccountRepository, times(1)).findById(1L);
     }
 
     @Test

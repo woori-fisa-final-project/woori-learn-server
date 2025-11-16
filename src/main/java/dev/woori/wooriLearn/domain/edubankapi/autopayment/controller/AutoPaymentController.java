@@ -29,12 +29,20 @@ public class AutoPaymentController {
     private final AutoPaymentService autoPaymentService;
 
     /**
-     * 인증 객체가 없으면 테스트 계정으로 처리
-     * TODO: 프로덕션 환경에서는 authentication이 null일 경우 예외 발생시켜야 함
+     * 현재 인증된 사용자 ID를 반환합니다.
+     * @param authentication 인증 객체
+     * @return 사용자 ID
+     * @throws CommonException 인증 정보가 없는 경우 UNAUTHORIZED 예외 발생
      */
     private String getCurrentUserId(Authentication authentication) {
-        // 테스트용: DB에 실제로 존재하는 userId로 변경
-        return (authentication != null) ? authentication.getName() : "testuser";
+        if (authentication == null) {
+            log.error("인증 정보가 없는 요청 감지");
+            throw new dev.woori.wooriLearn.config.exception.CommonException(
+                    dev.woori.wooriLearn.config.exception.ErrorCode.UNAUTHORIZED,
+                    "인증이 필요합니다."
+            );
+        }
+        return authentication.getName();
     }
 
     @GetMapping("/list")
