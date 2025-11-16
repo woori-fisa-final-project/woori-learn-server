@@ -1,20 +1,16 @@
 package dev.woori.wooriLearn.domain.account.controller;
 
-import dev.woori.wooriLearn.domain.account.dto.PointsHistorySearchRequestDto;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
-import dev.woori.wooriLearn.config.response.PageResponse;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
-import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
- 
 
 @RestController
 @RequestMapping("/points/exchange")
@@ -22,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class PointsExchangeController {
 
     private final PointsExchangeService pointsExchangeService;
+    private final Environment env;
 
     @PostMapping
     public ResponseEntity<BaseResponse<?>> requestExchange(
@@ -30,14 +27,5 @@ public class PointsExchangeController {
     ) {
         return ApiResponse.success(SuccessCode.CREATED, pointsExchangeService.requestExchange(username, dto));
     }
-
-    @GetMapping
-    public ResponseEntity<BaseResponse<?>> getHistory(
-            @AuthenticationPrincipal String username,
-            @ModelAttribute PointsHistorySearchRequestDto request
-    ) {
-        PageResponse<PointsExchangeResponseDto> res = pointsExchangeService.getUserHistoryPage(username, request);
-        return ApiResponse.success(SuccessCode.OK, res);
-    }
-
 }
+
