@@ -984,4 +984,179 @@ class AutoPaymentServiceTest {
         verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
                 1L, AutoPaymentStatus.ACTIVE);
     }
+
+    @Test
+    @DisplayName("말일 이체 기능 - 2월 시작 (28일 또는 29일)")
+    void createAutoPayment_EndOfMonth_February() {
+        // given - 2024년 2월(윤년, 29일까지)
+        AutoPaymentCreateRequest februaryRequest = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 50000,
+                "홍길동", "월세", 1, 99,  // designatedDate = 99 (말일)
+                LocalDate.of(2024, 2, 1),
+                LocalDate.of(2024, 12, 31),
+                "1234"
+        );
+
+        given(edubankapiAccountRepository.findById(anyLong()))
+                .willReturn(Optional.of(mockAccount));
+        given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
+        given(autoPaymentRepository.save(any(AutoPayment.class))).willAnswer(invocation -> {
+            AutoPayment saved = invocation.getArgument(0);
+            return AutoPayment.builder()
+                    .id(1L)
+                    .educationalAccount(saved.getEducationalAccount())
+                    .depositNumber(saved.getDepositNumber())
+                    .depositBankCode(saved.getDepositBankCode())
+                    .amount(saved.getAmount())
+                    .counterpartyName(saved.getCounterpartyName())
+                    .displayName(saved.getDisplayName())
+                    .transferCycle(saved.getTransferCycle())
+                    .designatedDate(saved.getDesignatedDate())  // 실제 변환된 날짜
+                    .startDate(saved.getStartDate())
+                    .expirationDate(saved.getExpirationDate())
+                    .processingStatus(saved.getProcessingStatus())
+                    .build();
+        });
+
+        // when
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(februaryRequest, "testuser");
+
+        // then
+        assertThat(response).isNotNull();
+        verify(autoPaymentRepository).save(any(AutoPayment.class));
+
+        // designatedDate가 29일(2024년 2월 말일)로 변환되었는지 확인
+        verify(autoPaymentRepository).save(argThat(autoPayment ->
+                autoPayment.getDesignatedDate() == 29  // 2024년 2월은 윤년이므로 29일
+        ));
+    }
+
+    @Test
+    @DisplayName("말일 이체 기능 - 3월 시작 (31일)")
+    void createAutoPayment_EndOfMonth_March() {
+        // given - 2024년 3월(31일까지)
+        AutoPaymentCreateRequest marchRequest = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 50000,
+                "홍길동", "월세", 1, 99,  // designatedDate = 99 (말일)
+                LocalDate.of(2024, 3, 1),
+                LocalDate.of(2024, 12, 31),
+                "1234"
+        );
+
+        given(edubankapiAccountRepository.findById(anyLong()))
+                .willReturn(Optional.of(mockAccount));
+        given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
+        given(autoPaymentRepository.save(any(AutoPayment.class))).willAnswer(invocation -> {
+            AutoPayment saved = invocation.getArgument(0);
+            return AutoPayment.builder()
+                    .id(1L)
+                    .educationalAccount(saved.getEducationalAccount())
+                    .depositNumber(saved.getDepositNumber())
+                    .depositBankCode(saved.getDepositBankCode())
+                    .amount(saved.getAmount())
+                    .counterpartyName(saved.getCounterpartyName())
+                    .displayName(saved.getDisplayName())
+                    .transferCycle(saved.getTransferCycle())
+                    .designatedDate(saved.getDesignatedDate())
+                    .startDate(saved.getStartDate())
+                    .expirationDate(saved.getExpirationDate())
+                    .processingStatus(saved.getProcessingStatus())
+                    .build();
+        });
+
+        // when
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(marchRequest, "testuser");
+
+        // then
+        assertThat(response).isNotNull();
+        verify(autoPaymentRepository).save(argThat(autoPayment ->
+                autoPayment.getDesignatedDate() == 31  // 3월은 31일
+        ));
+    }
+
+    @Test
+    @DisplayName("말일 이체 기능 - 평년 2월 시작 (28일)")
+    void createAutoPayment_EndOfMonth_FebruaryNonLeapYear() {
+        // given - 2025년 2월(평년, 28일까지)
+        AutoPaymentCreateRequest februaryRequest = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 50000,
+                "홍길동", "월세", 1, 99,  // designatedDate = 99 (말일)
+                LocalDate.of(2025, 2, 1),
+                LocalDate.of(2025, 12, 31),
+                "1234"
+        );
+
+        given(edubankapiAccountRepository.findById(anyLong()))
+                .willReturn(Optional.of(mockAccount));
+        given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
+        given(autoPaymentRepository.save(any(AutoPayment.class))).willAnswer(invocation -> {
+            AutoPayment saved = invocation.getArgument(0);
+            return AutoPayment.builder()
+                    .id(1L)
+                    .educationalAccount(saved.getEducationalAccount())
+                    .depositNumber(saved.getDepositNumber())
+                    .depositBankCode(saved.getDepositBankCode())
+                    .amount(saved.getAmount())
+                    .counterpartyName(saved.getCounterpartyName())
+                    .displayName(saved.getDisplayName())
+                    .transferCycle(saved.getTransferCycle())
+                    .designatedDate(saved.getDesignatedDate())
+                    .startDate(saved.getStartDate())
+                    .expirationDate(saved.getExpirationDate())
+                    .processingStatus(saved.getProcessingStatus())
+                    .build();
+        });
+
+        // when
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(februaryRequest, "testuser");
+
+        // then
+        assertThat(response).isNotNull();
+        verify(autoPaymentRepository).save(argThat(autoPayment ->
+                autoPayment.getDesignatedDate() == 28  // 2025년 2월은 평년이므로 28일
+        ));
+    }
+
+    @Test
+    @DisplayName("일반 지정일 - 99가 아닌 경우 그대로 사용")
+    void createAutoPayment_NormalDesignatedDate() {
+        // given - 일반 지정일 15일
+        AutoPaymentCreateRequest normalRequest = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 50000,
+                "홍길동", "월세", 1, 15,  // designatedDate = 15
+                LocalDate.of(2024, 2, 1),
+                LocalDate.of(2024, 12, 31),
+                "1234"
+        );
+
+        given(edubankapiAccountRepository.findById(anyLong()))
+                .willReturn(Optional.of(mockAccount));
+        given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
+        given(autoPaymentRepository.save(any(AutoPayment.class))).willAnswer(invocation -> {
+            AutoPayment saved = invocation.getArgument(0);
+            return AutoPayment.builder()
+                    .id(1L)
+                    .educationalAccount(saved.getEducationalAccount())
+                    .depositNumber(saved.getDepositNumber())
+                    .depositBankCode(saved.getDepositBankCode())
+                    .amount(saved.getAmount())
+                    .counterpartyName(saved.getCounterpartyName())
+                    .displayName(saved.getDisplayName())
+                    .transferCycle(saved.getTransferCycle())
+                    .designatedDate(saved.getDesignatedDate())
+                    .startDate(saved.getStartDate())
+                    .expirationDate(saved.getExpirationDate())
+                    .processingStatus(saved.getProcessingStatus())
+                    .build();
+        });
+
+        // when
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(normalRequest, "testuser");
+
+        // then
+        assertThat(response).isNotNull();
+        verify(autoPaymentRepository).save(argThat(autoPayment ->
+                autoPayment.getDesignatedDate() == 15  // 15일 그대로 유지
+        ));
+    }
 }
