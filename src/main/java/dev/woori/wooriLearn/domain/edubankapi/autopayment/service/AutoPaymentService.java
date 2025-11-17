@@ -69,15 +69,11 @@ public class AutoPaymentService {
     }
 
     /**
-     * 자동이체 목록 조회 (페이징 + 캐싱)
-     * 캐시 키: autoPaymentList::{educationalAccountId}:{status}:{page}:{size}
-     * TTL: 5분
+     * 자동이체 목록 조회 (페이징)
+     *
+     * Note: Page 타입은 Redis 직렬화 불가능하여 캐싱 제외
+     * 필요 시 PageImpl을 직렬화 가능한 DTO로 변환하여 캐싱 가능
      */
-    @Cacheable(
-            value = "autoPaymentList",
-            key = "#educationalAccountId + ':' + #status + ':' + #pageable.pageNumber + ':' + #pageable.pageSize",
-            unless = "#result.isEmpty()"
-    )
     public Page<AutoPaymentResponse> getAutoPaymentListPaged(
             Long educationalAccountId,
             String status,
