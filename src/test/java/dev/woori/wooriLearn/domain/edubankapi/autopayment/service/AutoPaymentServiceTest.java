@@ -260,10 +260,8 @@ class AutoPaymentServiceTest {
     @DisplayName("자동이체 상세 조회 성공")
     void getAutoPaymentDetail_Success() {
         // given
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.of(mockAutoPayment));
-        given(edubankapiAccountRepository.findById(anyLong()))
-                .willReturn(Optional.of(mockAccount));
 
         // when
         AutoPaymentResponse response = autoPaymentService.getAutoPaymentDetail(1L,"testuser");
@@ -274,15 +272,14 @@ class AutoPaymentServiceTest {
         assertThat(response.displayName()).isEqualTo("월세");
         assertThat(response.processingStatus()).isEqualTo("ACTIVE");
 
-        verify(autoPaymentRepository).findById(1L);
-        verify(edubankapiAccountRepository).findById(1L);
+        verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
     }
 
     @Test
     @DisplayName("자동이체 상세 조회 실패 - 존재하지 않음 (ENTITY_NOT_FOUND)")
     void getAutoPaymentDetail_Fail_NotFound() {
         // given
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.empty());
 
         // when
@@ -296,7 +293,7 @@ class AutoPaymentServiceTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
         assertThat(exception.getMessage()).contains("자동이체 정보를 찾을 수 없습니다");
 
-        verify(autoPaymentRepository).findById(1L);
+        verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
     }
 
     @Test
@@ -365,7 +362,7 @@ class AutoPaymentServiceTest {
     }
 
     @Test
-    @DisplayName("자동이체 해지 실패 - 소유자 불일치 시 존재 여부 숨김 (FORBIDDEN)")
+    @DisplayName("자동이체 해지 실패 - 타인 계좌 접근 시 정보 은닉 (ENTITY_NOT_FOUND)")
     void cancelAutoPayment_Fail_NotOwner() {
         // given
         Users otherUser = Users.builder()

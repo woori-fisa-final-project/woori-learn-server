@@ -12,6 +12,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
@@ -45,6 +49,11 @@ public class AutoPaymentController {
         return authentication.getName();
     }
 
+    /**
+     * 자동이체 목록 조회 (레거시 - 전체 조회)
+     * @deprecated /list/paged 엔드포인트 사용 권장
+     */
+    @Deprecated
     @GetMapping("/list")
     public ResponseEntity<BaseResponse<?>> getAutoPaymentList(
             @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId,
@@ -58,6 +67,41 @@ public class AutoPaymentController {
 
         List<AutoPaymentResponse> response = autoPaymentService.getAutoPaymentList(
                 educationalAccountId, status, currentUserId);
+
+        return ApiResponse.success(SuccessCode.OK, response);
+    }
+
+    /**
+     * 자동이체 목록 조회 (페이징 + 캐싱)
+     * @param educationalAccountId 교육용 계좌 ID
+     * @param status 처리 상태 (ACTIVE, CANCELLED, ALL)
+     * @param page 페이지 번호 (0부터 시작, 기본값: 0)
+     * @param size 페이지 크기 (기본값: 10)
+     * @param sort 정렬 기준 (기본값: startDate,desc - 시작일 내림차순)
+     */
+    @GetMapping("/list/paged")
+    public ResponseEntity<BaseResponse<?>> getAutoPaymentListPaged(
+            @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId,
+            @RequestParam(required = false, defaultValue = "ALL") String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "startDate,desc") String sort,
+            Authentication authentication) {
+
+        String currentUserId = getCurrentUserId(authentication);
+
+        log.info("자동이체 목록 조회 (페이징) 요청 - 계좌ID: {}, 상태: {}, 페이지: {}, 크기: {}, 정렬: {}, 사용자: {}",
+                educationalAccountId, status, page, size, sort, currentUserId);
+
+        // 정렬 파라미터 파싱 (예: "startDate,desc" -> Sort.by(Direction.DESC, "startDate"))
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = sortParams.length > 1 && "desc".equalsIgnoreCase(sortParams[1])
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+
+        Page<AutoPaymentResponse> response = autoPaymentService.getAutoPaymentListPaged(
+                educationalAccountId, status, currentUserId, pageable);
 
         return ApiResponse.success(SuccessCode.OK, response);
     }
