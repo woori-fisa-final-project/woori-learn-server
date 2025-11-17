@@ -1,14 +1,12 @@
 package dev.woori.wooriLearn.domain.scenario.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
 @Entity
+@Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -22,4 +20,7 @@ public class Scenario {
 
     @OneToMany(mappedBy = "scenario", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ScenarioStep> steps;
+
+    @Column(name = "total_normal_steps", nullable = false)
+    private Integer totalNormalSteps;
 }
