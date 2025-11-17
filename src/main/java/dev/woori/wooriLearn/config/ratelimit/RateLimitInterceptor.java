@@ -98,26 +98,27 @@ public class RateLimitInterceptor implements HandlerInterceptor {
      * - 프록시 환경 고려 (X-Forwarded-For 헤더 우선)
      */
     private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
+        final String[] IP_HEADER_CANDIDATES = {
+                "X-Forwarded-For",
+                "Proxy-Client-IP",
+                "WL-Proxy-Client-IP",
+                "HTTP_X_FORWARDED_FOR",
+                "HTTP_CLIENT_IP",
+                "HTTP_X_FORWARDED",
+                "X-Real-IP"
+        };
 
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("WL-Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("HTTP_X_FORWARDED_FOR");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
+        for (String header : IP_HEADER_CANDIDATES) {
+            String ipAddress = request.getHeader(header);
+            if (ipAddress != null && !ipAddress.isEmpty() && !"unknown".equalsIgnoreCase(ipAddress)) {
+                // X-Forwarded-For 헤더는 여러 IP를 포함할 수 있으므로 첫 번째 IP를 사용합니다.
+                if (ipAddress.contains(",")) {
+                    return ipAddress.split(",")[0].trim();
+                }
+                return ipAddress;
+            }
         }
 
-        // X-Forwarded-For에 여러 IP가 있는 경우 첫 번째 IP 사용
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-
-        return ip;
+        return request.getRemoteAddr();
     }
 }

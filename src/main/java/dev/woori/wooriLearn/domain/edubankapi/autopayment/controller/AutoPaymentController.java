@@ -1,5 +1,6 @@
 package dev.woori.wooriLearn.domain.edubankapi.autopayment.controller;
 
+import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
@@ -13,9 +14,9 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
@@ -75,30 +76,15 @@ public class AutoPaymentController {
      * 자동이체 목록 조회 (페이징 + 캐싱)
      * @param educationalAccountId 교육용 계좌 ID
      * @param status 처리 상태 (ACTIVE, CANCELLED, ALL)
-     * @param page 페이지 번호 (0부터 시작, 기본값: 0)
-     * @param size 페이지 크기 (기본값: 10)
-     * @param sort 정렬 기준 (기본값: startDate,desc - 시작일 내림차순)
      */
     @GetMapping("/list/paged")
     public ResponseEntity<BaseResponse<?>> getAutoPaymentListPaged(
             @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId,
             @RequestParam(required = false, defaultValue = "ALL") String status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "startDate,desc") String sort,
-            Authentication authentication) {
+            Authentication authentication,
+            @PageableDefault(size = 10, sort = "startDate", direction = Sort.Direction.DESC) Pageable pageable){
 
         String currentUserId = getCurrentUserId(authentication);
-
-        log.info("자동이체 목록 조회 (페이징) 요청 - 계좌ID: {}, 상태: {}, 페이지: {}, 크기: {}, 정렬: {}, 사용자: {}",
-                educationalAccountId, status, page, size, sort, currentUserId);
-
-        // 정렬 파라미터 파싱 (예: "startDate,desc" -> Sort.by(Direction.DESC, "startDate"))
-        String[] sortParams = sort.split(",");
-        Sort.Direction direction = sortParams.length > 1 && "desc".equalsIgnoreCase(sortParams[1])
-                ? Sort.Direction.DESC
-                : Sort.Direction.ASC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
 
         Page<AutoPaymentResponse> response = autoPaymentService.getAutoPaymentListPaged(
                 educationalAccountId, status, currentUserId, pageable);
