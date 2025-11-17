@@ -17,10 +17,16 @@ public class PointsHistoryController {
 
     @GetMapping
     public Page<PointsHistoryResponseDto> getHistory(
-            @AuthenticationPrincipal String username,
+            @AuthenticationPrincipal String principalUsername,
+            @RequestParam(required = false) String username,
             @ModelAttribute PointsUnifiedHistoryRequestDto request
     ) {
-        return service.getUnifiedHistory(username, request)
+        if (principalUsername == null) {
+            principalUsername = username;
+        }
+
+        return service.getUnifiedHistory(principalUsername, request)
                 .map(PointsHistoryResponseDto::new);
     }
+
 }
