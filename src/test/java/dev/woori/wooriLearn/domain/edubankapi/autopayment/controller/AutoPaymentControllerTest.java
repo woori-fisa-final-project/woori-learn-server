@@ -87,6 +87,42 @@ class AutoPaymentControllerTest {
     }
 
     @Test
+    @DisplayName("자동이체 목록 조회 - status 파라미터 미제공 시 기본값 ACTIVE 적용")
+    void getAutoPaymentList_DefaultStatusActive() throws Exception {
+        // given
+        Long educationalAccountId = 1L;
+        List<AutoPaymentResponse> responses = Arrays.asList(
+                new AutoPaymentResponse(
+                        1L,
+                        educationalAccountId,
+                        "110-123-456789",
+                        "우리은행",
+                        "1234567890",
+                        "001",
+                        50000,
+                        "김철수",
+                        "용돈",
+                        1,
+                        15,
+                        LocalDate.now(),
+                        LocalDate.now().plusYears(1),
+                        "ACTIVE"
+                )
+        );
+
+        // status 파라미터가 없으면 기본값 "ACTIVE"가 사용됨
+        given(autoPaymentService.getAutoPaymentList(eq(educationalAccountId), eq("ACTIVE"), eq("testuser")))
+                .willReturn(responses);
+
+        // when & then
+        mockMvc.perform(get("/education/auto-payment/list")
+                        .param("educationalAccountId", educationalAccountId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data[0].processingStatus").value("ACTIVE"));
+    }
+
+    @Test
     @DisplayName("자동이체 목록 조회 - 교육용 계좌 ID 양수 검증 실패")
     void getAutoPaymentList_InvalidAccountId() throws Exception {
         // when & then

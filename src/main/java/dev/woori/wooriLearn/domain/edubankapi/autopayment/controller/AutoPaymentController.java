@@ -59,7 +59,7 @@ public class AutoPaymentController {
     @GetMapping("/list")
     public ResponseEntity<BaseResponse<?>> getAutoPaymentList(
             @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId,
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false, defaultValue = "ACTIVE") String status,
             @AuthenticationPrincipal String currentUserId) {
 
         log.info("자동이체 목록 조회 요청 - 교육용계좌ID: {}, 상태: {}, 사용자ID: {}",
@@ -74,12 +74,12 @@ public class AutoPaymentController {
     /**
      * 자동이체 목록 조회 (페이징 + 캐싱)
      * @param educationalAccountId 교육용 계좌 ID
-     * @param status 처리 상태 (ACTIVE, CANCELLED, ALL)
+     * @param status 처리 상태 (ACTIVE, CANCELLED, ALL) - 기본값: ACTIVE (활성 자동이체만 조회)
      */
     @GetMapping("/list/paged")
     public ResponseEntity<BaseResponse<?>> getAutoPaymentListPaged(
             @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId,
-            @RequestParam(required = false, defaultValue = "ALL") String status,
+            @RequestParam(required = false, defaultValue = "ACTIVE") String status,
             @AuthenticationPrincipal String currentUserId,
             @PageableDefault(size = 10, sort = "startDate", direction = Sort.Direction.DESC) Pageable pageable){
 
