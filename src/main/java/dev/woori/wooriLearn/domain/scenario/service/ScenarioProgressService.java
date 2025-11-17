@@ -2,11 +2,11 @@ package dev.woori.wooriLearn.domain.scenario.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.scenario.content.StepMeta;
 import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressSaveResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
-import dev.woori.wooriLearn.domain.scenario.dto.content.*;
 import dev.woori.wooriLearn.domain.scenario.entity.*;
 import dev.woori.wooriLearn.domain.scenario.model.AdvanceStatus;
 import dev.woori.wooriLearn.domain.scenario.model.ChoiceInfo;
@@ -14,6 +14,8 @@ import dev.woori.wooriLearn.domain.scenario.repository.ScenarioCompletedReposito
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioProgressRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioStepRepository;
+import dev.woori.wooriLearn.domain.scenario.service.processor.StepProcessor;
+import dev.woori.wooriLearn.domain.scenario.service.processor.StepProcessorResolver;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -70,11 +72,7 @@ public class ScenarioProgressService {
     @Transactional(readOnly = true)
     public ProgressResumeResDto resume(Users user, Long scenarioId) {
         // 1) 시나리오 존재 여부 검증
-        Scenario scenario = scenarioRepository.findById(scenarioId)
-                .orElseThrow(() -> new CommonException(
-                        ErrorCode.ENTITY_NOT_FOUND,
-                        "시나리오가 존재하지 않습니다. id=" + scenarioId
-                ));
+        Scenario scenario = getScenarioOrThrow(scenarioId);
 
         // 2) 유저의 진행 이력 조회 -> 있으면 해당 스텝, 없으면 시작 스텝 계산
         ScenarioStep step = progressRepository.findByUserAndScenario(user, scenario)
@@ -84,7 +82,6 @@ public class ScenarioProgressService {
         // 3) 현재 스텝을 클라이언트 응답 DTO로 매핑
         return mapStep(step);
     }
-
 
     /**
      * 다음 스텝으로 진행
@@ -99,50 +96,20 @@ public class ScenarioProgressService {
      */
     @Transactional
     public AdvanceResDto advance(Users user, Long scenarioId, Long nowStepId, Integer answer) {
-        // 1) 시나리오 검증
-        Scenario scenario = scenarioRepository.findById(scenarioId)
-                .orElseThrow(() -> new CommonException(
-                        ErrorCode.ENTITY_NOT_FOUND,
-                        "시나리오가 존재하지 않습니다. id=" + scenarioId
-                ));
+        // 공통 로딩 로직
+        StepRuntime runtime = loadStepRuntime(user, scenarioId, nowStepId);
 
-        // 2) 해당 시나리오의 모든 스텝을 한 번에 로딩(Map 형태로 보관)
-        Map<Long, ScenarioStep> byId = preloadStepsAsMap(scenarioId);
+        Scenario scenario = runtime.scenario();
+        Map<Long, ScenarioStep> byId = runtime.byId();
+        ScenarioStep current = runtime.current();
+        ScenarioProgress progress = runtime.progress();
 
         // 시작 스텝 ID
         Long startStepId = stepRepository.findStartStepOrFail(scenarioId).getId();
 
-        // 3) 현재 스텝 검증
-        ScenarioStep current = byId.get(nowStepId);
-        if (current == null || !Objects.equals(current.getScenario().getId(), scenarioId)) {
-            throw new CommonException(
-                    ErrorCode.ENTITY_NOT_FOUND,
-                    "스텝이 존재하지 않거나 시나리오와 불일치. stepId=" + nowStepId
-            );
-        }
+        // Processor에 넘길 Context 구성
+        StepContext ctx = new StepContext(user, scenario, current, answer, byId, progress, runtime.badBranch(), runtime.badEnding(), startStepId);
 
-        // 4) 사용자 진행 엔티티 조회(없으면 새로 생성)
-        ScenarioProgress progress = progressRepository.findByUserAndScenario(user, scenario)
-                .orElseGet(() -> ScenarioProgress.builder()
-                        .user(user)
-                        .scenario(scenario)
-                        .step(current)
-                        .progressRate(0.0)
-                        .build());
-
-        // 5) 메타 정보 한 번만 파싱하여 배드 브랜치/배드 엔딩 여부 확인
-        Optional<StepMetaDto> metaOpt = contentService.getMeta(current);
-        boolean badBranch = metaOpt
-                .map(meta -> "bad".equalsIgnoreCase(meta.branch()))
-                .orElse(false);
-        boolean badEnding = metaOpt
-                .map(meta -> Boolean.TRUE.equals(meta.badEnding()))
-                .orElse(false);
-
-        // 6) Processor에 넘길 Context 구성
-        StepContext ctx = new StepContext(user, scenario, current, answer, byId, progress, badBranch, badEnding, startStepId);
-
-        // 7) 스텝 타입/상태에 맞는 Processor 선택 & 실행
         StepProcessor processor = stepProcessorResolver.resolve(ctx);
         return processor.process(ctx, this);
     }
@@ -159,45 +126,17 @@ public class ScenarioProgressService {
      */
     @Transactional
     public ProgressSaveResDto saveCheckpoint(Users user, Long scenarioId, Long nowStepId) {
-        // 1) 시나리오 검증
-        Scenario scenario = scenarioRepository.findById(scenarioId)
-                .orElseThrow(() -> new CommonException(
-                        ErrorCode.ENTITY_NOT_FOUND,
-                        "시나리오가 존재하지 않습니다. id=" + scenarioId
-                ));
+        // 공통 로딩 로직
+        StepRuntime runtime = loadStepRuntime(user, scenarioId, nowStepId);
 
-        // 2) 스텝 맵 로딩
-        Map<Long, ScenarioStep> byId = preloadStepsAsMap(scenarioId);
+        Scenario scenario = runtime.scenario();
+        ScenarioStep current = runtime.current();
+        ScenarioProgress progress = runtime.progress();
 
-        // 3) 현재 스텝 검증
-        ScenarioStep step = byId.get(nowStepId);
-        if (step == null || !Objects.equals(step.getScenario().getId(), scenarioId)) {
-            throw new CommonException(
-                    ErrorCode.ENTITY_NOT_FOUND,
-                    "스텝이 존재하지 않거나 시나리오와 불일치. stepId=" + nowStepId
-            );
-        }
+        boolean forceFreeze = runtime.isBad();
 
-        // 4) 진행 엔티티 조회/생성
-        ScenarioProgress progress = progressRepository.findByUserAndScenario(user, scenario)
-                .orElseGet(() -> ScenarioProgress.builder()
-                        .user(user)
-                        .scenario(scenario)
-                        .step(step)
-                        .progressRate(0.0)
-                        .build());
-
-        // 5) 메타 정보를 기준으로 배드 브랜치/배드 엔딩 여부 확인
-        Optional<StepMetaDto> metaOpt = contentService.getMeta(step);
-        boolean forceFreeze = metaOpt
-                .map(meta ->
-                        "bad".equalsIgnoreCase(meta.branch())
-                                || Boolean.TRUE.equals(meta.badEnding())
-                )
-                .orElse(false);
-
-        double finalRate = updateProgressAndSave(progress, step, scenario, forceFreeze);
-        return new ProgressSaveResDto(scenarioId, step.getId(), finalRate);
+        double finalRate = updateProgressAndSave(progress, current, scenario, forceFreeze);
+        return new ProgressSaveResDto(scenarioId, current.getId(), finalRate);
     }
 
     /**
@@ -209,7 +148,7 @@ public class ScenarioProgressService {
      * @param forceFreeze   true면 진행률을 변경하지 않고 위치만 저장
      * @return 최종 progressRate 값
      */
-    double updateProgressAndSave(ScenarioProgress progress,
+    public double updateProgressAndSave(ScenarioProgress progress,
                                  ScenarioStep newStep,
                                  Scenario scenario,
                                  boolean forceFreeze) {
@@ -312,7 +251,7 @@ public class ScenarioProgressService {
         progressRepository.save(progress);
     }
 
-    AdvanceResDto handleScenarioCompletion(StepContext ctx) {
+    public AdvanceResDto handleScenarioCompletion(StepContext ctx) {
         Scenario scenario = ctx.scenario();
         ScenarioProgress progress = ctx.progress();
 
@@ -344,7 +283,7 @@ public class ScenarioProgressService {
      * @param step 응답으로 내려줄 스텝 엔티티
      * @return 재개용 DTO
      */
-    ProgressResumeResDto mapStep(ScenarioStep step) {
+    public ProgressResumeResDto mapStep(ScenarioStep step) {
         return contentService.mapStep(step);
     }
 
@@ -352,7 +291,7 @@ public class ScenarioProgressService {
      * Quiz 엔티티 -> QuizResDto 매핑
      * - options 의 JSON 배열 문자열을 List<String> 으로 파싱
      */
-    QuizResDto mapQuiz(Quiz quiz) {
+    public QuizResDto mapQuiz(Quiz quiz) {
         return contentService.mapQuiz(quiz);
     }
 
@@ -362,7 +301,7 @@ public class ScenarioProgressService {
      * @param answerIndex   사용자가 선택한 인덱스
      * @return 선택 결과(정답 여부, 다음 스텝 ID)를 담은 ChoiceInfo
      */
-    ChoiceInfo parseChoice(ScenarioStep step, int answerIndex) {
+    public ChoiceInfo parseChoice(ScenarioStep step, int answerIndex) {
         return contentService.parseChoice(step, answerIndex);
     }
 
@@ -372,5 +311,67 @@ public class ScenarioProgressService {
     private double normalizeProgress(double value) {
         double bounded = Math.min(100.0, Math.max(0.0, value));
         return Math.round(bounded * 10.0) / 10.0;
+    }
+
+    /**
+     * 시나리오 존재 여부 검증 메서드
+     */
+    private Scenario getScenarioOrThrow(Long scenarioId) {
+        return scenarioRepository.findById(scenarioId)
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "시나리오가 존재하지 않습니다. id=" + scenarioId
+                ));
+    }
+
+    private record StepRuntime(
+            Scenario scenario,
+            Map<Long, ScenarioStep> byId,
+            ScenarioStep current,
+            ScenarioProgress progress,
+            Optional<StepMeta> metaOpt,
+            boolean badBranch,
+            boolean badEnding
+    ) {
+        boolean isBad() {
+            return badBranch || badEnding;
+        }
+    }
+
+    private StepRuntime loadStepRuntime(Users user, Long scenarioId, Long nowStepId) {
+        // 1) 시나리오 검증
+        Scenario scenario = getScenarioOrThrow(scenarioId);
+
+        // 2) 스텝 맵 로딩
+        Map<Long, ScenarioStep> byId = preloadStepsAsMap(scenarioId);
+
+        // 3) 현재 스텝 검증
+        ScenarioStep current = byId.get(nowStepId);
+        if (current == null || !Objects.equals(current.getScenario().getId(), scenarioId)) {
+            throw new CommonException(
+                    ErrorCode.ENTITY_NOT_FOUND,
+                    "스텝이 존재하지 않거나 시나리오와 불일치. stepId=" + nowStepId
+            );
+        }
+
+        // 4) 진행 엔티티 조회/생성
+        ScenarioProgress progress = progressRepository.findByUserAndScenario(user, scenario)
+                .orElseGet(() -> ScenarioProgress.builder()
+                        .user(user)
+                        .scenario(scenario)
+                        .step(current)
+                        .progressRate(0.0)
+                        .build());
+
+        // 5) 메타 정보 한 번만 파싱하여 배드 브랜치/배드 엔딩 여부 확인
+        Optional<StepMeta> metaOpt = contentService.getMeta(current);
+        boolean badBranch = metaOpt
+                .map(meta -> "bad".equalsIgnoreCase(meta.branch()))
+                .orElse(false);
+        boolean badEnding = metaOpt
+                .map(meta -> Boolean.TRUE.equals(meta.badEnding()))
+                .orElse(false);
+
+        return new StepRuntime(scenario, byId, current, progress, metaOpt, badBranch, badEnding);
     }
 }

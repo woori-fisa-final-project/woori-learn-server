@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.scenario.dto.content;
+package dev.woori.wooriLearn.domain.scenario.content;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -9,6 +9,6 @@ import java.util.List;
  * @param choices 사용자가 선택할 수 있는 선택지 목록
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ChoiceContentDto(
-        List<ChoiceOptionDto> choices
+public record ChoiceContent(
+        List<ChoiceOption> choices
 ) {}

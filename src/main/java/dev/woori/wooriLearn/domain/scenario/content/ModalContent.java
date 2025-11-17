@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.scenario.dto.content;
+package dev.woori.wooriLearn.domain.scenario.content;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -9,8 +9,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * @param text  모달 본문 내용
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ModalContentDto(
-        StepMetaDto meta,
+public record ModalContent(
+        StepMeta meta,
         String title,
         String text
 ) {}

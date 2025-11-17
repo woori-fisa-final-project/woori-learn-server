@@ -1,7 +1,8 @@
-package dev.woori.wooriLearn.domain.scenario.service;
+package dev.woori.wooriLearn.domain.scenario.service.processor;
 
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.model.StepType;
+import dev.woori.wooriLearn.domain.scenario.service.StepContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

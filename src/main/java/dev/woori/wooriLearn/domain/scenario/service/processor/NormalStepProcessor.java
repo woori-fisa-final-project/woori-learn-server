@@ -1,10 +1,12 @@
-package dev.woori.wooriLearn.domain.scenario.service;
+package dev.woori.wooriLearn.domain.scenario.service.processor;
 
 import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
 import dev.woori.wooriLearn.domain.scenario.entity.Scenario;
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioProgress;
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.model.AdvanceStatus;
+import dev.woori.wooriLearn.domain.scenario.service.ScenarioProgressService;
+import dev.woori.wooriLearn.domain.scenario.service.StepContext;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;

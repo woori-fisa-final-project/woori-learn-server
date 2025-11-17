@@ -8,12 +8,12 @@ import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
-import dev.woori.wooriLearn.domain.scenario.dto.content.ChoiceContentDto;
-import dev.woori.wooriLearn.domain.scenario.dto.content.ChoiceOptionDto;
-import dev.woori.wooriLearn.domain.scenario.dto.content.DialogOverlayContentDto;
-import dev.woori.wooriLearn.domain.scenario.dto.content.ImageContentDto;
-import dev.woori.wooriLearn.domain.scenario.dto.content.ModalContentDto;
-import dev.woori.wooriLearn.domain.scenario.dto.content.StepMetaDto;
+import dev.woori.wooriLearn.domain.scenario.content.ChoiceContent;
+import dev.woori.wooriLearn.domain.scenario.content.ChoiceOption;
+import dev.woori.wooriLearn.domain.scenario.content.DialogOverlayContent;
+import dev.woori.wooriLearn.domain.scenario.content.ImageContent;
+import dev.woori.wooriLearn.domain.scenario.content.ModalContent;
+import dev.woori.wooriLearn.domain.scenario.content.StepMeta;
 import dev.woori.wooriLearn.domain.scenario.entity.Quiz;
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.model.ChoiceInfo;
@@ -69,9 +69,9 @@ public class ScenarioStepContentService {
     /** CHOICE 스텝 content -> ChoiceInfo 파싱 */
     public ChoiceInfo parseChoice(ScenarioStep step, int answerIndex) {
         try {
-            ChoiceContentDto content = objectMapper.readValue(
+            ChoiceContent content = objectMapper.readValue(
                     step.getContent(),
-                    ChoiceContentDto.class
+                    ChoiceContent.class
             );
 
             if (content.choices() == null || content.choices().isEmpty()) {
@@ -88,7 +88,7 @@ public class ScenarioStepContentService {
                 );
             }
 
-            ChoiceOptionDto selected = content.choices().get(answerIndex);
+            ChoiceOption selected = content.choices().get(answerIndex);
             boolean good = Boolean.TRUE.equals(selected.good());
             Long next = selected.next(); // null 허용
 
@@ -117,31 +117,31 @@ public class ScenarioStepContentService {
     }
 
     /** 각 StepType 에 맞는 DTO로 content 파싱 후 meta 추출 */
-    public Optional<StepMetaDto> getMeta(ScenarioStep step) {
+    public Optional<StepMeta> getMeta(ScenarioStep step) {
         try {
             return switch (step.getType()) {
                 case CHOICE -> Optional.empty(); // CHOICE에는 meta 사용 안 함
 
                 case DIALOG, OVERLAY -> {
-                    DialogOverlayContentDto content = objectMapper.readValue(
+                    DialogOverlayContent content = objectMapper.readValue(
                             step.getContent(),
-                            DialogOverlayContentDto.class
+                            DialogOverlayContent.class
                     );
                     yield Optional.ofNullable(content.meta());
                 }
 
                 case IMAGE -> {
-                    ImageContentDto content = objectMapper.readValue(
+                    ImageContent content = objectMapper.readValue(
                             step.getContent(),
-                            ImageContentDto.class
+                            ImageContent.class
                     );
                     yield Optional.ofNullable(content.meta());
                 }
 
                 case MODAL -> {
-                    ModalContentDto content = objectMapper.readValue(
+                    ModalContent content = objectMapper.readValue(
                             step.getContent(),
-                            ModalContentDto.class
+                            ModalContent.class
                     );
                     yield Optional.ofNullable(content.meta());
                 }

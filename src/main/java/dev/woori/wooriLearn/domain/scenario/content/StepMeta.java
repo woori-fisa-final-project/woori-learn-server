@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.scenario.dto.content;
+package dev.woori.wooriLearn.domain.scenario.content;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * - badEnding: true 면 배드 엔딩
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record StepMetaDto(
+public record StepMeta(
         String branch,
         Boolean badEnding
 ) {}
