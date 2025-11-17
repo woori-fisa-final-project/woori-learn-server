@@ -8,7 +8,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.AbstractEnvironment;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -28,6 +32,9 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Value("${spring.profiles.active:prod}")
     private String activeProfile;
+
+    @Autowired
+    private Environment environment;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -58,11 +65,9 @@ public class JwtFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * 개발 환경인지 확인
-     * @return dev 또는 test 프로파일인 경우 true
-     */
+    // JwtFilter에 Environment 주입 후
     private boolean isDevelopmentMode() {
-        return "dev".equals(activeProfile) || "test".equals(activeProfile);
+        // 이 방법을 사용하려면 클래스에 private final Environment environment; 필드와 생성자 주입이 필요합니다.
+        return environment.acceptsProfiles(Profiles.of("dev", "test"));
     }
 }
