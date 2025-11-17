@@ -18,7 +18,7 @@ public class Users extends BaseEntity {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "auth_user_id", nullable = false)
+    @JoinColumn(name = "auth_user_id", nullable = true)//테스트용
     private AuthUsers authUser;
 
     @Column(nullable = false)
