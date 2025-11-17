@@ -27,8 +27,7 @@ public class ScenarioStatusController {
     public ResponseEntity<BaseResponse<?>> getMyCompletedScenarios(
             @AuthenticationPrincipal String username
     ) {
-        Users me = getMe(username);
-        return ApiResponse.success(SuccessCode.OK, scenarioStatusService.getCompletedScenarios(me));
+        return ApiResponse.success(SuccessCode.OK, scenarioStatusService.getCompletedScenarios(username));
     }
 
     @GetMapping("/progress")
@@ -36,11 +35,6 @@ public class ScenarioStatusController {
     public ResponseEntity<BaseResponse<?>> getMyScenarioProgress(
             @AuthenticationPrincipal String username
     ) {
-        Users me = getMe(username);
-        return ApiResponse.success(SuccessCode.OK, scenarioStatusService.getScenarioProgress(me));
-    }
-
-    private Users getMe(String username) {
-        return userService.getByUserIdOrThrow(username);
+        return ApiResponse.success(SuccessCode.OK, scenarioStatusService.getScenarioProgress(username));
     }
 }
