@@ -50,6 +50,10 @@ public class AuthService {
         return generateAndSaveToken(loginReqDto.userId(), user.getRole());
     }
 
+    /**
+     * 회원가입 진행 전 동일한 userId가 존재하는지 확인합니다.
+     * @param userId 사용자가 입력한 userId
+     */
     public void verify(String userId){
         if(authUserRepository.existsByUserId(userId))
             throw new CommonException(ErrorCode.CONFLICT, "이미 존재하는 id입니다.");
@@ -79,6 +83,24 @@ public class AuthService {
 
         // 검증 끝나면 access token/refresh token 생성해서 return
         return generateAndSaveToken(username, role);
+    }
+
+    /**
+     * 회원이 입력한 비밀번호를 검증하고 새로운 값으로 수정합니다.
+     * @param userId jwt 토큰을 파싱해서 얻은 userId
+     * @param request 현재 비밀번호 / 변경할 비밀번호가 담긴 요청 dto 객체
+     */
+    public void changePassword(String userId, ChangePasswdReqDto request) {
+        AuthUsers user = authUserRepository.findByUserId(userId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
+
+        // 입력한 기존 비밀번호와 db에 저장된 기존 비밀번호가 일치하는지 검증
+        if(!passwordEncoder.matches(request.currentPassword(), user.getPassword())){
+            throw new CommonException(ErrorCode.UNAUTHORIZED, "비밀번호 인증에 실패했습니다.");
+        }
+
+        // 검증이 성공하면 업데이트
+        user.updatePassword(passwordEncoder.encode(request.newPassword()));
     }
 
     /**
