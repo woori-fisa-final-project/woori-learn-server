@@ -93,21 +93,21 @@ public class RateLimitInterceptor implements HandlerInterceptor {
                 .build();
     }
 
+    private static final String[] IP_HEADER_CANDIDATES = {
+            "X-Forwarded-For",
+            "Proxy-Client-IP",
+            "WL-Proxy-Client-IP",
+            "HTTP_X_FORWARDED_FOR",
+            "HTTP_CLIENT_IP",
+            "HTTP_X_FORWARDED",
+            "X-Real-IP"
+    };
+
     /**
      * 클라이언트 IP 추출
      * - 프록시 환경 고려 (X-Forwarded-For 헤더 우선)
      */
     private String getClientIp(HttpServletRequest request) {
-        final String[] IP_HEADER_CANDIDATES = {
-                "X-Forwarded-For",
-                "Proxy-Client-IP",
-                "WL-Proxy-Client-IP",
-                "HTTP_X_FORWARDED_FOR",
-                "HTTP_CLIENT_IP",
-                "HTTP_X_FORWARDED",
-                "X-Real-IP"
-        };
-
         for (String header : IP_HEADER_CANDIDATES) {
             String ipAddress = request.getHeader(header);
             if (ipAddress != null && !ipAddress.isEmpty() && !"unknown".equalsIgnoreCase(ipAddress)) {

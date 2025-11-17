@@ -10,7 +10,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.AbstractEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpHeaders;
@@ -29,12 +28,10 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtValidator jwtValidator;
     private final String BEARER = "Bearer ";
+    private final Environment environment;
 
     @Value("${spring.profiles.active:prod}")
     private String activeProfile;
-
-    @Autowired
-    private Environment environment;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
