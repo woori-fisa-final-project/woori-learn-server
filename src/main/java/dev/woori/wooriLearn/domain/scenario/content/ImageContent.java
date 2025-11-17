@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.scenario.dto.content;
+package dev.woori.wooriLearn.domain.scenario.content;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * @param image 렌더링에 사용할 이미지 URL
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ImageContentDto(
-        StepMetaDto meta,
+public record ImageContent(
+        StepMeta meta,
         String image
 ) {}

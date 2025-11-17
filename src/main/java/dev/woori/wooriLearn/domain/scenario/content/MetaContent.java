@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.scenario.dto.content;
+package dev.woori.wooriLearn.domain.scenario.content;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -10,6 +10,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  *             진행률 동결 여부나 분기 처리에 사용됨
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record MetaContentDto(
-        StepMetaDto meta
+public record MetaContent(
+        StepMeta meta
 ) {}

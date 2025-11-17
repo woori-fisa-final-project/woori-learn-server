@@ -1,6 +1,8 @@
-package dev.woori.wooriLearn.domain.scenario.service;
+package dev.woori.wooriLearn.domain.scenario.service.processor;
 
 import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
+import dev.woori.wooriLearn.domain.scenario.service.ScenarioProgressService;
+import dev.woori.wooriLearn.domain.scenario.service.StepContext;
 
 /**
  * 시나리오의 각 스텝 타입에 대한 처리 전략을 정의하는 인터페이스

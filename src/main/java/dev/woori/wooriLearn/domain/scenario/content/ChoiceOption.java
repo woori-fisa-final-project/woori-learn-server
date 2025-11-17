@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.scenario.dto.content;
+package dev.woori.wooriLearn.domain.scenario.content;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * @param text 사용자에게 보여줄 선택지 문구
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ChoiceOptionDto(
+public record ChoiceOption(
         Boolean good,
         Long next,
         String text

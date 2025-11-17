@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.scenario.dto.content;
+package dev.woori.wooriLearn.domain.scenario.content;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -10,8 +10,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * @param image     캐릭터 이미지 URL
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record DialogOverlayContentDto(
-        StepMetaDto meta,
+public record DialogOverlayContent(
+        StepMeta meta,
         String text,
         String character,
         String image
