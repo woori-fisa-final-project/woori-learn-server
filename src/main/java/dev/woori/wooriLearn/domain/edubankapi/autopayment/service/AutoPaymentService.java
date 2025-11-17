@@ -134,7 +134,7 @@ public class AutoPaymentService {
      * 등록 시 해당 계좌의 모든 캐시 삭제
      */
     @Transactional
-    @CacheEvict(value = "autoPaymentList", allEntries = true)
+    @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':*'", allEntries = true)
     public AutoPaymentResponse createAutoPayment(AutoPaymentCreateRequest request, String currentUserId) {
         // 1. 금액 한도 검증
         validateAmountLimit(request.amount());
