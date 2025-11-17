@@ -7,7 +7,7 @@ import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
@@ -45,7 +45,16 @@ public class PointsHistoryQueryRepository {
                         endLoe(end)
                 );
 
-        long total = query.fetch().size();
+        var countQuery = queryFactory
+                .select(pointsHistory.count())
+                .from(pointsHistory)
+                .where(
+                        typeEq(type),
+                        userIdEq(userId),
+                        statusEq(status),
+                        startGoe(start),
+                        endLoe(end)
+                );
 
         Sort sort = pageable.getSort();
         boolean asc = sort.isSorted()
@@ -58,7 +67,7 @@ public class PointsHistoryQueryRepository {
                 .limit(pageable.getPageSize())
                 .fetch();
 
-        return new PageImpl<>(content, pageable, total);
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
 
     private BooleanExpression typeEq(PointsHistoryType type) {
