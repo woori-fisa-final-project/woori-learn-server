@@ -7,6 +7,7 @@ import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.auth.dto.RefreshReqDto;
 import dev.woori.wooriLearn.domain.auth.service.AuthService;
 import dev.woori.wooriLearn.domain.auth.dto.LoginReqDto;
+import dev.woori.wooriLearn.domain.auth.dto.ChangePasswdReqDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -41,5 +42,12 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<BaseResponse<?>> logout(Principal principal) {
         return ApiResponse.success(SuccessCode.OK, authService.logout(principal.getName()));
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity<BaseResponse<?>> changePassword(Principal principal,
+                                                          @RequestBody ChangePasswdReqDto request) {
+        authService.changePassword(principal.getName(), request);
+        return ApiResponse.success(SuccessCode.OK);
     }
 }
