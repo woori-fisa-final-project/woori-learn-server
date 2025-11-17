@@ -1,6 +1,7 @@
 package dev.woori.wooriLearn.domain.edubankapi.autopayment.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.validation.ValidDesignatedDate;
 import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
@@ -45,8 +46,7 @@ public record AutoPaymentCreateRequest(
         Integer transferCycle,
 
         @NotNull(message = "지정일은 필수입니다.")
-        @Min(value = 1, message = "지정일은 1보다 작을 수 없습니다.")
-        @Max(value = 99, message = "지정일은 1일~31일 사이이거나 99(말일)여야 합니다.")
+        @ValidDesignatedDate
         Integer designatedDate,
 
         @NotNull(message = "시작일은 필수입니다.")
@@ -71,18 +71,6 @@ public record AutoPaymentCreateRequest(
             return true;  // null 검증은 @NotNull이 담당
         }
         return !expirationDate.isBefore(startDate);
-    }
-
-    /**
-     * 지정일 유효성 검증 (1~31 또는 99만 허용)
-     */
-    @AssertTrue(message = "지정일은 1일~31일 사이이거나, 매월 말일을 의미하는 99여야 합니다.")
-    private boolean isDesignatedDateValid() {
-        if (designatedDate == null) {
-            return true; // @NotNull이 담당
-        }
-        // 1~31 이거나 99 인지 확인
-        return (designatedDate >= 1 && designatedDate <= 31) || designatedDate == 99;
     }
 
     @Override
