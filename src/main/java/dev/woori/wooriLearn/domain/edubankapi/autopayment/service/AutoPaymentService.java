@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -50,7 +51,10 @@ public class AutoPaymentService {
      * @deprecated 페이징 처리된 getAutoPaymentListPaged() 사용 권장
      */
     @Deprecated
+    @Cacheable(value = "autoPaymentList", key = "#educationalAccountId + ':' + #status")
     public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status, String currentUserId) {
+        log.info("자동이체 목록 조회 (캐시 미스) - 계좌ID: {}, 상태: {}", educationalAccountId, status);
+
         // 권한 체크: 요청한 계좌가 현재 사용자의 것인지 확인
         validateAccountOwnership(educationalAccountId, currentUserId);
         List<AutoPayment> autoPayments;
@@ -127,10 +131,14 @@ public class AutoPaymentService {
 
     /**
      * 자동이체 등록 (캐시 무효화)
-     * 등록 시 해당 계좌의 모든 캐시 삭제
+     * 등록 시 해당 계좌의 모든 상태 캐시 삭제 (ACTIVE, CANCELLED, ALL)
      */
     @Transactional
-    @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':*'", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':ACTIVE'"),
+            @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':CANCELLED'"),
+            @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':ALL'")
+    })
     public AutoPaymentResponse createAutoPayment(AutoPaymentCreateRequest request, String currentUserId) {
         // 1. 금액 한도 검증
         validateAmountLimit(request.amount());
@@ -163,10 +171,14 @@ public class AutoPaymentService {
 
     /**
      * 자동이체 해지 (캐시 무효화)
-     * 해지 시 해당 계좌의 모든 캐시 삭제
+     * 해지 시 해당 계좌의 모든 상태 캐시 삭제 (ACTIVE, CANCELLED, ALL)
      */
     @Transactional
-    @CacheEvict(value = "autoPaymentList", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':ACTIVE'"),
+            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':CANCELLED'"),
+            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':ALL'")
+    })
     public AutoPayment cancelAutoPayment(Long autoPaymentId, Long educationalAccountId, String currentUserId) {
         log.info("자동이체 해지 시작 - 자동이체ID: {}, 교육용계좌ID: {}, 사용자ID: {}",
                 autoPaymentId, educationalAccountId, currentUserId);

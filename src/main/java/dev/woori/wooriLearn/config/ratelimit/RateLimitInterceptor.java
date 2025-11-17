@@ -1,16 +1,14 @@
 package dev.woori.wooriLearn.config.ratelimit;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Refill;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -20,12 +18,16 @@ import java.util.concurrent.TimeUnit;
 /**
  * API 호출 Rate Limiting 인터셉터
  * - IP 기반으로 요청 제한
- * - Bucket4j + Caffeine Cache 사용
+ * - Redis 기반 Token Bucket 알고리즘 사용 (분산 환경 지원)
  * - 자동이체 API에만 적용
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.rate-limit.enabled", havingValue = "true")
 public class RateLimitInterceptor implements HandlerInterceptor {
+
+    private final RedisTemplate<String, String> redisTemplate;
 
     @Value("${app.rate-limit.capacity:60}")
     private int capacity;
@@ -39,10 +41,9 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     @Value("${app.rate-limit.enabled:true}")
     private boolean enabled;
 
-    private final Cache<String, Bucket> cache = Caffeine.newBuilder()
-            .expireAfterAccess(10, TimeUnit.MINUTES)
-            .maximumSize(100_000)
-            .build();
+    private static final String RATE_LIMIT_KEY_PREFIX = "rate_limit:";
+    private static final String TOKENS_SUFFIX = ":tokens";
+    private static final String LAST_REFILL_SUFFIX = ":last_refill";
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -52,13 +53,48 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         }
 
         String ip = getClientIp(request);
-        Bucket bucket = resolveBucket(ip);
+        String tokensKey = RATE_LIMIT_KEY_PREFIX + ip + TOKENS_SUFFIX;
+        String lastRefillKey = RATE_LIMIT_KEY_PREFIX + ip + LAST_REFILL_SUFFIX;
 
-        if (bucket.tryConsume(1)) {
-            // 요청 허용
-            long availableTokens = bucket.getAvailableTokens();
-            response.setHeader("X-Rate-Limit-Remaining", String.valueOf(availableTokens));
-            log.debug("Rate limit OK - IP: {}, Remaining: {}", ip, availableTokens);
+        // 현재 시간
+        long now = System.currentTimeMillis();
+
+        // Redis에서 현재 토큰 수와 마지막 리필 시간 조회
+        String tokensStr = redisTemplate.opsForValue().get(tokensKey);
+        String lastRefillStr = redisTemplate.opsForValue().get(lastRefillKey);
+
+        int currentTokens;
+        long lastRefillTime;
+
+        if (tokensStr == null || lastRefillStr == null) {
+            // 첫 요청: 초기화
+            currentTokens = capacity;
+            lastRefillTime = now;
+        } else {
+            currentTokens = Integer.parseInt(tokensStr);
+            lastRefillTime = Long.parseLong(lastRefillStr);
+
+            // 경과 시간에 따른 토큰 리필
+            long elapsedMinutes = (now - lastRefillTime) / (60 * 1000);
+            if (elapsedMinutes > 0) {
+                int tokensToAdd = (int) (elapsedMinutes * refillTokens / refillDurationMinutes);
+                currentTokens = Math.min(capacity, currentTokens + tokensToAdd);
+                lastRefillTime = now;
+            }
+        }
+
+        if (currentTokens > 0) {
+            // 요청 허용: 토큰 1개 소비
+            currentTokens--;
+
+            // Redis 업데이트
+            redisTemplate.opsForValue().set(tokensKey, String.valueOf(currentTokens),
+                    Duration.ofMinutes(refillDurationMinutes * 2));
+            redisTemplate.opsForValue().set(lastRefillKey, String.valueOf(lastRefillTime),
+                    Duration.ofMinutes(refillDurationMinutes * 2));
+
+            response.setHeader("X-Rate-Limit-Remaining", String.valueOf(currentTokens));
+            log.debug("Rate limit OK - IP: {}, Remaining: {}", ip, currentTokens);
             return true;
         } else {
             // 요청 제한 초과
@@ -69,28 +105,6 @@ public class RateLimitInterceptor implements HandlerInterceptor {
                     String.format("요청 한도를 초과했습니다. %d분 후 다시 시도해주세요.", refillDurationMinutes)
             );
         }
-    }
-
-    /**
-     * IP별 Bucket 생성 또는 조회
-     */
-    private Bucket resolveBucket(String ip) {
-        return cache.get(ip, key -> createNewBucket());
-    }
-
-    /**
-     * 새로운 Bucket 생성
-     * - 용량: capacity (기본 60)
-     * - 리필: refillTokens개/refillDurationMinutes분 (기본 60개/1분)
-     */
-    private Bucket createNewBucket() {
-        Bandwidth limit = Bandwidth.classic(
-                capacity,
-                Refill.intervally(refillTokens, Duration.ofMinutes(refillDurationMinutes))
-        );
-        return Bucket.builder()
-                .addLimit(limit)
-                .build();
     }
 
     private static final String[] IP_HEADER_CANDIDATES = {
