@@ -81,4 +81,11 @@ public class UserService {
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
         user.updateNickname(request.nickname());
     }
+
+    public Users getByUserIdOrThrow(String userId) {
+        return userRepository.findByUserId(userId)
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다: " + userId
+                ));
+    }
 }
