@@ -18,7 +18,6 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@Disabled
 public class AuthServiceTest {
     private AuthUserPort authUserPort;
     private RefreshTokenPort refreshTokenPort;

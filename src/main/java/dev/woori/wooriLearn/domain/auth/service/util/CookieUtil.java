@@ -1,12 +1,12 @@
 package dev.woori.wooriLearn.domain.auth.service.util;
 
-import lombok.Getter;
 import org.springframework.http.ResponseCookie;
-import org.springframework.stereotype.Component;
 
-@Component
-@Getter
-public class CookieUtil {
+public final class CookieUtil {
+
+    // 인스턴스화 방지용 private 생성자
+    private CookieUtil() {
+    }
 
     public static ResponseCookie createRefreshTokenCookie(String refreshToken, long maxAgeSeconds) {
         return ResponseCookie.from("refreshToken", refreshToken)
