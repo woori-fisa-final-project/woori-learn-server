@@ -104,11 +104,9 @@ public class AuthService {
     /**
      * 사용자의 요청을 받아서 로그아웃 처리 - db에서 refresh token 삭제
      * @param username 사용자 id
-     * @return 결과 메시지
      */
-    public String logout(String username) {
+    public void logout(String username) {
         refreshTokenRepository.deleteByUsername(username);
-        return "로그아웃되었습니다.";
     }
 
     public TokenWithCookie generateAndSaveToken(String username, Role role){

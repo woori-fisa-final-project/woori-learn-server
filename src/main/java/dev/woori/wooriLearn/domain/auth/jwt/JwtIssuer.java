@@ -18,15 +18,15 @@ import java.util.Date;
 @Component
 public class JwtIssuer {
     private final SecretKey secretKey;
+    private final long accessTokenExpiration;
+    private final long refreshTokenExpiration;
 
-    @Value("${spring.jwt.access-expiration}")
-    private long accessTokenExpiration;
-
-    @Value("${spring.jwt.refresh-expiration}")
-    private long refreshTokenExpiration;
-
-    public JwtIssuer(@Value("${spring.jwt.secret}") String secret) {
+    public JwtIssuer(@Value("${spring.jwt.secret}") String secret,
+                     @Value("${spring.jwt.access-expiration}") long accessTokenExpiration,
+                     @Value("${spring.jwt.refresh-expiration}") long refreshTokenExpiration) {
         secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.accessTokenExpiration = accessTokenExpiration;
+        this.refreshTokenExpiration = refreshTokenExpiration;
     }
 
     public String generateAccessToken(String username, Role role) {

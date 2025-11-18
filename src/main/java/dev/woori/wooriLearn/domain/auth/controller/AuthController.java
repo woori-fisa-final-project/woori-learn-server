@@ -45,7 +45,7 @@ public class AuthController {
         return ApiResponse.successWithCookie(SuccessCode.OK, loginResDto, tokenWithCookie.cookie());
     }
 
-    @PostMapping("/logout")
+    @GetMapping("/logout")
     public ResponseEntity<BaseResponse<?>> logout(Principal principal) {
         authService.logout(principal.getName());
         return ApiResponse.successWithCookie(SuccessCode.OK, CookieUtil.deleteRefreshTokenCookie());
