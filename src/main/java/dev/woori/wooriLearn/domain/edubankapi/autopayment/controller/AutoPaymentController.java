@@ -1,6 +1,5 @@
 package dev.woori.wooriLearn.domain.edubankapi.autopayment.controller;
 
-import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
