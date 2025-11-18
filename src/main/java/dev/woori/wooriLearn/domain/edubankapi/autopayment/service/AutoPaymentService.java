@@ -103,6 +103,7 @@ public class AutoPaymentService {
         return autoPayments.map(autoPayment -> AutoPaymentResponse.of(autoPayment, educationalAccountId));
     }
 
+    @Cacheable(value = "autoPaymentDetail", key = "#autoPaymentId", unless = "#result == null")
     public AutoPaymentResponse getAutoPaymentDetail(Long autoPaymentId, String currentUserId) {
         // N+1 문제 방지: 교육용 계좌 및 사용자 정보를 한 번에 조회
         AutoPayment autoPayment = autoPaymentRepository.findByIdWithAccountAndUser(autoPaymentId)
@@ -135,9 +136,10 @@ public class AutoPaymentService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':ACTIVE'"),
-            @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':CANCELLED'"),
-            @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':ALL'")
+            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':ACTIVE'"),
+            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':CANCELLED'"),
+            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':ALL'"),
+            @CacheEvict(value = "autoPaymentDetail", key = "#autoPaymentId")
     })
     public AutoPaymentResponse createAutoPayment(AutoPaymentCreateRequest request, String currentUserId) {
         // 1. 금액 한도 검증
@@ -270,7 +272,7 @@ public class AutoPaymentService {
         if (!accountOwnerUserId.equals(currentUserId)) {
             log.warn("권한 없는 접근 시도 - 계좌ID: {}, 요청사용자: {}, 계좌소유자: {}",
                     accountId, currentUserId, accountOwnerUserId);
-            throw new CommonException(ErrorCode.FORBIDDEN, "접근 권한이 없습니다.");
+            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "교육용 계좌를 찾을 수 없습니다.");
         }
 
         // 비밀번호 검증
@@ -335,8 +337,8 @@ public class AutoPaymentService {
         if (!accountOwnerUserId.equals(currentUserId)) {
             log.warn("권한 없는 접근 시도 - 계좌ID: {}, 요청사용자: {}, 계좌소유자: {}",
                     accountId, currentUserId, accountOwnerUserId);
-            throw new CommonException(ErrorCode.FORBIDDEN,
-                    "접근 권한이 없습니다.");
+            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                    "교육용 계좌를 찾을 수 없습니다.");
         }
 
         log.debug("계좌 소유자 권한 검증 성공 - 계좌ID: {}, 사용자ID: {}", accountId, currentUserId);
