@@ -34,9 +34,6 @@ public interface AutoPaymentRepository extends JpaRepository<AutoPayment, Long> 
             AutoPaymentStatus processingStatus,
             Pageable pageable);
 
-    @EntityGraph(attributePaths = {"educationalAccount"})
-    Optional<AutoPayment> findById(Long id);
-
     /**
      * 자동이체 정보를 교육용 계좌 및 사용자 정보와 함께 조회 (N+1 문제 해결)
      * @param id 자동이체 ID
