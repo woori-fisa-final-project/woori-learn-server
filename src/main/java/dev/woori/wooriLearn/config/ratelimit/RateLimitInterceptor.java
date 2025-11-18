@@ -12,6 +12,7 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.codec.StringCodec;
+import jakarta.annotation.PreDestroy;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,8 @@ import java.time.Duration;
 public class RateLimitInterceptor implements HandlerInterceptor {
 
     private final LettuceBasedProxyManager<String> proxyManager;
+    private final RedisClient redisClient;
+    private final StatefulRedisConnection<String, byte[]> connection;
 
     @Value("${app.rate-limit.capacity:60}")
     private int capacity;
@@ -50,13 +53,24 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             @Value("${spring.data.redis.host:localhost}") String redisHost,
             @Value("${spring.data.redis.port:6379}") int redisPort) {
 
-        RedisClient redisClient = RedisClient.create("redis://" + redisHost + ":" + redisPort);
-        StatefulRedisConnection<String, byte[]> connection = redisClient.connect(
+        this.redisClient = RedisClient.create("redis://" + redisHost + ":" + redisPort);
+        this.connection = redisClient.connect(
                 RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE)
         );
 
         this.proxyManager = LettuceBasedProxyManager.builderFor(connection)
                 .build();
+    }
+
+    @PreDestroy
+    public void destroy() {
+        log.info("Closing Redis connection and client for Rate Limiting...");
+        if (connection != null) {
+            connection.close();
+        }
+        if (redisClient != null) {
+            redisClient.shutdown();
+        }
     }
 
     @Override
