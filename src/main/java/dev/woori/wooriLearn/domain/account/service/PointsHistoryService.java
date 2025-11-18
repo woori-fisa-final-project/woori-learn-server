@@ -48,8 +48,8 @@ public class PointsHistoryService {
 
         return queryRepository.findAllByFilters(
                 userId,
-                ts.type,
-                ts.status,
+                ts.type(),
+                ts.status(),
                 range.start,
                 range.end,
                 pageRequest
@@ -74,7 +74,7 @@ public class PointsHistoryService {
             case WITHDRAW_APPLY -> new TypeStatus(PointsHistoryType.WITHDRAW, PointsStatus.APPLY);
             case WITHDRAW_FAILED -> new TypeStatus(PointsHistoryType.WITHDRAW, PointsStatus.FAILED);
             case WITHDRAW_SUCCESS -> new TypeStatus(PointsHistoryType.WITHDRAW, PointsStatus.SUCCESS);
-            case ALL -> new TypeStatus(null, null);
+            default -> new TypeStatus(null, null);
         };
     }
 
@@ -121,13 +121,5 @@ public class PointsHistoryService {
 
     private record DateRange(LocalDateTime start, LocalDateTime end) {}
 
-    private static class TypeStatus {
-        private final PointsHistoryType type;
-        private final PointsStatus status;
-
-        private TypeStatus(PointsHistoryType type, PointsStatus status) {
-            this.type = type;
-            this.status = status;
-        }
-    }
+    private record TypeStatus(PointsHistoryType type, PointsStatus status) {}
 }
