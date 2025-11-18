@@ -45,7 +45,9 @@ public class GlobalExceptionHandler {
     // 쿠키 미포함 요청에 대한 에러 처리
     @ExceptionHandler(MissingRequestCookieException.class)
     public ResponseEntity<BaseResponse<?>> handleMissingCookie(MissingRequestCookieException ex) {
-        return ApiResponse.failure(ErrorCode.INVALID_REQUEST, "쿠키가 존재하지 않습니다.");
+        String message = String.format("필수 쿠키 '%s'가 요청에 포함되지 않았습니다.", ex.getCookieName());
+        log.warn("[MissingRequestCookieException] {}", message);
+        return ApiResponse.failure(ErrorCode.INVALID_REQUEST, message);
     }
 
     // 그 외의 에러
