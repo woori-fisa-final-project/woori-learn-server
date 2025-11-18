@@ -36,7 +36,7 @@ public class EducationalAccount {
     private Integer balance;
 
     // 계좌 비밀번호
-    @Column(name = "account_password", nullable = false)
+    @Column(name = "account_password", nullable = false, length = 60)
     private String accountPassword;
 
     // 계좌명

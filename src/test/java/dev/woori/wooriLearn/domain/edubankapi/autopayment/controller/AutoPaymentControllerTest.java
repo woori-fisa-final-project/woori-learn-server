@@ -302,7 +302,7 @@ class AutoPaymentControllerTest {
                 .willReturn(autoPaymentToReturn);
 
         // when & then
-        mockMvc.perform(put("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
+        mockMvc.perform(post("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
                         .param("educationalAccountId", educationalAccountId.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
@@ -323,7 +323,7 @@ class AutoPaymentControllerTest {
                 .cancelAutoPayment(autoPaymentId, educationalAccountId);
 
         // when & then
-        mockMvc.perform(put("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
+        mockMvc.perform(post("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
                         .param("educationalAccountId", educationalAccountId.toString()))
                 .andExpect(status().isNotFound());
     }
@@ -340,7 +340,7 @@ class AutoPaymentControllerTest {
                 .cancelAutoPayment(autoPaymentId, educationalAccountId);
 
         // when & then
-        mockMvc.perform(put("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
+        mockMvc.perform(post("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
                         .param("educationalAccountId", educationalAccountId.toString()))
                 .andExpect(status().isNotFound());
     }
@@ -357,7 +357,7 @@ class AutoPaymentControllerTest {
                 .cancelAutoPayment(autoPaymentId, educationalAccountId);
 
         // when & then
-        mockMvc.perform(put("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
+        mockMvc.perform(post("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
                         .param("educationalAccountId", educationalAccountId.toString()))
                 .andExpect(status().isBadRequest());
     }
@@ -366,7 +366,7 @@ class AutoPaymentControllerTest {
     @DisplayName("자동이체 해지 - 잘못된 자동이체 ID (음수)")
     void cancelAutoPayment_InvalidAutoPaymentId() throws Exception {
         // when & then
-        mockMvc.perform(put("/education/auto-payment/{autoPaymentId}/cancel", -1L)
+        mockMvc.perform(post("/education/auto-payment/{autoPaymentId}/cancel", -1L)
                         .param("educationalAccountId", "1"))
                 .andExpect(status().isBadRequest());
     }
@@ -375,7 +375,7 @@ class AutoPaymentControllerTest {
     @DisplayName("자동이체 해지 - 잘못된 교육용 계좌 ID (음수)")
     void cancelAutoPayment_InvalidEducationalAccountId() throws Exception {
         // when & then
-        mockMvc.perform(put("/education/auto-payment/{autoPaymentId}/cancel", 1L)
+        mockMvc.perform(post("/education/auto-payment/{autoPaymentId}/cancel", 1L)
                         .param("educationalAccountId", "-1"))
                 .andExpect(status().isBadRequest());
     }
