@@ -1,5 +1,7 @@
 package dev.woori.wooriLearn.config.jwt;
 
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -38,9 +40,9 @@ public class JwtValidator {
 
             return new JwtInfo(username, role);
         } catch (ExpiredJwtException e) {
-            throw new CredentialsExpiredException("토큰이 만료되었습니다.", e);
+            throw new CommonException(ErrorCode.TOKEN_EXPIRED);
         } catch (JwtException | IllegalArgumentException e) {
-            throw new BadCredentialsException("유효하지 않은 토큰입니다.", e);
+            throw new CommonException(ErrorCode.TOKEN_UNAUTHORIZED);
         }
     }
 }

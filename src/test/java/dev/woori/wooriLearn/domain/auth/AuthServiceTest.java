@@ -6,6 +6,7 @@ import dev.woori.wooriLearn.config.jwt.JwtInfo;
 import dev.woori.wooriLearn.config.jwt.JwtValidator;
 import dev.woori.wooriLearn.config.jwt.TokenInfo;
 import dev.woori.wooriLearn.config.security.Encoder;
+import dev.woori.wooriLearn.domain.auth.dto.ChangePasswdReqDto;
 import dev.woori.wooriLearn.domain.auth.dto.LoginReqDto;
 import dev.woori.wooriLearn.domain.auth.dto.LoginResDto;
 import dev.woori.wooriLearn.domain.auth.dto.RefreshReqDto;
@@ -27,6 +28,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 public class AuthServiceTest {
@@ -189,5 +192,68 @@ public class AuthServiceTest {
         // then
         verify(refreshTokenPort, times(1)).deleteByUsername("user1");
         assertThat(result).isEqualTo("로그아웃되었습니다.");
+    }
+
+    @Test
+    void testChangePassword() {
+        AuthUsers auth = AuthUsers.builder()
+                .userId("testUser")
+                .password("oldHashedPw")
+                .role(Role.ROLE_USER)
+                .build();
+
+        ChangePasswdReqDto req = new ChangePasswdReqDto("currentPw", "newPw");
+
+        when(authUserPort.findByUserId("testUser"))
+                .thenReturn(Optional.of(auth));
+        when(passwordEncoder.matches("currentPw", "oldHashedPw"))
+                .thenReturn(true);
+        when(passwordEncoder.encode("newPw"))
+                .thenReturn("newHashedPw");
+
+        // when
+        authService.changePassword("testUser", req);
+
+        // then
+        verify(authUserPort).findByUserId("testUser");
+        verify(passwordEncoder).matches("currentPw", "oldHashedPw");
+        verify(passwordEncoder).encode("newPw");
+        assertEquals("newHashedPw", auth.getPassword());
+    }
+
+    @Test
+    void testChangePassword_WrongCurrentPassword() {
+        AuthUsers auth = AuthUsers.builder()
+                .userId("testUser")
+                .password("oldHashedPw")
+                .role(Role.ROLE_USER)
+                .build();
+
+        ChangePasswdReqDto req = new ChangePasswdReqDto("wrongPw", "newPw");
+
+        when(authUserPort.findByUserId("testUser"))
+                .thenReturn(Optional.of(auth));
+        when(passwordEncoder.matches("wrongPw", "oldHashedPw"))
+                .thenReturn(false);
+
+        // expect
+        assertThrows(CommonException.class,
+                () -> authService.changePassword("testUser", req));
+
+        verify(passwordEncoder, never()).encode(any());
+    }
+
+    @Test
+    void testChangePassword_UserNotFound() {
+        ChangePasswdReqDto req = new ChangePasswdReqDto("currentPw", "newPw");
+
+        when(authUserPort.findByUserId("nonExistUser"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(CommonException.class,
+                () -> authService.changePassword("nonExistUser", req));
+
+        verify(passwordEncoder, never()).matches(any(), any());
+        verify(passwordEncoder, never()).encode(any());
     }
 }
