@@ -40,11 +40,9 @@ public class JwtValidator {
 
             return new JwtInfo(username, role);
         } catch (ExpiredJwtException e) {
-//            throw new CredentialsExpiredException("토큰이 만료되었습니다.", e);
-            throw new CommonException(ErrorCode.TOKEN_EXPIRED, "토큰이 만료되었습니다.");
+            throw new CommonException(ErrorCode.TOKEN_EXPIRED);
         } catch (JwtException | IllegalArgumentException e) {
-//            throw new BadCredentialsException("유효하지 않은 토큰입니다.", e);
-            throw new CommonException(ErrorCode.TOKEN_UNAUTHORIZED, "유효하지 않은 토큰입니다.");
+            throw new CommonException(ErrorCode.TOKEN_UNAUTHORIZED);
         }
     }
 }

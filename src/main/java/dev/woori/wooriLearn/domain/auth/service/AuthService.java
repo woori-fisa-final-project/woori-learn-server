@@ -12,7 +12,6 @@ import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
 import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
 import dev.woori.wooriLearn.domain.auth.port.RefreshTokenPort;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
-import dev.woori.wooriLearn.domain.auth.repository.AuthUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -92,7 +91,7 @@ public class AuthService {
      */
     public void changePassword(String userId, ChangePasswdReqDto request) {
         AuthUsers user = authUserRepository.findByUserId(userId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
         // 입력한 기존 비밀번호와 db에 저장된 기존 비밀번호가 일치하는지 검증
         if(!passwordEncoder.matches(request.currentPassword(), user.getPassword())){

@@ -28,6 +28,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtValidator jwtValidator;
     private final String BEARER = "Bearer ";
+    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -55,7 +56,7 @@ public class JwtFilter extends OncePerRequestFilter {
             log.warn("{} - {}", e.getErrorCode(), e.getMessage());
             response.setStatus(e.getErrorCode().getStatus().value());
             response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write(new ObjectMapper().writeValueAsString(
+            response.getWriter().write(objectMapper.writeValueAsString(
                     BaseResponse.of(e.getErrorCode())
             ));
         }
