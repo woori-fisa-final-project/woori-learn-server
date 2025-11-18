@@ -136,10 +136,9 @@ public class AutoPaymentService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':ACTIVE'"),
-            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':CANCELLED'"),
-            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':ALL'"),
-            @CacheEvict(value = "autoPaymentDetail", key = "#autoPaymentId")
+            @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':ACTIVE'"),
+            @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':CANCELLED'"),
+            @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':ALL'")
     })
     public AutoPaymentResponse createAutoPayment(AutoPaymentCreateRequest request, String currentUserId) {
         // 1. 금액 한도 검증
