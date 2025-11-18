@@ -1,11 +1,12 @@
 package dev.woori.wooriLearn.domain.user;
 
+import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
-import dev.woori.wooriLearn.domain.auth.repository.AuthUserRepository;
+import dev.woori.wooriLearn.domain.auth.service.AuthService;
 import dev.woori.wooriLearn.domain.user.dto.ChangeNicknameReqDto;
-import dev.woori.wooriLearn.domain.user.dto.ChangePasswdReqDto;
+import dev.woori.wooriLearn.domain.auth.dto.ChangePasswdReqDto;
 import dev.woori.wooriLearn.domain.user.dto.UserInfoResDto;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
@@ -20,8 +21,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -37,6 +38,9 @@ class UserServiceTest {
 
     @InjectMocks
     private UserService userService;
+
+    @InjectMocks
+    private AuthService authService;
 
 
     @Test
@@ -74,27 +78,5 @@ class UserServiceTest {
 
         assertEquals("newNick", user.getNickname());
         verify(userRepository).findByUserId("testUser");
-    }
-
-
-    @Test
-    void testChangePassword() {
-        AuthUsers auth = AuthUsers.builder()
-                .userId("testUser")
-                .password("oldPw")
-                .role(Role.ROLE_USER)
-                .build();
-
-        when(authUserRepository.findByUserId("testUser"))
-                .thenReturn(Optional.of(auth));
-        when(passwordEncoder.encode("newPw"))
-                .thenReturn("hashed");
-
-        ChangePasswdReqDto req = new ChangePasswdReqDto("newPw");
-
-        userService.changePassword("testUser", req);
-
-        verify(authUserRepository).findByUserId("testUser");
-        assertEquals("hashed", auth.getPassword());
     }
 }
