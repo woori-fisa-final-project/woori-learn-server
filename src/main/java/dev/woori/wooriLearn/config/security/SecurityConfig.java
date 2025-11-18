@@ -3,14 +3,15 @@ package dev.woori.wooriLearn.config.security;
 import dev.woori.wooriLearn.config.filter.JwtFilter;
 import dev.woori.wooriLearn.config.jwt.JwtAuthenticationEntryPoint;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -22,10 +23,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-
 import java.util.List;
 
 @Configuration
@@ -36,43 +33,42 @@ public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-    @Value("${client.base-url}")
-    private static String baseUrl;
 
-    // 인증 없이도 접근 가능한 엔드포인트 목록
+    @Value("${client.base-url}")
+    private String baseUrl;  // ★ static 제거
+
     private static final List<String> whiteList = List.of(
-            "/auth/login", // 로그인
-            "/auth/signup", // 회원가입
-            "/auth/verify" // 아이디 중복체크
+            "/auth/login",
+            "/auth/signup",
+            "/auth/verify"
     );
 
-    // 관리자만 접근 가능한 엔드포인트 목록
     private static final List<String> adminList = List.of(
             "/admin/**"
     );
 
-    // 개발 모드와 테스트 모드에서는 인증 적용 x
     @Bean
     @Profile({"dev", "test"})
-    public SecurityFilterChain devFilterChain(HttpSecurity httpSecurity) throws Exception {
-        return httpSecurity
+    public SecurityFilterChain devFilterChain(HttpSecurity http) throws Exception {
+
+        return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOrigins(List.of(baseUrl));
-                    config.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
-                    config.setAllowCredentials(true);
+                    config.setAllowedOrigins(List.of(baseUrl));   // ★ 정상 주입
+                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                     config.setAllowedHeaders(List.of("*"));
+                    config.setAllowCredentials(true);
                     config.setExposedHeaders(List.of("Authorization"));
                     return config;
                 }))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .anyRequest().permitAll())
+                        .anyRequest().permitAll()
+                )
                 .addFilterBefore((request, response, chain) -> {
-                    // dev/test용 임시 인증 세팅
                     SecurityContextHolder.getContext().setAuthentication(
-                            new UsernamePasswordAuthenticationToken("uuuu", null, List.of())
+                            new UsernamePasswordAuthenticationToken("dev-user", null, List.of())
                     );
                     chain.doFilter(request, response);
                 }, UsernamePasswordAuthenticationFilter.class)
@@ -81,17 +77,17 @@ public class SecurityConfig {
 
     @Bean
     @Profile("!dev & !test")
-    public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-        return httpSecurity
-                .csrf(AbstractHttpConfigurer::disable) // API 테스트용, 실제 서비스면 토큰 기반 CSRF 설정 필요
-                .cors(Customizer.withDefaults()) // 임시로 cors 허용
-                .sessionManagement(sessionManagementConfigurer ->
-                        sessionManagementConfigurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 사용 안함
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        return http
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(whiteList.toArray(new String[0])).permitAll()
                         .requestMatchers(adminList.toArray(new String[0])).hasRole("ADMIN")
-                        .anyRequest().authenticated()) // 나머지는 JWT 필요
+                        .anyRequest().authenticated()
+                )
                 .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
@@ -101,21 +97,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-
-        // ⭐ 프론트 주소 허용
-        config.addAllowedOrigin("http://localhost:3000");
-
-        config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
-        config.setAllowCredentials(true); // 쿠키 포함 요청 허용
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-
-        return source;
-    }
-
 }
