@@ -9,7 +9,6 @@ import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
 import dev.woori.wooriLearn.domain.user.dto.ChangeNicknameReqDto;
-import dev.woori.wooriLearn.domain.user.dto.ChangePasswdReqDto;
 import dev.woori.wooriLearn.domain.user.dto.SignupReqDto;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.user.dto.UserInfoResDto;
@@ -58,8 +57,6 @@ public class UserService {
 
         authUserRepository.save(authUser);
         userRepository.save(user);
-
-        // TODO: 회원가입 이후 기본 포인트를 지급한다 하면 포인트 내역 추가 로직 필요
         pointsHistoryRepository.save(
                 PointsHistory.builder()
                         .user(user)
@@ -83,12 +80,6 @@ public class UserService {
         Users user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
         user.updateNickname(request.nickname());
-    }
-
-    public void changePassword(String userId, ChangePasswdReqDto request) {
-        AuthUsers user = authUserRepository.findByUserId(userId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
-        user.updatePassword(passwordEncoder.encode(request.password()));
     }
 
     public Users getByUserIdOrThrow(String userId) {
