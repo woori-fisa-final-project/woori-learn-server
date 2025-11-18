@@ -13,6 +13,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 사용자의 시나리오 진행 현황(완료/진행률)을 조회하는 컨트롤러
+ *
+ * BaseURL : /users/me/scenarios
+ *  - /completed : 완료한 시나리오 목록 조회
+ *  - /progress : 시나리오의 진행률 조회
+ */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(value = "/users/me/scenarios")
