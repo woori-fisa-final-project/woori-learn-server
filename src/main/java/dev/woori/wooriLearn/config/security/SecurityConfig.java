@@ -33,7 +33,7 @@ public class SecurityConfig {
     private final JwtFilter jwtFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     @Value("${client.base-url}")
-    private static String baseUrl;
+    private String baseUrl;
 
     // 인증 없이도 접근 가능한 엔드포인트 목록
     private static final List<String> whiteList = List.of(
