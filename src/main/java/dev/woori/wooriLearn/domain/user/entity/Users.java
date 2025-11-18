@@ -17,8 +17,8 @@ public class Users extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "auth_user_id", nullable = true)//테스트용
+    @OneToOne(optional = false, fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+    @JoinColumn(name = "auth_user_id", nullable = false, unique = true)
     private AuthUsers authUser;
 
     @Column(nullable = false)
@@ -52,3 +52,4 @@ public class Users extends BaseEntity {
         this.nickname = nickname;
     }
 }
+
