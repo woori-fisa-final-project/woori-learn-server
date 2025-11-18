@@ -6,7 +6,6 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.codec.StringCodec;
-import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +18,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 /**
  * Rate Limiting 설정
  * - 자동이체 API에 Rate Limit 인터셉터 적용
- * - LettuceBasedProxyManager를 Spring Bean으로 관리하여 리소스 누수 방지
+ * - Redis 관련 Bean들을 Spring 컨테이너가 생명주기 관리
  */
 @Slf4j
 @Configuration
@@ -29,9 +28,6 @@ public class RateLimitConfig implements WebMvcConfigurer {
 
     private final RateLimitInterceptor rateLimitInterceptor;
 
-    private StatefulRedisConnection<String, byte[]> connection;
-    private RedisClient redisClient;
-
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(rateLimitInterceptor)
@@ -40,37 +36,43 @@ public class RateLimitConfig implements WebMvcConfigurer {
     }
 
     /**
-     * Bucket4j Redis 기반 ProxyManager 빈 등록
+     * Redis 클라이언트 빈 등록
      * @param redisHost Redis 호스트
      * @param redisPort Redis 포트
+     * @return RedisClient 인스턴스
+     */
+    @Bean(destroyMethod = "shutdown")
+    public RedisClient redisClient(
+            @Value("${spring.data.redis.host:localhost}") String redisHost,
+            @Value("${spring.data.redis.port:6379}") int redisPort) {
+
+        log.info("Creating RedisClient for Rate Limiting - Redis: {}:{}", redisHost, redisPort);
+        return RedisClient.create("redis://" + redisHost + ":" + redisPort);
+    }
+
+    /**
+     * Redis 연결 빈 등록
+     * @param redisClient Redis 클라이언트
+     * @return StatefulRedisConnection 인스턴스
+     */
+    @Bean(destroyMethod = "close")
+    public StatefulRedisConnection<String, byte[]> redisConnection(RedisClient redisClient) {
+        log.info("Creating Redis connection for Rate Limiting");
+        return redisClient.connect(
+                RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE)
+        );
+    }
+
+    /**
+     * Bucket4j Redis 기반 ProxyManager 빈 등록
+     * @param connection Redis 연결
      * @return LettuceBasedProxyManager 인스턴스
      */
     @Bean
     public LettuceBasedProxyManager<String> lettuceBasedProxyManager(
-            @Value("${spring.data.redis.host:localhost}") String redisHost,
-            @Value("${spring.data.redis.port:6379}") int redisPort) {
+            StatefulRedisConnection<String, byte[]> connection) {
 
-        this.redisClient = RedisClient.create("redis://" + redisHost + ":" + redisPort);
-        this.connection = redisClient.connect(
-                RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE)
-        );
-
-        log.info("Initialized LettuceBasedProxyManager for Rate Limiting - Redis: {}:{}", redisHost, redisPort);
-
+        log.info("Initializing LettuceBasedProxyManager for Rate Limiting");
         return LettuceBasedProxyManager.builderFor(connection).build();
-    }
-
-    /**
-     * Redis 연결 리소스 정리
-     */
-    @PreDestroy
-    public void destroy() {
-        log.info("Closing Redis connection and client for Rate Limiting...");
-        if (connection != null) {
-            connection.close();
-        }
-        if (redisClient != null) {
-            redisClient.shutdown();
-        }
     }
 }
