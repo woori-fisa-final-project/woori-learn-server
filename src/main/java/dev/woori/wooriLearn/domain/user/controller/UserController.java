@@ -4,7 +4,6 @@ import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.user.dto.ChangeNicknameReqDto;
-import dev.woori.wooriLearn.domain.user.dto.ChangePasswdReqDto;
 import dev.woori.wooriLearn.domain.user.dto.SignupReqDto;
 import dev.woori.wooriLearn.domain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -37,13 +36,6 @@ public class UserController {
     public ResponseEntity<BaseResponse<?>> changeNickname(Principal principal,
                                                           @RequestBody ChangeNicknameReqDto request) {
         userService.changeNickname(principal.getName(), request);
-        return ApiResponse.success(SuccessCode.OK);
-    }
-
-    @PutMapping("/password")
-    public ResponseEntity<BaseResponse<?>> changePassword(Principal principal,
-                                                          @RequestBody ChangePasswdReqDto request) {
-        userService.changePassword(principal.getName(), request);
         return ApiResponse.success(SuccessCode.OK);
     }
 }
