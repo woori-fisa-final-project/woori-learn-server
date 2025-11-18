@@ -102,20 +102,6 @@ public class ScenarioStepContentService {
         }
     }
 
-    /** 배드 브랜치 여부(meta.branch == "bad") */
-    public boolean isBadBranch(ScenarioStep step) {
-        return getMeta(step)
-                .map(meta -> "bad".equalsIgnoreCase(meta.branch()))
-                .orElse(false);
-    }
-
-    /** 배드 엔딩 여부(meta.badEnding == true) */
-    public boolean isBadEnding(ScenarioStep step) {
-        return getMeta(step)
-                .map(meta -> Boolean.TRUE.equals(meta.badEnding()))
-                .orElse(false);
-    }
-
     /** 각 StepType 에 맞는 DTO로 content 파싱 후 meta 추출 */
     public Optional<StepMeta> getMeta(ScenarioStep step) {
         try {
@@ -145,6 +131,8 @@ public class ScenarioStepContentService {
                     );
                     yield Optional.ofNullable(content.meta());
                 }
+
+                case PRACTICE -> Optional.empty();
             };
         } catch (JsonProcessingException e) {
             throw new CommonException(
