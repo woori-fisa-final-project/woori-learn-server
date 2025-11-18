@@ -1,5 +1,7 @@
 package dev.woori.wooriLearn.domain.account.repository;
 
+import com.querydsl.core.types.Order;
+import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
@@ -57,12 +59,11 @@ public class PointsHistoryQueryRepository {
                 );
 
         Sort sort = pageable.getSort();
-        boolean asc = sort.isSorted()
-                && sort.getOrderFor("createdAt") != null
-                && sort.getOrderFor("createdAt").isAscending();
+
+        var orderSpecifiers = toOrderSpecifiers(sort);
 
         List<PointsHistory> content = query
-                .orderBy(asc ? pointsHistory.createdAt.asc() : pointsHistory.createdAt.desc())
+                .orderBy(orderSpecifiers)
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -88,5 +89,49 @@ public class PointsHistoryQueryRepository {
 
     private BooleanExpression endLoe(LocalDateTime end) {
         return end == null ? null : pointsHistory.createdAt.loe(end);
+    }
+
+    private OrderSpecifier<?>[] toOrderSpecifiers(Sort sort) {
+        if (sort == null || sort.isUnsorted()) {
+            return new OrderSpecifier[]{pointsHistory.createdAt.desc()};
+        }
+
+        java.util.List<OrderSpecifier<?>> specs = new java.util.ArrayList<>();
+        for (Sort.Order o : sort) {
+            Order direction = o.isAscending() ? Order.ASC : Order.DESC;
+            String property = o.getProperty();
+            if (property == null) continue;
+
+            switch (property) {
+                case "createdAt":
+                    specs.add(new OrderSpecifier<>(direction, pointsHistory.createdAt));
+                    break;
+                case "updatedAt":
+                    specs.add(new OrderSpecifier<>(direction, pointsHistory.updatedAt));
+                    break;
+                case "id":
+                    specs.add(new OrderSpecifier<>(direction, pointsHistory.id));
+                    break;
+                case "amount":
+                    specs.add(new OrderSpecifier<>(direction, pointsHistory.amount));
+                    break;
+                case "processedAt":
+                    specs.add(new OrderSpecifier<>(direction, pointsHistory.processedAt));
+                    break;
+                case "type":
+                    specs.add(new OrderSpecifier<>(direction, pointsHistory.type));
+                    break;
+                case "status":
+                    specs.add(new OrderSpecifier<>(direction, pointsHistory.status));
+                    break;
+                default:
+                    // Unknown property: ignore to avoid errors
+            }
+        }
+
+        if (specs.isEmpty()) {
+            return new OrderSpecifier[]{pointsHistory.createdAt.desc()};
+        }
+        return specs.toArray(new OrderSpecifier<?>[0]);
     }
 }
