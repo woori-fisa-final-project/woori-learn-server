@@ -122,7 +122,7 @@ public class AutoPaymentService {
         if (!accountOwnerUserId.equals(currentUserId)) {
             log.warn("권한 없는 접근 시도 - 자동이체ID: {}, 요청사용자: {}, 계좌소유자: {}",
                     autoPaymentId, currentUserId, accountOwnerUserId);
-            throw new CommonException(ErrorCode.FORBIDDEN, "접근 권한이 없습니다.");
+            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "자동이체 정보를 찾을 수 없습니다.");
         }
 
         Long accountId = educationalAccount.getId();
