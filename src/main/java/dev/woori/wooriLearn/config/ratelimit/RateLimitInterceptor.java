@@ -13,6 +13,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -45,18 +48,25 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        String ip = getClientIp(request);
-        String bucketKey = RATE_LIMIT_KEY_PREFIX + ip;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String key;
 
-        Bucket bucket = proxyManager.builder().build(bucketKey, getConfigurationSupplier());
+        if (authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken)) {
+            key = authentication.getName(); // 인증된 사용자는 사용자 ID를 키로 사용
+        } else {
+            key = getClientIp(request); // 인증되지 않은 사용자는 IP를 키로 사용 (폴백)
+        }
+        String bucketKey = RATE_LIMIT_KEY_PREFIX + key;
+
+        Bucket bucket = proxyManager.builder().build(bucketKey, this::getConfigurationSupplier);
 
         if (bucket.tryConsume(1)) {
             long availableTokens = bucket.getAvailableTokens();
             response.setHeader("X-Rate-Limit-Remaining", String.valueOf(availableTokens));
-            log.debug("Rate limit OK - IP: {}, Remaining: {}", ip, availableTokens);
+            log.debug("Rate limit OK - Key: {}, Remaining: {}", key, availableTokens);
             return true;
         } else {
-            log.warn("Rate limit exceeded - IP: {}", ip);
+            log.warn("Rate limit exceeded - Key: {}", key);
             response.setHeader("X-Rate-Limit-Retry-After-Seconds", String.valueOf(refillDurationMinutes * 60));
             throw new CommonException(
                     ErrorCode.TOO_MANY_REQUESTS,
