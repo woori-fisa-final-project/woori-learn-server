@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -39,6 +40,14 @@ public class GlobalExceptionHandler {
         String errorMessage = ex.getConstraintViolations().iterator().next().getMessage();
         log.warn("[ConstraintViolationException] {} {} - {}", request.getMethod(), request.getRequestURI(), errorMessage);
         return ApiResponse.failure(ErrorCode.INVALID_REQUEST, errorMessage);
+    }
+
+    // 쿠키 미포함 요청에 대한 에러 처리
+    @ExceptionHandler(MissingRequestCookieException.class)
+    public ResponseEntity<BaseResponse<?>> handleMissingCookie(MissingRequestCookieException ex) {
+        String message = String.format("필수 쿠키 '%s'가 요청에 포함되지 않았습니다.", ex.getCookieName());
+        log.warn("[MissingRequestCookieException] {}", message);
+        return ApiResponse.failure(ErrorCode.INVALID_REQUEST, message);
     }
 
     // 그 외의 에러
