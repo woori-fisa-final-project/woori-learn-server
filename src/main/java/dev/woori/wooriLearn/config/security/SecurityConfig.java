@@ -92,6 +92,7 @@ public class SecurityConfig {
                         .requestMatchers(whiteList.toArray(new String[0])).permitAll()
                         .requestMatchers(adminList.toArray(new String[0])).hasRole("ADMIN")
                         .anyRequest().authenticated()) // 나머지는 JWT 필요
+                .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

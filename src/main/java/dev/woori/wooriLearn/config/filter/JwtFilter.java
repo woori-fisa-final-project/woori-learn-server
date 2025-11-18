@@ -36,7 +36,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         // 헤더에서 authorization 토큰 가져오기
         String accessToken = request.getHeader(HttpHeaders.AUTHORIZATION);
-        log.debug("Authorization Header = {}", request.getHeader("Authorization"));
+        log.debug("Authorization Header = {}", accessToken);
 
         try{
             if (accessToken != null && accessToken.startsWith(BEARER)) {
