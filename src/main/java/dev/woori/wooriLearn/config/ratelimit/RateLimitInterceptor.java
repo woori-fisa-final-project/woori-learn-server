@@ -7,14 +7,9 @@ import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.Refill;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
-import io.lettuce.core.RedisClient;
-import io.lettuce.core.api.StatefulRedisConnection;
-import io.lettuce.core.codec.ByteArrayCodec;
-import io.lettuce.core.codec.RedisCodec;
-import io.lettuce.core.codec.StringCodec;
-import jakarta.annotation.PreDestroy;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -31,12 +26,11 @@ import java.time.Duration;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 @ConditionalOnProperty(name = "app.rate-limit.enabled", havingValue = "true")
 public class RateLimitInterceptor implements HandlerInterceptor {
 
     private final LettuceBasedProxyManager<String> proxyManager;
-    private final RedisClient redisClient;
-    private final StatefulRedisConnection<String, byte[]> connection;
 
     @Value("${app.rate-limit.capacity:60}")
     private int capacity;
@@ -48,30 +42,6 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private int refillDurationMinutes;
 
     private static final String RATE_LIMIT_KEY_PREFIX = "rate_limit:";
-
-    public RateLimitInterceptor(
-            @Value("${spring.data.redis.host:localhost}") String redisHost,
-            @Value("${spring.data.redis.port:6379}") int redisPort) {
-
-        this.redisClient = RedisClient.create("redis://" + redisHost + ":" + redisPort);
-        this.connection = redisClient.connect(
-                RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE)
-        );
-
-        this.proxyManager = LettuceBasedProxyManager.builderFor(connection)
-                .build();
-    }
-
-    @PreDestroy
-    public void destroy() {
-        log.info("Closing Redis connection and client for Rate Limiting...");
-        if (connection != null) {
-            connection.close();
-        }
-        if (redisClient != null) {
-            redisClient.shutdown();
-        }
-    }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
