@@ -39,7 +39,8 @@ public class SecurityConfig {
     private static final List<String> whiteList = List.of(
             "/auth/login", // 로그인
             "/auth/signup", // 회원가입
-            "/auth/verify" // 아이디 중복체크
+            "/auth/verify", // 아이디 중복체크
+            "/auth/refresh" // access token 재발급
     );
 
     // 관리자만 접근 가능한 엔드포인트 목록
@@ -62,6 +63,8 @@ public class SecurityConfig {
                     config.setExposedHeaders(List.of("Authorization"));
                     return config;
                 }))
+                .sessionManagement(sessionManagementConfigurer ->
+                        sessionManagementConfigurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().permitAll())
@@ -72,6 +75,7 @@ public class SecurityConfig {
                     );
                     chain.doFilter(request, response);
                 }, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .build();
     }
 
@@ -88,7 +92,6 @@ public class SecurityConfig {
                         .requestMatchers(whiteList.toArray(new String[0])).permitAll()
                         .requestMatchers(adminList.toArray(new String[0])).hasRole("ADMIN")
                         .anyRequest().authenticated()) // 나머지는 JWT 필요
-                .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
