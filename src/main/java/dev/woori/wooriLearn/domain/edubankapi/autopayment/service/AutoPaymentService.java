@@ -172,6 +172,7 @@ public class AutoPaymentService {
     /**
      * 자동이체 해지 (캐시 무효화)
      * 해지 시 해당 계좌의 모든 상태 캐시 삭제 (ACTIVE, CANCELLED, ALL)
+     * DB 조회 최적화: findByIdWithAccountAndUser() 사용하여 1회 조회
      */
     @Transactional
     @Caching(evict = {
@@ -183,32 +184,29 @@ public class AutoPaymentService {
         log.info("자동이체 해지 시작 - 자동이체ID: {}, 교육용계좌ID: {}, 사용자ID: {}",
                 autoPaymentId, educationalAccountId, currentUserId);
 
-        // 1. 요청된 계좌(educationalAccountId)가 현재 사용자 소유인지 선 검증
-        try {
-            validateAccountOwnership(educationalAccountId, currentUserId);
-        } catch (CommonException e) {
-            // 요청한 educationalAccountId가 존재하지 않거나 소유자가 아닌 경우
-            // 리소스가 없다는 ENTITY_NOT_FOUND를 반환하여 정보 노출 방지 (가장 안전한 방법)
-            if (e.getErrorCode() == ErrorCode.FORBIDDEN || e.getErrorCode() == ErrorCode.ENTITY_NOT_FOUND) {
-                log.warn("요청 계좌 소유권 검증 실패. 자동이체 ID 존재 여부 숨김 처리.");
-                throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "자동이체 정보를 찾을 수 없습니다.");
-            }
-            throw e; // 그 외 예외는 전파
-        }
-        // 2. 자동이체 조회
-        AutoPayment autoPayment = autoPaymentRepository.findById(autoPaymentId)
+        // 1. 자동이체 조회 (계좌 및 사용자 정보 포함 - 1회 조회로 최적화)
+        AutoPayment autoPayment = autoPaymentRepository.findByIdWithAccountAndUser(autoPaymentId)
                 .orElseThrow(() -> {
-                    // 자동이체 ID가 존재하지 않는 경우 ENTITY_NOT_FOUND 반환 (기존 로직 유지)
                     log.error("자동이체 조회 실패 - ID: {}", autoPaymentId);
                     return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
                             "자동이체 정보를 찾을 수 없습니다.");
                 });
 
-        // 3. 소유자 일치 확인
+        EducationalAccount account = autoPayment.getEducationalAccount();
+
+        // 2. 소유자 일치 확인 (요청한 계좌 ID와 실제 계좌 ID 비교)
         if (!autoPayment.isOwnedBy(educationalAccountId)) {
-            // ENTITY_NOT_FOUND를 반환하여, 이 autoPaymentId가 다른 계좌에 속한다는 정보를 숨깁니다.
             log.warn("자동이체 소유자 불일치 - 자동이체ID: {}, 요청계좌ID: {}, 실제계좌ID: {}",
-                    autoPaymentId, educationalAccountId, autoPayment.getEducationalAccount().getId());
+                    autoPaymentId, educationalAccountId, account.getId());
+            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                    "자동이체 정보를 찾을 수 없습니다.");
+        }
+
+        // 3. 계좌 소유권 확인 (현재 사용자가 계좌 소유자인지 확인)
+        String accountOwnerUserId = account.getUser().getUserId();
+        if (!accountOwnerUserId.equals(currentUserId)) {
+            log.warn("권한 없는 접근 시도 - 자동이체ID: {}, 요청사용자: {}, 계좌소유자: {}",
+                    autoPaymentId, currentUserId, accountOwnerUserId);
             throw new CommonException(ErrorCode.ENTITY_NOT_FOUND,
                     "자동이체 정보를 찾을 수 없습니다.");
         }

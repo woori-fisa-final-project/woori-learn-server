@@ -319,10 +319,8 @@ class AutoPaymentServiceTest {
     @DisplayName("자동이체 해지 성공")
     void cancelAutoPayment_Success() {
         // given
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.of(mockAutoPayment));
-        given(edubankapiAccountRepository.findById(anyLong()))
-                .willReturn(Optional.of(mockAccount));
 
         // when
         autoPaymentService.cancelAutoPayment(1L, 1L,"testuser");
@@ -331,19 +329,14 @@ class AutoPaymentServiceTest {
         assertThat(mockAutoPayment.getProcessingStatus())
                 .isEqualTo(AutoPaymentStatus.CANCELLED);
 
-        verify(autoPaymentRepository).findById(1L);
-        verify(edubankapiAccountRepository).findById(1L);
+        verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
     }
 
     @Test
     @DisplayName("자동이체 해지 실패 - 존재하지 않음 (ENTITY_NOT_FOUND)")
     void cancelAutoPayment_Fail_NotFound() {
         // given
-        // 1. 먼저 계좌 소유권 검증을 통과해야 함
-        given(edubankapiAccountRepository.findById(1L))
-                .willReturn(Optional.of(mockAccount));
-        // 2. 그 다음 자동이체 조회 실패
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.empty());
 
         // when
@@ -357,8 +350,7 @@ class AutoPaymentServiceTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
         assertThat(exception.getMessage()).contains("자동이체 정보를 찾을 수 없습니다");
 
-        verify(edubankapiAccountRepository).findById(1L);
-        verify(autoPaymentRepository).findById(1L);
+        verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
     }
 
     @Test
@@ -377,9 +369,15 @@ class AutoPaymentServiceTest {
                 .user(otherUser)
                 .build();
 
-        // 계좌 소유권 검증에서 실패하므로 edubankapiAccountRepository만 모킹
-        given(edubankapiAccountRepository.findById(2L))
-                .willReturn(Optional.of(otherAccount));
+        AutoPayment otherAutoPayment = AutoPayment.builder()
+                .id(1L)
+                .educationalAccount(otherAccount)
+                .processingStatus(AutoPaymentStatus.ACTIVE)
+                .build();
+
+        // 자동이체는 찾아지지만 다른 사람의 계좌
+        given(autoPaymentRepository.findByIdWithAccountAndUser(1L))
+                .willReturn(Optional.of(otherAutoPayment));
 
         // when
         CommonException exception = catchThrowableOfType(
@@ -392,8 +390,7 @@ class AutoPaymentServiceTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
         assertThat(exception.getMessage()).contains("자동이체 정보를 찾을 수 없습니다");
 
-        verify(edubankapiAccountRepository).findById(2L);
-        // autoPaymentRepository는 호출되지 않음 (소유권 검증에서 실패)
+        verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
     }
 
     @Test
@@ -406,10 +403,8 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.CANCELLED)  // 이미 해지됨!
                 .build();
 
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.of(cancelledAutoPayment));
-        given(edubankapiAccountRepository.findById(anyLong()))
-                .willReturn(Optional.of(mockAccount));
 
         // when
         CommonException exception = catchThrowableOfType(
@@ -422,8 +417,7 @@ class AutoPaymentServiceTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
         assertThat(exception.getMessage()).contains("이미 해지된 자동이체입니다");
 
-        verify(autoPaymentRepository).findById(1L);
-        verify(edubankapiAccountRepository).findById(1L);
+        verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
     }
 
     @Test
@@ -773,10 +767,8 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.of(freshAutoPayment));
-        given(edubankapiAccountRepository.findById(anyLong()))
-                .willReturn(Optional.of(mockAccount));
 
         // when
         autoPaymentService.cancelAutoPayment(1L, 1L,"testuser");
@@ -805,10 +797,8 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.of(almostExpiredAutoPayment));
-        given(edubankapiAccountRepository.findById(anyLong()))
-                .willReturn(Optional.of(mockAccount));
 
         // when
         autoPaymentService.cancelAutoPayment(1L, 1L,"testuser");
