@@ -31,6 +31,8 @@ public interface EdubankapiAccountRepository extends JpaRepository<EducationalAc
 
     List<EducationalAccount> findAllByUserId(Long userId);
 
+    boolean existsByAccountNumber(String accountNumber);
+
     /**
      * 계좌번호로 계좌 조회
      *
