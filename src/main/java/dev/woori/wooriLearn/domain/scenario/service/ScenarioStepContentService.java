@@ -6,13 +6,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.domain.scenario.content.*;
+import dev.woori.wooriLearn.domain.scenario.content.ChoiceContent;
+import dev.woori.wooriLearn.domain.scenario.content.ChoiceOption;
+import dev.woori.wooriLearn.domain.scenario.content.StepMeta;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
 import dev.woori.wooriLearn.domain.scenario.entity.Quiz;
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.model.ChoiceInfo;
-import dev.woori.wooriLearn.domain.scenario.model.StepType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
