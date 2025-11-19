@@ -6,14 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
-import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
 import dev.woori.wooriLearn.domain.scenario.content.ChoiceContent;
 import dev.woori.wooriLearn.domain.scenario.content.ChoiceOption;
-import dev.woori.wooriLearn.domain.scenario.content.DialogOverlayContent;
-import dev.woori.wooriLearn.domain.scenario.content.ImageContent;
-import dev.woori.wooriLearn.domain.scenario.content.ModalContent;
 import dev.woori.wooriLearn.domain.scenario.content.StepMeta;
+import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
+import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
 import dev.woori.wooriLearn.domain.scenario.entity.Quiz;
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.model.ChoiceInfo;
@@ -102,50 +99,16 @@ public class ScenarioStepContentService {
         }
     }
 
-    /** 배드 브랜치 여부(meta.branch == "bad") */
-    public boolean isBadBranch(ScenarioStep step) {
-        return getMeta(step)
-                .map(meta -> "bad".equalsIgnoreCase(meta.branch()))
-                .orElse(false);
-    }
-
-    /** 배드 엔딩 여부(meta.badEnding == true) */
-    public boolean isBadEnding(ScenarioStep step) {
-        return getMeta(step)
-                .map(meta -> Boolean.TRUE.equals(meta.badEnding()))
-                .orElse(false);
-    }
-
     /** 각 StepType 에 맞는 DTO로 content 파싱 후 meta 추출 */
     public Optional<StepMeta> getMeta(ScenarioStep step) {
         try {
-            return switch (step.getType()) {
-                case CHOICE -> Optional.empty(); // CHOICE에는 meta 사용 안 함
-
-                case DIALOG, OVERLAY -> {
-                    DialogOverlayContent content = objectMapper.readValue(
-                            step.getContent(),
-                            DialogOverlayContent.class
-                    );
-                    yield Optional.ofNullable(content.meta());
-                }
-
-                case IMAGE -> {
-                    ImageContent content = objectMapper.readValue(
-                            step.getContent(),
-                            ImageContent.class
-                    );
-                    yield Optional.ofNullable(content.meta());
-                }
-
-                case MODAL -> {
-                    ModalContent content = objectMapper.readValue(
-                            step.getContent(),
-                            ModalContent.class
-                    );
-                    yield Optional.ofNullable(content.meta());
-                }
-            };
+            JsonNode root = objectMapper.readTree(step.getContent());
+            JsonNode metaNode = root.get("meta");
+            if (metaNode == null || metaNode.isNull()) {
+                return Optional.empty();
+            }
+            StepMeta meta = objectMapper.treeToValue(metaNode, StepMeta.class);
+            return Optional.ofNullable(meta);
         } catch (JsonProcessingException e) {
             throw new CommonException(
                     ErrorCode.INTERNAL_SERVER_ERROR,
