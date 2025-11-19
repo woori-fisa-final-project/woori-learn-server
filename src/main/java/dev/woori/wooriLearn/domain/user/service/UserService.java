@@ -40,6 +40,7 @@ public class UserService {
     private final EdubankapiAccountRepository eduAccountRepository;
 
     private static final int NEW_MEMBER_REGISTRATION_POINTS = 1000;
+    private static final int INITIAL_ACCOUNT_BALANCE = 5000000;
 
     /**
      * id와 비밀번호, 사용자 이름을 입력받아 회원가입을 진행합니다.
@@ -78,26 +79,26 @@ public class UserService {
 
         // 입출금계좌 생성
         eduAccountRepository.save(
-                EducationalAccount.builder()
-                        .accountNumber(generateAccountNumber(AccountType.CHECKING))   // 랜덤 계좌번호 생성 함수
-                        .accountType(AccountType.CHECKING)
-                        .balance(5000000)
-                        .accountPassword(passwordEncoder.encode("1234"))
-                        .accountName(user.getNickname())
-                        .user(user)   // 연관관계 설정
-                        .build()
+                EducationalAccount.create(
+                        AccountType.CHECKING,
+                        generateAccountNumber(AccountType.CHECKING),
+                        INITIAL_ACCOUNT_BALANCE,
+                        passwordEncoder.encode("1234"),
+                        user.getNickname(),
+                        user
+                )
         );
 
         // 예금 계좌 생성
         eduAccountRepository.save(
-                EducationalAccount.builder()
-                        .accountNumber(generateAccountNumber(AccountType.SAVINGS))   // 랜덤 계좌번호 생성 함수
-                        .accountType(AccountType.SAVINGS)
-                        .balance(5000000)
-                        .accountPassword(passwordEncoder.encode("1234"))
-                        .accountName(user.getNickname())
-                        .user(user)   // 연관관계 설정
-                        .build()
+                EducationalAccount.create(
+                        AccountType.SAVINGS,
+                        generateAccountNumber(AccountType.SAVINGS),
+                        INITIAL_ACCOUNT_BALANCE,
+                        passwordEncoder.encode("1234"),
+                        user.getNickname(),
+                        user
+                )
         );
     }
 
@@ -116,7 +117,7 @@ public class UserService {
         user.updateNickname(request.nickname());
         
         // 계좌 이름 변경
-        List<EducationalAccount> accounts = eduAccountRepository.findAllByUserId(user.getId());
+        List<EducationalAccount> accounts = eduAccountRepository.findByUserId(user.getId());
         for (EducationalAccount account : accounts) {
             account.updateAccountName(request.nickname());
         }
@@ -129,8 +130,8 @@ public class UserService {
                 ));
     }
 
-    // 우리은행 13자리에 맞춰서 생성
-    public String generateAccountNumber(AccountType type) {
+    // 13자리 계좌번호 생성
+    private String generateAccountNumber(AccountType type) {
         String randomPart;
         do {
             randomPart = generateNumeric(9);

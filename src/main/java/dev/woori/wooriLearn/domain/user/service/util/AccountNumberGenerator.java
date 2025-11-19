@@ -2,8 +2,11 @@ package dev.woori.wooriLearn.domain.user.service.util;
 
 import java.security.SecureRandom;
 
-public class AccountNumberGenerator {
+public final class AccountNumberGenerator {
     private static final SecureRandom random = new SecureRandom();
+
+    private AccountNumberGenerator() {
+    }
 
     // 원하는 길이만큼 숫자 문자열 생성
     public static String generateNumeric(int length) {
