@@ -6,14 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.scenario.content.*;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
-import dev.woori.wooriLearn.domain.scenario.content.ChoiceContent;
-import dev.woori.wooriLearn.domain.scenario.content.ChoiceOption;
-import dev.woori.wooriLearn.domain.scenario.content.DialogOverlayContent;
-import dev.woori.wooriLearn.domain.scenario.content.ImageContent;
-import dev.woori.wooriLearn.domain.scenario.content.ModalContent;
-import dev.woori.wooriLearn.domain.scenario.content.StepMeta;
 import dev.woori.wooriLearn.domain.scenario.entity.Quiz;
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.model.ChoiceInfo;
@@ -132,7 +127,13 @@ public class ScenarioStepContentService {
                     yield Optional.ofNullable(content.meta());
                 }
 
-                case PRACTICE -> Optional.empty();
+                case PRACTICE -> {
+                    PracticeContent content = objectMapper.readValue(
+                            step.getContent(),
+                            PracticeContent.class
+                    );
+                    yield Optional.ofNullable(content.meta());
+                }
             };
         } catch (JsonProcessingException e) {
             throw new CommonException(
