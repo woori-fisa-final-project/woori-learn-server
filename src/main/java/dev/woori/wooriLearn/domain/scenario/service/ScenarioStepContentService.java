@@ -100,9 +100,6 @@ public class ScenarioStepContentService {
 
     /** 각 StepType 에 맞는 DTO로 content 파싱 후 meta 추출 */
     public Optional<StepMeta> getMeta(ScenarioStep step) {
-        if (step.getType() == StepType.CHOICE) {
-            return Optional.empty();
-        }
         try {
             JsonNode root = objectMapper.readTree(step.getContent());
             JsonNode metaNode = root.get("meta");
