@@ -86,10 +86,4 @@ public class EducationalAccount {
         }
         this.balance += amount;
     }
-
-    public enum AccountType {
-        CHECKING,  // 입출금
-        SAVINGS,   // 예금
-        DEPOSIT    // 적금
-    }
 }

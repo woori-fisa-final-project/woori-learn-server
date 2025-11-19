@@ -8,6 +8,7 @@ import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
+import dev.woori.wooriLearn.domain.edubankapi.entity.AccountType;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiAccountRepository;
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.user.dto.ChangeNicknameReqDto;
@@ -23,7 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
+
+import static dev.woori.wooriLearn.domain.user.service.util.AccountNumberGenerator.generateNumeric;
 
 @Slf4j
 @Service
@@ -77,8 +79,8 @@ public class UserService {
         // 입출금계좌 생성
         eduAccountRepository.save(
                 EducationalAccount.builder()
-                        .accountNumber(generateAccountNumber())   // 랜덤 계좌번호 생성 함수
-                        .accountType(EducationalAccount.AccountType.CHECKING)
+                        .accountNumber(generateAccountNumber(AccountType.CHECKING))   // 랜덤 계좌번호 생성 함수
+                        .accountType(AccountType.CHECKING)
                         .balance(5000000)
                         .accountPassword(passwordEncoder.encode("1234"))
                         .accountName(user.getNickname())
@@ -89,8 +91,8 @@ public class UserService {
         // 예금 계좌 생성
         eduAccountRepository.save(
                 EducationalAccount.builder()
-                        .accountNumber(generateAccountNumber())   // 랜덤 계좌번호 생성 함수
-                        .accountType(EducationalAccount.AccountType.SAVINGS)
+                        .accountNumber(generateAccountNumber(AccountType.SAVINGS))   // 랜덤 계좌번호 생성 함수
+                        .accountType(AccountType.SAVINGS)
                         .balance(5000000)
                         .accountPassword(passwordEncoder.encode("1234"))
                         .accountName(user.getNickname())
@@ -127,7 +129,12 @@ public class UserService {
                 ));
     }
 
-    private String generateAccountNumber() {
-        return UUID.randomUUID().toString().substring(0, 16);
+    // 우리은행 13자리에 맞춰서 생성
+    public String generateAccountNumber(AccountType type) {
+        String randomPart;
+        do {
+            randomPart = generateNumeric(9);
+        } while (eduAccountRepository.existsByAccountNumber(type.getBankCode() + randomPart));
+        return type.getBankCode() + randomPart;
     }
 }
