@@ -12,6 +12,7 @@ import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
 import dev.woori.wooriLearn.domain.scenario.entity.Quiz;
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.model.ChoiceInfo;
+import dev.woori.wooriLearn.domain.scenario.model.StepType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -99,42 +100,17 @@ public class ScenarioStepContentService {
 
     /** 각 StepType 에 맞는 DTO로 content 파싱 후 meta 추출 */
     public Optional<StepMeta> getMeta(ScenarioStep step) {
+        if (step.getType() == StepType.CHOICE) {
+            return Optional.empty();
+        }
         try {
-            return switch (step.getType()) {
-                case CHOICE -> Optional.empty(); // CHOICE에는 meta 사용 안 함
-
-                case DIALOG, OVERLAY -> {
-                    DialogOverlayContent content = objectMapper.readValue(
-                            step.getContent(),
-                            DialogOverlayContent.class
-                    );
-                    yield Optional.ofNullable(content.meta());
-                }
-
-                case IMAGE -> {
-                    ImageContent content = objectMapper.readValue(
-                            step.getContent(),
-                            ImageContent.class
-                    );
-                    yield Optional.ofNullable(content.meta());
-                }
-
-                case MODAL -> {
-                    ModalContent content = objectMapper.readValue(
-                            step.getContent(),
-                            ModalContent.class
-                    );
-                    yield Optional.ofNullable(content.meta());
-                }
-
-                case PRACTICE -> {
-                    PracticeContent content = objectMapper.readValue(
-                            step.getContent(),
-                            PracticeContent.class
-                    );
-                    yield Optional.ofNullable(content.meta());
-                }
-            };
+            JsonNode root = objectMapper.readTree(step.getContent());
+            JsonNode metaNode = root.get("meta");
+            if (metaNode == null || metaNode.isNull()) {
+                return Optional.empty();
+            }
+            StepMeta meta = objectMapper.treeToValue(metaNode, StepMeta.class);
+            return Optional.ofNullable(meta);
         } catch (JsonProcessingException e) {
             throw new CommonException(
                     ErrorCode.INTERNAL_SERVER_ERROR,
