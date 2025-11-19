@@ -8,6 +8,8 @@ import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiAccountRepository;
+import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.user.dto.ChangeNicknameReqDto;
 import dev.woori.wooriLearn.domain.user.dto.SignupReqDto;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
@@ -20,6 +22,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.UUID;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -30,6 +35,7 @@ public class UserService {
     private final AuthUserPort authUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final PointsHistoryRepository pointsHistoryRepository;
+    private final EdubankapiAccountRepository eduAccountRepository;
 
     private static final int NEW_MEMBER_REGISTRATION_POINTS = 1000;
 
@@ -57,12 +63,38 @@ public class UserService {
 
         authUserRepository.save(authUser);
         userRepository.save(user);
+
+        // 신규 회원 포인트 지급
         pointsHistoryRepository.save(
                 PointsHistory.builder()
                         .user(user)
                         .amount(NEW_MEMBER_REGISTRATION_POINTS)
                         .type(PointsHistoryType.DEPOSIT)
                         .status(PointsStatus.SUCCESS)
+                        .build()
+        );
+
+        // 입출금계좌 생성
+        eduAccountRepository.save(
+                EducationalAccount.builder()
+                        .accountNumber(generateAccountNumber())   // 랜덤 계좌번호 생성 함수
+                        .accountType(EducationalAccount.AccountType.CHECKING)
+                        .balance(5000000)
+                        .accountPassword(passwordEncoder.encode("1234"))
+                        .accountName(user.getNickname())
+                        .user(user)   // 연관관계 설정
+                        .build()
+        );
+
+        // 예금 계좌 생성
+        eduAccountRepository.save(
+                EducationalAccount.builder()
+                        .accountNumber(generateAccountNumber())   // 랜덤 계좌번호 생성 함수
+                        .accountType(EducationalAccount.AccountType.SAVINGS)
+                        .balance(5000000)
+                        .accountPassword(passwordEncoder.encode("1234"))
+                        .accountName(user.getNickname())
+                        .user(user)   // 연관관계 설정
                         .build()
         );
     }
@@ -80,6 +112,12 @@ public class UserService {
         Users user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
         user.updateNickname(request.nickname());
+        
+        // 계좌 이름 변경
+        List<EducationalAccount> accounts = eduAccountRepository.findAllByUserId(user.getId());
+        for (EducationalAccount account : accounts) {
+            account.updateAccountName(request.nickname());
+        }
     }
 
     public Users getByUserIdOrThrow(String userId) {
@@ -87,5 +125,9 @@ public class UserService {
                 .orElseThrow(() -> new CommonException(
                         ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다: " + userId
                 ));
+    }
+
+    private String generateAccountNumber() {
+        return UUID.randomUUID().toString().substring(0, 16);
     }
 }

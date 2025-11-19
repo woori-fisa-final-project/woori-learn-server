@@ -29,6 +29,8 @@ public interface EdubankapiAccountRepository extends JpaRepository<EducationalAc
     // findBy + [엔티티 필드명] => JPA가 user_Id 컬럼을 조건으로 자동 쿼리 생성 됨.
     List<EducationalAccount> findByUserId(Long userId);
 
+    List<EducationalAccount> findAllByUserId(Long userId);
+
     /**
      * 계좌번호로 계좌 조회
      *
