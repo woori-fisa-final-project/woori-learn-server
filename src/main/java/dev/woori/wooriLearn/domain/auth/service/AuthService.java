@@ -131,6 +131,6 @@ public class AuthService {
         refreshTokenRepository.save(token);
 
         long maxAgeSeconds = refreshTokenExpiration.getEpochSecond() - Instant.now().getEpochSecond();
-        return new TokenWithCookie(accessToken, CookieUtil.createRefreshTokenCookie(refreshToken, maxAgeSeconds));
+        return new TokenWithCookie(accessToken, role.name(), CookieUtil.createRefreshTokenCookie(refreshToken, maxAgeSeconds));
     }
 }

@@ -4,6 +4,7 @@ import org.springframework.http.ResponseCookie;
 
 public record TokenWithCookie(
         String accessToken,
+        String role,
         ResponseCookie cookie
 ) {
 }
