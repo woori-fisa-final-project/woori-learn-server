@@ -1,6 +1,7 @@
 package dev.woori.wooriLearn.domain.edubankapi.autopayment.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.validation.ValidDesignatedDate;
 import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
@@ -9,9 +10,11 @@ import java.time.LocalDate;
  * 자동이체 등록 요청 DTO
  *
  * 지정일 처리 정책:
- * - 1~31일 중 선택 가능
- * - 해당 월에 지정일이 없는 경우 해당 월의 마지막 날에 자동 실행
- * - 예: 31일 지정 → 2월에는 28일(윤년 29일), 4월/6월/9월/11월은 30일에 실행
+ * - 1~31일: 해당 일자에 이체 (해당 월에 없으면 말일에 실행)
+ * - 99: 매월 말일에 이체 (특수값)
+ * - 예시:
+ * · 31일 지정 → 2월: 28일(윤년 29일), 4월/6월/9월/11월: 30일
+ * · 99 지정 → 1월: 31일, 2월: 28일(윤년 29일), 4월: 30일
  */
 public record AutoPaymentCreateRequest(
         @NotNull(message = "교육용 계좌 ID는 필수입니다.")
@@ -43,8 +46,7 @@ public record AutoPaymentCreateRequest(
         Integer transferCycle,
 
         @NotNull(message = "지정일은 필수입니다.")
-        @Min(value = 1, message = "지정일은 1일 이상이어야 합니다.")
-        @Max(value = 31, message = "지정일은 31일 이하여야 합니다.")
+        @ValidDesignatedDate
         Integer designatedDate,
 
         @NotNull(message = "시작일은 필수입니다.")
@@ -61,13 +63,6 @@ public record AutoPaymentCreateRequest(
 ) {
     /**
      * 만료일 유효성 검증
-     *
-     * NOTE: null 체크가 필요한 이유
-     * Bean Validation 스펙에서 @AssertTrue는 메소드 레벨 검증이며,
-     * 필드 레벨의 @NotNull보다 먼저 실행될 수 있습니다.
-     * 따라서 DTO 단독 validation 테스트 시 NullPointerException을 방지하기 위해
-     * 방어적으로 null 체크를 수행합니다.
-     * (실제 API 요청에서는 @NotNull이 먼저 검증되므로 중복 검증 아님)
      */
     @AssertTrue(message = "만료일은 시작일 이후여야 합니다.")
     private boolean isExpirationDateValid() {

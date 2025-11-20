@@ -8,6 +8,8 @@ import java.time.LocalDate;
 public record AutoPaymentResponse(
         Long id,
         Long educationalAccountId,
+        String accountNumber,
+        String bankName,
         String depositNumber,
         String depositBankCode,
         Integer amount,
@@ -25,6 +27,8 @@ public record AutoPaymentResponse(
         return new AutoPaymentResponse(
                 autoPayment.getId(),
                 educationalAccountId,
+                autoPayment.getEducationalAccount().getAccountNumber(),
+                "우리은행", // 교육용 계좌는 모두 우리은행
                 autoPayment.getDepositNumber(),
                 autoPayment.getDepositBankCode(),
                 autoPayment.getAmount(),
