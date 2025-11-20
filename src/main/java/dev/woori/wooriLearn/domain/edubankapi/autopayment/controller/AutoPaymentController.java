@@ -1,5 +1,6 @@
 package dev.woori.wooriLearn.domain.edubankapi.autopayment.controller;
 
+import dev.woori.wooriLearn.util.AuthenticationUtil;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
@@ -12,6 +13,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
@@ -29,30 +34,17 @@ public class AutoPaymentController {
     private final AutoPaymentService autoPaymentService;
 
     /**
-     * 현재 인증된 사용자 ID를 반환합니다.
-     * @param authentication 인증 객체
-     * @return 사용자 ID
-     * @throws CommonException 인증 정보가 없는 경우 UNAUTHORIZED 예외 발생
+     * 자동이체 목록 조회 (레거시 - 전체 조회)
+     * @deprecated /list/paged 엔드포인트 사용 권장
      */
-    private String getCurrentUserId(Authentication authentication) {
-        if (authentication == null) {
-            log.error("인증 정보가 없는 요청 감지");
-            throw new dev.woori.wooriLearn.config.exception.CommonException(
-                    dev.woori.wooriLearn.config.exception.ErrorCode.UNAUTHORIZED,
-                    "인증이 필요합니다."
-            );
-        }
-        return authentication.getName();
-    }
-
+    @Deprecated
     @GetMapping("/list")
     public ResponseEntity<BaseResponse<?>> getAutoPaymentList(
             @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId,
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false, defaultValue = "ACTIVE") String status,
             Authentication authentication) {
 
-        String currentUserId = getCurrentUserId(authentication);
-
+        String currentUserId = AuthenticationUtil.extractUserId(authentication);
         log.info("자동이체 목록 조회 요청 - 교육용계좌ID: {}, 상태: {}, 사용자ID: {}",
                 educationalAccountId, status, currentUserId);
 
@@ -62,13 +54,31 @@ public class AutoPaymentController {
         return ApiResponse.success(SuccessCode.OK, response);
     }
 
+    /**
+     * 자동이체 목록 조회 (페이징 + 캐싱)
+     * @param educationalAccountId 교육용 계좌 ID
+     * @param status 처리 상태 (ACTIVE, CANCELLED, ALL) - 기본값: ACTIVE (활성 자동이체만 조회)
+     */
+    @GetMapping("/list/paged")
+    public ResponseEntity<BaseResponse<?>> getAutoPaymentListPaged(
+            @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId,
+            @RequestParam(required = false, defaultValue = "ACTIVE") String status,
+            Authentication authentication,
+            @PageableDefault(size = 10, sort = "startDate", direction = Sort.Direction.DESC) Pageable pageable){
+
+        String currentUserId = AuthenticationUtil.extractUserId(authentication);
+        Page<AutoPaymentResponse> response = autoPaymentService.getAutoPaymentListPaged(
+                educationalAccountId, status, currentUserId, pageable);
+
+        return ApiResponse.success(SuccessCode.OK, response);
+    }
+
     @GetMapping("/detail/{autoPaymentId}")
     public ResponseEntity<BaseResponse<?>> getAutoPaymentDetail(
             @PathVariable @Positive(message = "자동이체 ID는 양수여야 합니다.") Long autoPaymentId,
             Authentication authentication) {
 
-        String currentUserId = getCurrentUserId(authentication);
-
+        String currentUserId = AuthenticationUtil.extractUserId(authentication);
         log.info("자동이체 상세 조회 요청 - ID: {}, 사용자ID: {}", autoPaymentId, currentUserId);
 
         AutoPaymentResponse response = autoPaymentService.getAutoPaymentDetail(
@@ -82,8 +92,7 @@ public class AutoPaymentController {
             @Valid @RequestBody AutoPaymentCreateRequest request,
             Authentication authentication) {
 
-        String currentUserId = getCurrentUserId(authentication);
-
+        String currentUserId = AuthenticationUtil.extractUserId(authentication);
         log.info("자동이체 등록 요청 - 교육용계좌ID: {}, 금액: {}, 사용자ID: {}",
                 request.educationalAccountId(), request.amount(), currentUserId);
 
@@ -99,8 +108,7 @@ public class AutoPaymentController {
             @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId,
             Authentication authentication) {
 
-        String currentUserId = getCurrentUserId(authentication);
-
+        String currentUserId = AuthenticationUtil.extractUserId(authentication);
         log.info("자동이체 해지 요청 - 자동이체ID: {}, 교육용계좌ID: {}, 사용자ID: {}",
                 autoPaymentId, educationalAccountId, currentUserId);
 
