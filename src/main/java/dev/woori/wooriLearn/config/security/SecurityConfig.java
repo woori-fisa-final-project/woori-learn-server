@@ -32,6 +32,7 @@ public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
     @Value("${client.base-url}")
     private String baseUrl;
 
@@ -68,7 +69,7 @@ public class SecurityConfig {
                 .addFilterBefore((request, response, chain) -> {
                     // dev/test용 임시 인증 세팅
                     SecurityContextHolder.getContext().setAuthentication(
-                            new UsernamePasswordAuthenticationToken("uuuu", null, List.of())
+                            new UsernamePasswordAuthenticationToken("testuser", null, List.of())
                     );
                     chain.doFilter(request, response);
                 }, UsernamePasswordAuthenticationFilter.class)
