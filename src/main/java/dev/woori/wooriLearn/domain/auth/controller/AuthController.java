@@ -5,7 +5,6 @@ import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.auth.dto.LoginResDto;
-import dev.woori.wooriLearn.domain.auth.dto.RefreshResDto;
 import dev.woori.wooriLearn.domain.auth.service.AuthService;
 import dev.woori.wooriLearn.domain.auth.dto.LoginReqDto;
 import dev.woori.wooriLearn.domain.auth.dto.ChangePasswdReqDto;
@@ -43,8 +42,8 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<BaseResponse<?>> refresh(@CookieValue("refreshToken") String refreshToken) {
         TokenWithCookie tokenWithCookie = authService.refresh(refreshToken);
-        RefreshResDto refreshResDto = new RefreshResDto(tokenWithCookie.accessToken());
-        return ApiResponse.successWithCookie(SuccessCode.OK, refreshResDto, tokenWithCookie.cookie());
+        LoginResDto loginResDto = new LoginResDto(tokenWithCookie.accessToken(), tokenWithCookie.role());
+        return ApiResponse.successWithCookie(SuccessCode.OK, loginResDto, tokenWithCookie.cookie());
     }
 
     @PostMapping("/logout")
