@@ -13,4 +13,6 @@ public interface ScenarioCompletedRepository extends JpaRepository<ScenarioCompl
 
     @EntityGraph(attributePaths = "scenario")
     List<ScenarioCompleted> findByUser(Users user);
+
+    long countByUserId(Long userId);
 }
