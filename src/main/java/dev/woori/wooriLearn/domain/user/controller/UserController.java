@@ -6,6 +6,7 @@ import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.user.dto.ChangeNicknameReqDto;
 import dev.woori.wooriLearn.domain.user.dto.SignupReqDto;
 import dev.woori.wooriLearn.domain.user.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/signup")
-    public ResponseEntity<BaseResponse<?>> signup(@RequestBody SignupReqDto signupReqDto) {
+    public ResponseEntity<BaseResponse<?>> signup(@Valid @RequestBody SignupReqDto signupReqDto) {
         userService.signup(signupReqDto);
         return ApiResponse.success(SuccessCode.CREATED);
     }
