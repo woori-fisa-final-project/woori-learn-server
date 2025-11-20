@@ -6,15 +6,15 @@ import jakarta.validation.ConstraintValidatorContext;
 import java.util.regex.Pattern;
 
 public class UserIdValidator implements ConstraintValidator<ValidUserId, String> {
-    // 5~20자 / 영문자 시작 / 영문 하나 이상 / 숫자 하나 이상 / 영문&숫자 조합으로만
+    // 5~20자 / 영문자 소문자로 시작 / 영문과 숫자로만 구성 / 숫자 최소 1개 포함
     private static final String USER_ID_REGEX =
-            "^(?=.{5,20}$)(?=[a-z])(?=.*[A-Za-z])(?=.*\\d)[A-Za-z0-9]+$";
+            "^(?=[a-z])(?=.*\\d)[a-zA-Z0-9]{5,20}$";
 
-    private final Pattern pattern = Pattern.compile(USER_ID_REGEX);
+    private static final Pattern PATTERN = Pattern.compile(USER_ID_REGEX);
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
         if (value == null) return false;
-        return pattern.matcher(value).matches();
+        return PATTERN.matcher(value).matches();
     }
 }

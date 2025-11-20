@@ -10,12 +10,12 @@ public class PasswordValidator implements ConstraintValidator<ValidPassword, Str
     private static final String PASSWORD_REGEX =
             "^(?=.{8,20}$)(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-={}\\[\\]|\\\\:;\"'<>,.?/]).+$";
 
-    private final Pattern pattern = Pattern.compile(PASSWORD_REGEX);
+    private static final Pattern PATTERN = Pattern.compile(PASSWORD_REGEX);
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
         if (value == null) return false;
-        return pattern.matcher(value).matches();
+        return PATTERN.matcher(value).matches();
     }
 
 }
