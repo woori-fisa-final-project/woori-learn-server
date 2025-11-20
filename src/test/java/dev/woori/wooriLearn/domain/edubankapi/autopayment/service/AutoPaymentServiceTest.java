@@ -1501,12 +1501,4 @@ class AutoPaymentServiceTest {
         .extracting("errorCode")
         .isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
     }
-
-    @Test
-    @DisplayName("비밀번호 검증 실패 - 이미 등록 실패 테스트에서 다룸")
-    void validateAccountPassword_WrongPassword_ThrowsException() {
-        // 이 테스트는 "자동이체 등록 실패 - 비밀번호 불일치" 테스트에서 이미 검증됨
-        // 중복 테스트이므로 추가 커버리지를 위해 유지
-        assertThat(true).isTrue();
-    }
 }
