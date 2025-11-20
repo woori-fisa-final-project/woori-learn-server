@@ -1,16 +1,43 @@
 package dev.woori.wooriLearn.config.response;
 
 import dev.woori.wooriLearn.config.exception.ErrorCode;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 
+import java.time.Duration;
+
 public class ApiResponse {
-    public static <T> ResponseEntity<BaseResponse<?>> success(final SuccessCode successCode) {
+    public static ResponseEntity<BaseResponse<?>> success(final SuccessCode successCode) {
         return ResponseEntity.status(successCode.getStatus())
                 .body(BaseResponse.of(successCode));
     }
 
     public static <T> ResponseEntity<BaseResponse<?>> success(final SuccessCode successCode, final T data) {
         return ResponseEntity.status(successCode.getStatus())
+                .body(BaseResponse.of(successCode, data));
+    }
+
+    public static ResponseEntity<BaseResponse<?>> successWithCookie(final SuccessCode successCode, final ResponseCookie cookie) {
+        return ResponseEntity.status(successCode.getStatus())
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(BaseResponse.of(successCode));
+    }
+
+    public static <T> ResponseEntity<BaseResponse<?>> successWithCookie(final SuccessCode successCode, final T data, final ResponseCookie cookie) {
+        return ResponseEntity.status(successCode.getStatus())
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(BaseResponse.of(successCode, data));
+    }
+
+    public static <T> ResponseEntity<BaseResponse<?>> successWithCache(
+            final SuccessCode successCode,
+            final T data,
+            final Duration duration
+    ) {
+        return ResponseEntity.status(successCode.getStatus())
+                .cacheControl(CacheControl.maxAge(duration).cachePublic())
                 .body(BaseResponse.of(successCode, data));
     }
 
