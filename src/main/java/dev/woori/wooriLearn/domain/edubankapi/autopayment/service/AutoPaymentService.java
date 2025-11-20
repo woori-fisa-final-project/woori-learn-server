@@ -148,7 +148,8 @@ public class AutoPaymentService {
     /**
      * 지정일(designatedDate)을 정책에 따라 실제 날짜로 변환합니다.
      * 99일 경우, 시작일(startDate)의 월을 기준으로 말일을 계산합니다.
-     * * @param request 자동이체 등록 요청 DTO
+     *
+     * @param request 자동이체 등록 요청 DTO
      * @return 정책이 적용된 실제 지정일 (1 ~ 31)
      */
     private int resolveDesignatedDate(AutoPaymentCreateRequest request) {
