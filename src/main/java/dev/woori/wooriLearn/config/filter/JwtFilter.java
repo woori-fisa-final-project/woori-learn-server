@@ -50,6 +50,8 @@ public class JwtFilter extends OncePerRequestFilter {
                                 List.of(new SimpleGrantedAuthority(jwtInfo.role().name())));
 
                 SecurityContextHolder.getContext().setAuthentication(auth);
+                log.debug("Authentication after JWT filter = {}",
+                        SecurityContextHolder.getContext().getAuthentication());
             }
 
             filterChain.doFilter(request, response);
