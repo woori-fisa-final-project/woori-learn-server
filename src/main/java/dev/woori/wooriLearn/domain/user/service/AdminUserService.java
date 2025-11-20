@@ -1,6 +1,8 @@
 package dev.woori.wooriLearn.domain.user.service;
 
 import dev.woori.wooriLearn.config.response.PageResponse;
+import dev.woori.wooriLearn.domain.scenario.repository.ScenarioCompletedRepository;
+import dev.woori.wooriLearn.domain.scenario.repository.ScenarioRepository;
 import dev.woori.wooriLearn.domain.user.dto.AdminUserListResDto;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
@@ -22,6 +24,8 @@ import java.util.List;
 public class AdminUserService {
 
     private final UserRepository userRepository;
+    private final ScenarioRepository scenarioRepository;
+    private final ScenarioCompletedRepository scenarioCompletedRepository;
 
     @Transactional(readOnly = true)
     public PageResponse<AdminUserListResDto> getAdminUserList(int page, int size) {
@@ -36,9 +40,21 @@ public class AdminUserService {
                         .points(user.getPoints())
                         .role(user.getAuthUser().getRole())
                         .createdAt(user.getCreatedAt())
+                        .progressRate(getOverallProgress(user.getId()))
                         .build())
                 .toList();
 
         return PageResponse.of(usersPage, content);
+    }
+
+    private double getOverallProgress(Long userId){
+        long totalScenarioCount = scenarioRepository.count();
+        long completedScenarioCount = scenarioCompletedRepository.countByUserId(userId);
+
+        if (totalScenarioCount == 0) {
+            return 0; // 시나리오 없으면 0%
+        }
+
+        return (completedScenarioCount * 100.0) / totalScenarioCount;
     }
 }

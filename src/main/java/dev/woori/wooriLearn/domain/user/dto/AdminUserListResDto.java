@@ -12,6 +12,7 @@ public record AdminUserListResDto(
         String nickname,
         int points,
         Role role,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        double progressRate
 ) {
 }
