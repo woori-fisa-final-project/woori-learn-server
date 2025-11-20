@@ -179,7 +179,8 @@ public class AutoPaymentService {
     @Caching(evict = {
             @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':ACTIVE'"),
             @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':CANCELLED'"),
-            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':ALL'")
+            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':ALL'"),
+            @CacheEvict(value = "autoPaymentDetail", key = "#autoPaymentId")
     })
     public AutoPayment cancelAutoPayment(Long autoPaymentId, Long educationalAccountId, String currentUserId) {
         log.info("자동이체 해지 시작 - 자동이체ID: {}, 교육용계좌ID: {}, 사용자ID: {}",
@@ -257,7 +258,8 @@ public class AutoPaymentService {
      * @return 검증된 EducationalAccount
      */
     private EducationalAccount findAndValidateAccountWithOwnership(Long accountId, String password, String currentUserId) {
-        EducationalAccount account = edubankapiAccountRepository.findById(accountId)
+        // N+1 문제 방지: User 정보를 JOIN FETCH로 한 번에 조회
+        EducationalAccount account = edubankapiAccountRepository.findByIdWithUser(accountId)
                 .orElseThrow(() -> {
                     log.error("교육용 계좌 조회 실패 - ID: {}", accountId);
                     return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
@@ -322,7 +324,8 @@ public class AutoPaymentService {
      * @param currentUserId 현재 로그인한 사용자 ID (username)
      */
     private void validateAccountOwnership(Long accountId, String currentUserId) {
-        EducationalAccount account = edubankapiAccountRepository.findById(accountId)
+        // N+1 문제 방지: User 정보를 JOIN FETCH로 한 번에 조회
+        EducationalAccount account = edubankapiAccountRepository.findByIdWithUser(accountId)
                 .orElseThrow(() -> {
                     log.error("교육용 계좌 조회 실패 - 계좌ID: {}", accountId);
                     return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
