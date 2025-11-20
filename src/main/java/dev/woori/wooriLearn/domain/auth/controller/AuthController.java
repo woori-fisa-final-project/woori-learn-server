@@ -29,7 +29,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<BaseResponse<?>> login(@Valid @RequestBody LoginReqDto loginReqDto) {
         TokenWithCookie tokenWithCookie = authService.login(loginReqDto);
-        LoginResDto loginResDto = new LoginResDto(tokenWithCookie.accessToken());
+        LoginResDto loginResDto = new LoginResDto(tokenWithCookie.accessToken(), tokenWithCookie.role());
         return ApiResponse.successWithCookie(SuccessCode.OK, loginResDto, tokenWithCookie.cookie());
     }
 
@@ -42,7 +42,7 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<BaseResponse<?>> refresh(@CookieValue("refreshToken") String refreshToken) {
         TokenWithCookie tokenWithCookie = authService.refresh(refreshToken);
-        LoginResDto loginResDto = new LoginResDto(tokenWithCookie.accessToken());
+        LoginResDto loginResDto = new LoginResDto(tokenWithCookie.accessToken(), tokenWithCookie.role());
         return ApiResponse.successWithCookie(SuccessCode.OK, loginResDto, tokenWithCookie.cookie());
     }
 
