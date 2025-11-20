@@ -28,8 +28,13 @@ public class EducationalAccount {
     private Long id;
 
     // 계좌번호
-    @Column(name = "account_number", nullable = false, length = 20)
+    @Column(name = "account_number", nullable = false, length = 20, unique = true)
     private String accountNumber;
+
+    // 계좌 종류
+    @Column(name = "account_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private AccountType accountType;
 
     // 현재 잔액
     @Column(nullable = false)
@@ -58,6 +63,30 @@ public class EducationalAccount {
      */
     @OneToMany(mappedBy = "account", fetch = FetchType.LAZY)
     private List<TransactionHistory> transactionHistories;
+
+    // 신규 계좌 생성용 메서드
+    public static EducationalAccount create(
+            AccountType accountType,
+            String accountNumber,
+            Integer balance,
+            String accountPassword,
+            String accountName,
+            Users user
+    ) {
+        return EducationalAccount.builder()
+                .accountType(accountType)
+                .accountNumber(accountNumber)
+                .balance(balance)
+                .accountPassword(accountPassword)
+                .accountName(accountName)
+                .user(user)
+                .build();
+    }
+
+    // 계좌명 변경용 메서드
+    public void updateAccountName(String newName) {
+        this.accountName = newName;
+    }
 
     // 행위 메서드 추가
     public void withdraw(int amount) {
