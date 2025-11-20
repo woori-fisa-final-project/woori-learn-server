@@ -284,18 +284,6 @@ public class AutoPaymentService {
         return account;
     }
 
-    private EducationalAccount findAndValidateAccount(Long accountId, String password) {
-        EducationalAccount account = edubankapiAccountRepository.findById(accountId)
-                .orElseThrow(() -> {
-                    log.error("교육용 계좌 조회 실패 - ID: {}", accountId);
-                    return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
-                            "교육용 계좌를 찾을 수 없습니다.");
-                });
-
-        validateAccountPassword(account, password);
-        return account;
-    }
-
     private void validateAccountPassword(EducationalAccount account, String inputPassword) {
 
         if (!passwordEncoder.matches(inputPassword, account.getAccountPassword())) {
