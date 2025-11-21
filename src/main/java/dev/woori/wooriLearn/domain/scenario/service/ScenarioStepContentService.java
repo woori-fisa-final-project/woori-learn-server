@@ -117,7 +117,7 @@ public class ScenarioStepContentService {
         }
     }
 
-    /** CHOICE 타입이 아닌 그 외 타입들 content 내부에 choices 배열이 존재하는지 여부 */
+    /** 스텝 content 내부에 choices 배열이 존재하는지 여부 */
     public boolean hasChoices(ScenarioStep step) {
         try {
             JsonNode root = objectMapper.readTree(step.getContent());

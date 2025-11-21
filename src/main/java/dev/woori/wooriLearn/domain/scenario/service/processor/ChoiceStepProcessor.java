@@ -93,10 +93,9 @@ public class ChoiceStepProcessor implements StepProcessor {
         }
 
         // 배드 브랜치 안이면 진행률 동결, 아닌 경우에만 정상 증가
-        boolean freeze = inBadBranch;
-        service.updateProgressAndSave(progress, next, scenario, freeze);
+        service.updateProgressAndSave(progress, next, scenario, inBadBranch);
 
-        AdvanceStatus status = freeze ? AdvanceStatus.ADVANCED_FROZEN : AdvanceStatus.ADVANCED;
+        AdvanceStatus status = inBadBranch ? AdvanceStatus.ADVANCED_FROZEN : AdvanceStatus.ADVANCED;
         return new AdvanceResDto(status, service.mapStep(next), null);
     }
 }
