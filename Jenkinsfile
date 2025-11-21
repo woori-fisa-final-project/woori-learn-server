@@ -48,21 +48,26 @@ pipeline {
         stage('Deploy to AWS') {
             steps {
                 sshagent(['aws-ssh-key']) {
-                    withCredentials([usernamePassword(credentialsId: 'db-credential',
-                                                     usernameVariable: 'DB_USER',
-                                                     passwordVariable: 'DB_PASS')]) {
 
-                        sh '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} << EOF
+                    withCredentials([
+                        usernamePassword(credentialsId: 'db-credential',
+                                         usernameVariable: 'DB_USER',
+                                         passwordVariable: 'DB_PASS'),
+                        string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
+                    ]) {
+
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} << 'EOF'
                             docker pull ${DOCKER_IMAGE}
                             docker rm -f woori_backend || true
                             docker run -d --name woori_backend -p 8080:8080 \
                                 -e SPRING_DATASOURCE_URL="${DB_URL}" \
                                 -e SPRING_DATASOURCE_USERNAME="${DB_USER}" \
                                 -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
+                                -e spring.jwt.secret="${JWT_SECRET}" \
                                 ${DOCKER_IMAGE}
                         EOF
-                        '''
+                        """
                     }
                 }
             }
