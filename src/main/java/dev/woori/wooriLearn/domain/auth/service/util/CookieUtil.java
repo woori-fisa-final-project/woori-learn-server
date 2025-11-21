@@ -11,9 +11,9 @@ public final class CookieUtil {
     public static ResponseCookie createRefreshTokenCookie(String refreshToken, long maxAgeSeconds) {
         return ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/auth/refresh")
+                .secure(false) // 임시로 http 연결 사용
+                .sameSite("Lax")
+                .path("/")
                 .maxAge(maxAgeSeconds)
                 .build();
     }
@@ -21,9 +21,9 @@ public final class CookieUtil {
     public static ResponseCookie deleteRefreshTokenCookie() {
         return ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/auth/refresh")
+                .secure(false) // 임시로 http 연결 사용
+                .sameSite("Lax")
+                .path("/")
                 .maxAge(0)
                 .build();
     }

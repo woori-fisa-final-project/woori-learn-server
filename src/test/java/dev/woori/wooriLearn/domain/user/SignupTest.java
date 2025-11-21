@@ -9,6 +9,7 @@ import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiAccountRepository;
 import dev.woori.wooriLearn.domain.user.dto.SignupReqDto;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
@@ -29,6 +30,7 @@ public class SignupTest {
     private PasswordEncoder passwordEncoder;
     private UserService userService;
     private PointsHistoryRepository pointsHistoryRepository;
+    private EdubankapiAccountRepository eduAccountRepository;
 
     @BeforeEach
     void setUp() {
@@ -36,7 +38,8 @@ public class SignupTest {
         authUserRepository = mock(AuthUserPort.class);
         passwordEncoder = mock(PasswordEncoder.class);
         pointsHistoryRepository = mock(PointsHistoryRepository.class);
-        userService = new UserService(userRepository, authUserRepository, passwordEncoder, pointsHistoryRepository);
+        eduAccountRepository = mock(EdubankapiAccountRepository.class);
+        userService = new UserService(userRepository, authUserRepository, passwordEncoder, pointsHistoryRepository, eduAccountRepository);
     }
 
     @Test

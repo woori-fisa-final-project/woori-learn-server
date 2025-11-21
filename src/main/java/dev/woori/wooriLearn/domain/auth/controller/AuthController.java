@@ -10,6 +10,7 @@ import dev.woori.wooriLearn.domain.auth.dto.LoginReqDto;
 import dev.woori.wooriLearn.domain.auth.dto.ChangePasswdReqDto;
 import dev.woori.wooriLearn.domain.auth.service.TokenWithCookie;
 import dev.woori.wooriLearn.domain.auth.service.util.CookieUtil;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -26,9 +27,9 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<BaseResponse<?>> login(@RequestBody LoginReqDto loginReqDto) {
+    public ResponseEntity<BaseResponse<?>> login(@Valid @RequestBody LoginReqDto loginReqDto) {
         TokenWithCookie tokenWithCookie = authService.login(loginReqDto);
-        LoginResDto loginResDto = new LoginResDto(tokenWithCookie.accessToken());
+        LoginResDto loginResDto = new LoginResDto(tokenWithCookie.accessToken(), tokenWithCookie.role());
         return ApiResponse.successWithCookie(SuccessCode.OK, loginResDto, tokenWithCookie.cookie());
     }
 
@@ -41,7 +42,7 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<BaseResponse<?>> refresh(@CookieValue("refreshToken") String refreshToken) {
         TokenWithCookie tokenWithCookie = authService.refresh(refreshToken);
-        LoginResDto loginResDto = new LoginResDto(tokenWithCookie.accessToken());
+        LoginResDto loginResDto = new LoginResDto(tokenWithCookie.accessToken(), tokenWithCookie.role());
         return ApiResponse.successWithCookie(SuccessCode.OK, loginResDto, tokenWithCookie.cookie());
     }
 
@@ -53,7 +54,7 @@ public class AuthController {
 
     @PutMapping("/password")
     public ResponseEntity<BaseResponse<?>> changePassword(Principal principal,
-                                                          @RequestBody ChangePasswdReqDto request) {
+                                                          @Valid @RequestBody ChangePasswdReqDto request) {
         authService.changePassword(principal.getName(), request);
         return ApiResponse.success(SuccessCode.OK);
     }
