@@ -14,6 +14,7 @@ import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
 import dev.woori.wooriLearn.domain.scenario.entity.Quiz;
 import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.model.ChoiceInfo;
+import dev.woori.wooriLearn.domain.scenario.service.processor.ContentInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -99,34 +100,27 @@ public class ScenarioStepContentService {
         }
     }
 
-    /** 각 StepType 에 맞는 DTO로 content 파싱 후 meta 추출 */
-    public Optional<StepMeta> getMeta(ScenarioStep step) {
+    public ContentInfo parseContentInfo(ScenarioStep step) {
         try {
             JsonNode root = objectMapper.readTree(step.getContent());
+
+            // meta 추출
+            StepMeta meta = null;
             JsonNode metaNode = root.get("meta");
-            if (metaNode == null || metaNode.isNull()) {
-                return Optional.empty();
+            if (metaNode != null && !metaNode.isNull()) {
+                meta = objectMapper.treeToValue(metaNode, StepMeta.class);
             }
-            StepMeta meta = objectMapper.treeToValue(metaNode, StepMeta.class);
-            return Optional.ofNullable(meta);
+            Optional<StepMeta> metaOpt = Optional.ofNullable(meta);
+
+            // choices 존재 여부 확인
+            JsonNode choicesNode = root.get("choices");
+            boolean hasChoices = choicesNode != null && choicesNode.isArray() && choicesNode.size() > 0;
+
+            return new ContentInfo(metaOpt, hasChoices);
         } catch (JsonProcessingException e) {
             throw new CommonException(
                     ErrorCode.INTERNAL_SERVER_ERROR,
                     "스텝 content JSON 파싱 실패. stepId=" + step.getId()
-            );
-        }
-    }
-
-    /** 스텝 content 내부에 choices 배열이 존재하는지 여부 */
-    public boolean hasChoices(ScenarioStep step) {
-        try {
-            JsonNode root = objectMapper.readTree(step.getContent());
-            JsonNode choicesNode = root.get("choices");
-            return choicesNode != null && choicesNode.isArray() && choicesNode.size() > 0;
-        } catch (JsonProcessingException e) {
-            throw new CommonException(
-                    ErrorCode.INTERNAL_SERVER_ERROR,
-                    "스텝 content JSON 파싱 실패(choices 확인). stepId=" + step.getId()
             );
         }
     }
