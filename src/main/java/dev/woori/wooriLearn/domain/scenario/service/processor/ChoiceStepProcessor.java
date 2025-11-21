@@ -37,6 +37,8 @@ public class ChoiceStepProcessor implements StepProcessor {
         ScenarioProgress progress = ctx.progress();
         Integer answer = ctx.answer();
 
+        boolean inBadBranch = ctx.badBranch() || ctx.badEnding();
+
         if (answer == null) {
             // 1) 아직 선택을 하지 않은 경우 -> 선택 필요 상태 반환
             service.updateProgressAndSave(progress, current, scenario, true);
@@ -90,8 +92,11 @@ public class ChoiceStepProcessor implements StepProcessor {
             );
         }
 
-        // 정루트에서는 진행률 정상적으로 계산
-        service.updateProgressAndSave(progress, next, scenario, false);
-        return new AdvanceResDto(AdvanceStatus.ADVANCED, service.mapStep(next), null);
+        // 배드 브랜치 안이면 진행률 동결, 아닌 경우에만 정상 증가
+        boolean freeze = inBadBranch;
+        service.updateProgressAndSave(progress, next, scenario, freeze);
+
+        AdvanceStatus status = freeze ? AdvanceStatus.ADVANCED_FROZEN : AdvanceStatus.ADVANCED;
+        return new AdvanceResDto(status, service.mapStep(next), null);
     }
 }
