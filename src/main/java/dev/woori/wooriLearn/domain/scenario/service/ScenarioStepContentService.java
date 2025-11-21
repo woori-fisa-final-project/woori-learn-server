@@ -100,16 +100,21 @@ public class ScenarioStepContentService {
         }
     }
 
+    /**
+     * 스텝 content(JSON)를 파싱하여 메타 정보와 choices 존재 여부를 포함하는 ContentInfo를 반환
+     * 호율성을 위해 JSON 파싱은 한 번만 진행
+     * @param step  파싱할 시나리오 스텝 엔티티
+     * @return 파싱된 메타 정보(Optional)와 choices 존재 여부를 담은 ContentInfo 객체
+     */
     public ContentInfo parseContentInfo(ScenarioStep step) {
         try {
             JsonNode root = objectMapper.readTree(step.getContent());
 
             // meta 추출
-            StepMeta meta = null;
             JsonNode metaNode = root.get("meta");
-            if (metaNode != null && !metaNode.isNull()) {
-                meta = objectMapper.treeToValue(metaNode, StepMeta.class);
-            }
+            StepMeta meta = (metaNode != null && !metaNode.isNull())
+                    ? objectMapper.treeToValue(metaNode, StepMeta.class)
+                    : null;
             Optional<StepMeta> metaOpt = Optional.ofNullable(meta);
 
             // choices 존재 여부 확인
