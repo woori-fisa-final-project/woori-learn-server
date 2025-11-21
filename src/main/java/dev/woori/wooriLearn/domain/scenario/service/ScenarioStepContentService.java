@@ -116,4 +116,18 @@ public class ScenarioStepContentService {
             );
         }
     }
+
+    /** CHOICE 타입이 아닌 그 외 타입들 content 내부에 choices 배열이 존재하는지 여부 */
+    public boolean hasChoices(ScenarioStep step) {
+        try {
+            JsonNode root = objectMapper.readTree(step.getContent());
+            JsonNode choicesNode = root.get("choices");
+            return choicesNode != null && choicesNode.isArray() && choicesNode.size() > 0;
+        } catch (JsonProcessingException e) {
+            throw new CommonException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "스텝 content JSON 파싱 실패(choices 확인). stepId=" + step.getId()
+            );
+        }
+    }
 }

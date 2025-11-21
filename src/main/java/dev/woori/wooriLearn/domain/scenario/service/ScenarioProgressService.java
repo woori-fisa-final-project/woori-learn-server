@@ -108,7 +108,7 @@ public class ScenarioProgressService {
         Long startStepId = stepRepository.findStartStepOrFail(scenarioId).getId();
 
         // Processor에 넘길 Context 구성
-        StepContext ctx = new StepContext(user, scenario, current, answer, byId, progress, runtime.badBranch(), runtime.badEnding(), startStepId);
+        StepContext ctx = new StepContext(user, scenario, current, answer, byId, progress, runtime.badBranch(), runtime.badEnding(), startStepId, runtime.hasChoices());
 
         StepProcessor processor = stepProcessorResolver.resolve(ctx);
         return processor.process(ctx, this);
@@ -331,7 +331,8 @@ public class ScenarioProgressService {
             ScenarioProgress progress,
             Optional<StepMeta> metaOpt,
             boolean badBranch,
-            boolean badEnding
+            boolean badEnding,
+            boolean hasChoices
     ) {
         boolean isBad() {
             return badBranch || badEnding;
@@ -372,6 +373,8 @@ public class ScenarioProgressService {
                 .map(meta -> Boolean.TRUE.equals(meta.badEnding()))
                 .orElse(false);
 
-        return new StepRuntime(scenario, byId, current, progress, metaOpt, badBranch, badEnding);
+        boolean hasChoices = contentService.hasChoices(current);
+
+        return new StepRuntime(scenario, byId, current, progress, metaOpt, badBranch, badEnding, hasChoices);
     }
 }

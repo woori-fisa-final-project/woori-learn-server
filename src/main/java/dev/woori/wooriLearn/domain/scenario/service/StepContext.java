@@ -18,6 +18,7 @@ import java.util.Map;
  * @param badBranch     현재 스텝이 배드 브랜치에 속하는지 여부
  * @param badEnding     현재 스텝이 배드 엔딩 스텝인지 여부
  * @param startStepId   시나리오의 시작 스텝 ID
+ * @param hasChoices    현재 스텝의 content 안에 choices 배열이 존재하는지 여부
  */
 public record StepContext(
         Users user,
@@ -28,7 +29,8 @@ public record StepContext(
         ScenarioProgress progress,
         boolean badBranch,
         boolean badEnding,
-        Long startStepId
+        Long startStepId,
+        boolean hasChoices
 ) {
     public ScenarioStep startStep() {
         return byId.get(startStepId);
