@@ -18,18 +18,16 @@ pipeline {
 
         stage('Gradle Build') {
             steps {
-                sh """
-		chmod +x gradlew
+                sh '''
+                chmod +x gradlew
                 ./gradlew clean build -x test
-                """
+                '''
             }
         }
 
         stage('Docker Build') {
             steps {
-                sh """
-                docker build -t ${DOCKER_IMAGE} .
-                """
+                sh "docker build -t ${DOCKER_IMAGE} ."
             }
         }
 
@@ -38,10 +36,11 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-cred',
                                                  usernameVariable: 'DOCKERHUB_USR',
                                                  passwordVariable: 'DOCKERHUB_PSW')]) {
-                    sh """
+
+                    sh '''
                     echo "${DOCKERHUB_PSW}" | docker login -u "${DOCKERHUB_USR}" --password-stdin
                     docker push ${DOCKER_IMAGE}
-                    """
+                    '''
                 }
             }
         }
@@ -52,17 +51,18 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: 'db-credential',
                                                      usernameVariable: 'DB_USER',
                                                      passwordVariable: 'DB_PASS')]) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} '
-                            docker pull ${DOCKER_IMAGE} &&
-                            docker rm -f woori_backend || true &&
+
+                        sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} << EOF
+                            docker pull ${DOCKER_IMAGE}
+                            docker rm -f woori_backend || true
                             docker run -d --name woori_backend -p 8080:8080 \
                                 -e SPRING_DATASOURCE_URL="${DB_URL}" \
                                 -e SPRING_DATASOURCE_USERNAME="${DB_USER}" \
                                 -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
                                 ${DOCKER_IMAGE}
-                        '
-                        """
+                        EOF
+                        '''
                     }
                 }
             }
