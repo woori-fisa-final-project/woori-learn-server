@@ -14,6 +14,7 @@ import dev.woori.wooriLearn.domain.scenario.repository.ScenarioCompletedReposito
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioProgressRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioStepRepository;
+import dev.woori.wooriLearn.domain.scenario.service.processor.ContentInfo;
 import dev.woori.wooriLearn.domain.scenario.service.processor.StepProcessor;
 import dev.woori.wooriLearn.domain.scenario.service.processor.StepProcessorResolver;
 import dev.woori.wooriLearn.domain.user.entity.Users;
@@ -365,15 +366,16 @@ public class ScenarioProgressService {
                         .build());
 
         // 5) 메타 정보 한 번만 파싱하여 배드 브랜치/배드 엔딩 여부 확인
-        Optional<StepMeta> metaOpt = contentService.getMeta(current);
+        ContentInfo info = contentService.parseContentInfo(current);
+        Optional<StepMeta> metaOpt = info.meta();
+        boolean hasChoices = info.hasChoices();
+
         boolean badBranch = metaOpt
                 .map(meta -> "bad".equalsIgnoreCase(meta.branch()))
                 .orElse(false);
         boolean badEnding = metaOpt
                 .map(meta -> Boolean.TRUE.equals(meta.badEnding()))
                 .orElse(false);
-
-        boolean hasChoices = contentService.hasChoices(current);
 
         return new StepRuntime(scenario, byId, current, progress, metaOpt, badBranch, badEnding, hasChoices);
     }
