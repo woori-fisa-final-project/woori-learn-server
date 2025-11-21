@@ -380,7 +380,7 @@ public class ScenarioProgressService {
         boolean hasQuiz = current.getQuiz() != null;
         if (hasChoices && hasQuiz) {
             throw new CommonException(
-                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    ErrorCode.CONFLICT,
                     "시나리오 정의 오류: 하나의 스텝에 quiz와 choices가 동시에 존재할 수 없습니다. " +
                             "scenarioId=" + scenarioId + ", stepId=" + nowStepId
             );
