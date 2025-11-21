@@ -2,14 +2,10 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB = credentials('dockerhub-cred')
         AWS_HOST = "43.200.2.107"
         DOCKER_IMAGE = "bae1234/woori-learn-server:latest"
-        
+
         DB_URL = "jdbc:mysql://us.loclx.io:49210/wooriLearn?serverTimezone=Asia/Seoul&characterEncoding=UTF-8"
-        
-        // DB Credentials
-        DB_CRED = credentials('db-credential')  // username + password 전체 읽힘
     }
 
     stages {
@@ -38,27 +34,35 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-                sh """
-                echo "${DOCKERHUB_PSW}" | docker login -u "${DOCKERHUB_USR}" --password-stdin
-                docker push ${DOCKER_IMAGE}
-                """
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-cred',
+                                                 usernameVariable: 'DOCKERHUB_USR',
+                                                 passwordVariable: 'DOCKERHUB_PSW')]) {
+                    sh """
+                    echo "${DOCKERHUB_PSW}" | docker login -u "${DOCKERHUB_USR}" --password-stdin
+                    docker push ${DOCKER_IMAGE}
+                    """
+                }
             }
         }
 
         stage('Deploy to AWS') {
             steps {
                 sshagent(['aws-ssh-key']) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} '
-                        docker pull ${DOCKER_IMAGE} &&
-                        docker rm -f woori_backend || true &&
-                        docker run -d --name woori_backend -p 8080:8080 \
-                            -e SPRING_DATASOURCE_URL="${DB_URL}" \
-                            -e SPRING_DATASOURCE_USERNAME="${DB_CRED_USR}" \
-                            -e SPRING_DATASOURCE_PASSWORD="${DB_CRED_PSW}" \
-                            ${DOCKER_IMAGE}
-                    '
-                    """
+                    withCredentials([usernamePassword(credentialsId: 'db-credential',
+                                                     usernameVariable: 'DB_USER',
+                                                     passwordVariable: 'DB_PASS')]) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} '
+                            docker pull ${DOCKER_IMAGE} &&
+                            docker rm -f woori_backend || true &&
+                            docker run -d --name woori_backend -p 8080:8080 \
+                                -e SPRING_DATASOURCE_URL="${DB_URL}" \
+                                -e SPRING_DATASOURCE_USERNAME="${DB_USER}" \
+                                -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
+                                ${DOCKER_IMAGE}
+                        '
+                        """
+                    }
                 }
             }
         }
