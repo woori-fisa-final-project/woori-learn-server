@@ -4,10 +4,13 @@ package dev.woori.wooriLearn.domain.auth.controller;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
-import dev.woori.wooriLearn.domain.auth.dto.RefreshReqDto;
+import dev.woori.wooriLearn.domain.auth.dto.LoginResDto;
 import dev.woori.wooriLearn.domain.auth.service.AuthService;
 import dev.woori.wooriLearn.domain.auth.dto.LoginReqDto;
 import dev.woori.wooriLearn.domain.auth.dto.ChangePasswdReqDto;
+import dev.woori.wooriLearn.domain.auth.service.TokenWithCookie;
+import dev.woori.wooriLearn.domain.auth.service.util.CookieUtil;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -24,8 +27,10 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<BaseResponse<?>> login(@RequestBody LoginReqDto loginReqDto) {
-        return ApiResponse.success(SuccessCode.OK, authService.login(loginReqDto));
+    public ResponseEntity<BaseResponse<?>> login(@Valid @RequestBody LoginReqDto loginReqDto) {
+        TokenWithCookie tokenWithCookie = authService.login(loginReqDto);
+        LoginResDto loginResDto = new LoginResDto(tokenWithCookie.accessToken(), tokenWithCookie.role());
+        return ApiResponse.successWithCookie(SuccessCode.OK, loginResDto, tokenWithCookie.cookie());
     }
 
     @GetMapping("/verify")
@@ -35,18 +40,21 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<BaseResponse<?>> refresh(@RequestBody RefreshReqDto refreshToken) {
-        return ApiResponse.success(SuccessCode.OK, authService.refresh(refreshToken));
+    public ResponseEntity<BaseResponse<?>> refresh(@CookieValue("refreshToken") String refreshToken) {
+        TokenWithCookie tokenWithCookie = authService.refresh(refreshToken);
+        LoginResDto loginResDto = new LoginResDto(tokenWithCookie.accessToken(), tokenWithCookie.role());
+        return ApiResponse.successWithCookie(SuccessCode.OK, loginResDto, tokenWithCookie.cookie());
     }
 
     @PostMapping("/logout")
     public ResponseEntity<BaseResponse<?>> logout(Principal principal) {
-        return ApiResponse.success(SuccessCode.OK, authService.logout(principal.getName()));
+        authService.logout(principal.getName());
+        return ApiResponse.successWithCookie(SuccessCode.OK, CookieUtil.deleteRefreshTokenCookie());
     }
 
     @PutMapping("/password")
     public ResponseEntity<BaseResponse<?>> changePassword(Principal principal,
-                                                          @RequestBody ChangePasswdReqDto request) {
+                                                          @Valid @RequestBody ChangePasswdReqDto request) {
         authService.changePassword(principal.getName(), request);
         return ApiResponse.success(SuccessCode.OK);
     }

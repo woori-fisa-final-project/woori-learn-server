@@ -2,6 +2,8 @@ package dev.woori.wooriLearn.domain.scenario.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.account.dto.PointsDepositRequestDto;
+import dev.woori.wooriLearn.domain.account.service.PointsDepositService;
 import dev.woori.wooriLearn.domain.scenario.content.StepMeta;
 import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
@@ -47,6 +49,7 @@ public class ScenarioProgressService {
     private final ScenarioStepRepository stepRepository;
     private final ScenarioProgressRepository progressRepository;
     private final ScenarioCompletedRepository completedRepository;
+    private final PointsDepositService pointsDepositService;
 
     // 스텝 타입/상태에 따라 적절한 StepProcessor를 찾아주는 Resolver
     private final StepProcessorResolver stepProcessorResolver;
@@ -235,15 +238,17 @@ public class ScenarioProgressService {
     }
 
     /** 동일 유저/시나리오에 대해 완료 이력을 1회만 저장하도록 보장 */
-    void ensureCompletedOnce(Users user, Scenario scenario) {
-        if (!completedRepository.existsByUserAndScenario(user, scenario)) {
-            completedRepository.save(
-                    ScenarioCompleted.builder()
-                            .user(user)
-                            .scenario(scenario)
-                            .build()
-            );
+    boolean ensureCompletedOnce(Users user, Scenario scenario) {
+        if (completedRepository.existsByUserAndScenario(user, scenario)) {
+            return false;
         }
+        completedRepository.save(
+                ScenarioCompleted.builder()
+                        .user(user)
+                        .scenario(scenario)
+                        .build()
+        );
+        return true;
     }
 
     /** 외부 Processor가 진행 엔티티 저장만 필요할 때 사용 */
@@ -256,7 +261,24 @@ public class ScenarioProgressService {
         ScenarioProgress progress = ctx.progress();
 
         // 1) 완료 이력 한 번만 저장
-        ensureCompletedOnce(ctx.user(), scenario);
+        boolean newlyCompleted = ensureCompletedOnce(ctx.user(), scenario);
+        if (newlyCompleted) {
+            // 개별 시나리오 완료 보상 1,000P
+            pointsDepositService.depositPoints(
+                    ctx.user().getUserId(),
+                    new PointsDepositRequestDto(1000, "시나리오 완료 보상")
+            );
+
+            // 전체 시나리오 완주 보상 10,000P (모든 시나리오 완료 시 1회)
+            long totalScenarioCount = scenarioRepository.count();
+            int userCompletedCount = completedRepository.findByUser(ctx.user()).size();
+            if (totalScenarioCount > 0 && userCompletedCount == totalScenarioCount) {
+                pointsDepositService.depositPoints(
+                        ctx.user().getUserId(),
+                        new PointsDepositRequestDto(10000, "전체 시나리오 완주 보상")
+                );
+            }
+        }
 
         // 2) 진행률 100%로 올리되, 이전 값보다 뒤로 가지 않도록 보장
         double rate = monotonicRate(progress, 100.0);

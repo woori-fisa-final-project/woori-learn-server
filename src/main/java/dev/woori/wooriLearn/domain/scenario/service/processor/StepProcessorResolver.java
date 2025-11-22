@@ -30,14 +30,14 @@ public class StepProcessorResolver {
     public StepProcessor resolve(StepContext ctx) {
         ScenarioStep step = ctx.current();
 
-        // 1) CHOICE 스텝
-        if (step.getType() == StepType.CHOICE) {
-            return choiceStepProcessor;
-        }
-
-        // 2) 배드 브랜치 / 배드 엔딩
+        // 1) 배드 브랜치 / 배드 엔딩
         if (ctx.badBranch() || ctx.badEnding()) {
             return badBranchStepProcessor;
+        }
+
+        // 2) CHOICE 스텝
+        if (step.getType() == StepType.CHOICE) {
+            return choiceStepProcessor;
         }
 
         // 3) 퀴즈 게이트
