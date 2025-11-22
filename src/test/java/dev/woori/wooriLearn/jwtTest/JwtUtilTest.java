@@ -4,6 +4,7 @@ import dev.woori.wooriLearn.domain.auth.jwt.JwtIssuer;
 import dev.woori.wooriLearn.config.jwt.JwtValidator;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -26,10 +27,10 @@ public class JwtUtilTest {
 
     @BeforeEach
     void setUp() {
-        jwtIssuer = new JwtIssuer(secretKey);
+        long refreshTokenExpiration = 604800000;
+        long accessTokenExpiration = 3600000;
+        jwtIssuer = new JwtIssuer(secretKey, accessTokenExpiration, refreshTokenExpiration);
         jwtValidator = new JwtValidator(secretKey);
-        ReflectionTestUtils.setField(jwtIssuer, "accessTokenExpiration", 3600000);
-        ReflectionTestUtils.setField(jwtIssuer, "refreshTokenExpiration", 604800000);
     }
 
     @Test
