@@ -58,5 +58,5 @@ public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Lo
             Pageable pageable
     );
 
-    List<PointsHistory> findByUserId(Long UserId);
+    List<PointsHistory> findByUserId(Long userId);
 }
