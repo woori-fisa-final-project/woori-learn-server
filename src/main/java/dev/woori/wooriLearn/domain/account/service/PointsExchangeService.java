@@ -36,7 +36,7 @@ public class PointsExchangeService {
 
     @Transactional
     public PointsExchangeResponseDto requestExchange(String username, PointsExchangeRequestDto dto) {
-        final String actualUsername = env.acceptsProfiles("dev") ? "testuser" : username;
+        final String actualUsername = env.acceptsProfiles("dev") ? "dev-user" : username;
 
         Users user = userRepository.findByUserIdForUpdate(actualUsername)
                 .orElseThrow(() -> new CommonException(
@@ -132,4 +132,3 @@ public class PointsExchangeService {
         }
     }
 }
-

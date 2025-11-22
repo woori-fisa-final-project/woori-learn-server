@@ -13,7 +13,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/points/exchange")
+@RequestMapping({"/points/exchange", "/api/points/exchange"})
 @RequiredArgsConstructor
 public class PointsExchangeController {
 
@@ -28,4 +28,3 @@ public class PointsExchangeController {
         return ApiResponse.success(SuccessCode.CREATED, pointsExchangeService.requestExchange(username, dto));
     }
 }
-

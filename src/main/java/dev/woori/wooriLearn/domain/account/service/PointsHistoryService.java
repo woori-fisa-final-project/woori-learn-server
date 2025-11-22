@@ -61,7 +61,7 @@ public class PointsHistoryService {
         if (username == null || username.isEmpty()) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "userId or authenticated username is required");
         }
-        String actualUsername = env.acceptsProfiles("dev") ? "testuser" : username;
+        String actualUsername = env.acceptsProfiles("dev") ? "dev-user" : username;
         return userRepository.findByUserId(actualUsername)
                 .map(Users::getId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + actualUsername));

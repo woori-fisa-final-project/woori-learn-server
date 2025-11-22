@@ -6,11 +6,13 @@ package dev.woori.wooriLearn.domain.scenario.model;
  * OVERLAY - 오버레이에 캐릭터
  * MODAL - 오버레이에 모달
  * IMAGE - 이미지 화면 (핸드폰 문자 화면, '6개월 후'화면, 포인트 적립 화면)
+ * PRACTICE - 실습 화면
  */
 public enum StepType {
     DIALOG,
     CHOICE,
     OVERLAY,
     MODAL,
-    IMAGE
+    IMAGE,
+    PRACTICE
 }

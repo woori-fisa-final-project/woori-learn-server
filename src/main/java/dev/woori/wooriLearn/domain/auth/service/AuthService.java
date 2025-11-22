@@ -12,6 +12,7 @@ import dev.woori.wooriLearn.domain.auth.entity.RefreshToken;
 import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
 import dev.woori.wooriLearn.domain.auth.port.RefreshTokenPort;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
+import dev.woori.wooriLearn.domain.auth.service.util.CookieUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -38,7 +39,7 @@ public class AuthService {
      * @param loginReqDto 로그인 입력값 - id / pw
      * @return loginResDto - access token / refresh token
      */
-    public LoginResDto login(LoginReqDto loginReqDto) {
+    public TokenWithCookie login(LoginReqDto loginReqDto) {
         AuthUsers user = authUserRepository.findByUserId(loginReqDto.userId())
                 .orElseThrow(() -> new CommonException(ErrorCode.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다."));
 
@@ -60,12 +61,10 @@ public class AuthService {
 
     /**
      * 입력된 refresh token을 이용해 새 access token을 발급합니다.
-     * @param refreshReqDto 사용자의 refresh token
+     * @param refreshToken 사용자의 refresh token
      * @return access token
      */
-    public LoginResDto refresh(RefreshReqDto refreshReqDto) {
-        String refreshToken = refreshReqDto.refreshToken();
-
+    public TokenWithCookie refresh(String refreshToken) {
         // 토큰 만료 및 유효성 검증
         JwtInfo jwtInfo = jwtValidator.parseToken(refreshToken);
         String username = jwtInfo.username();
@@ -76,7 +75,7 @@ public class AuthService {
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "토큰이 존재하지 않습니다."));
 
         // 토큰 일치 여부 검증
-        if(!encoder.matches(refreshReqDto.refreshToken(), token.getToken())){
+        if(!encoder.matches(refreshToken, token.getToken())){
             throw new CommonException(ErrorCode.UNAUTHORIZED, "토큰이 일치하지 않습니다.");
         }
 
@@ -105,14 +104,12 @@ public class AuthService {
     /**
      * 사용자의 요청을 받아서 로그아웃 처리 - db에서 refresh token 삭제
      * @param username 사용자 id
-     * @return 결과 메시지
      */
-    public String logout(String username) {
+    public void logout(String username) {
         refreshTokenRepository.deleteByUsername(username);
-        return "로그아웃되었습니다.";
     }
 
-    public LoginResDto generateAndSaveToken(String username, Role role){
+    public TokenWithCookie generateAndSaveToken(String username, Role role){
         // jwt 토큰 저장 로직
         String accessToken = jwtIssuer.generateAccessToken(username, role);
         var refreshTokenInfo = jwtIssuer.generateRefreshToken(username, role);
@@ -133,6 +130,7 @@ public class AuthService {
                         .build());
         refreshTokenRepository.save(token);
 
-        return new LoginResDto(accessToken, refreshToken);
+        long maxAgeSeconds = refreshTokenExpiration.getEpochSecond() - Instant.now().getEpochSecond();
+        return new TokenWithCookie(accessToken, role.name(), CookieUtil.createRefreshTokenCookie(refreshToken, maxAgeSeconds));
     }
 }
