@@ -87,10 +87,7 @@ public class AdminUserService {
                     Map<Long, Double> userProgress = progressMap.getOrDefault(user.getId(), Map.of());
 
                     // 전체 진행률 계산
-                    double totalProgress = 0.0;
-                    for (Long scenarioId : scenarioIds) {
-                        totalProgress += userProgress.getOrDefault(scenarioId, 0.0);
-                    }
+                    double totalProgress = userProgress.values().stream().mapToDouble(Double::doubleValue).sum();
                     double progressRate = scenarioCount == 0
                             ? 0
                             : totalProgress / scenarioCount;
@@ -156,15 +153,15 @@ public class AdminUserService {
         // 5. 포인트 목록 가져오기
         List<PointsHistory> pointsHistoryList = pointsHistoryRepository.findByUserId(id);
 
-        List<PointsHistoryDto> pointHistories = pointsHistoryList.stream()
-                .map(PointsHistoryDto::from)
-                .toList();
+        List<PointsHistoryDto> pointHistories = new java.util.ArrayList<>();
+        int exchangedPoints = 0;
 
-        int exchangedPoints = pointsHistoryList.stream()
-                .filter(ph -> ph.getType() == PointsHistoryType.WITHDRAW
-                        && ph.getStatus() == PointsStatus.SUCCESS)
-                .mapToInt(PointsHistory::getAmount)
-                .sum();
+        for (PointsHistory ph : pointsHistoryList) {
+            pointHistories.add(PointsHistoryDto.from(ph));
+            if (ph.getType() == PointsHistoryType.WITHDRAW && ph.getStatus() == PointsStatus.SUCCESS) {
+                exchangedPoints += ph.getAmount();
+            }
+        }
 
         return AdminUserInfoResDto.builder()
                 .id(user.getId())
