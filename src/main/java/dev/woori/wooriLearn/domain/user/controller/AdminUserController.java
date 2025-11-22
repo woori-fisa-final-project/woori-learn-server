@@ -30,7 +30,6 @@ public class AdminUserController {
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BaseResponse<?>> getUser(@PathVariable Long id) {
-        // TODO: 관리자 페이지 ui 확정되면 구현하기
         return ApiResponse.success(SuccessCode.OK, adminUserService.getAdminUserInfo(id));
     }
 }
