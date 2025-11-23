@@ -17,6 +17,7 @@ import dev.woori.wooriLearn.domain.scenario.repository.ScenarioCompletedReposito
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioProgressRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioStepRepository;
+import dev.woori.wooriLearn.domain.scenario.service.processor.ContentInfo;
 import dev.woori.wooriLearn.domain.scenario.service.processor.StepProcessor;
 import dev.woori.wooriLearn.domain.scenario.service.processor.StepProcessorResolver;
 import dev.woori.wooriLearn.domain.user.entity.Users;
@@ -113,7 +114,7 @@ public class ScenarioProgressService {
         Long startStepId = stepRepository.findStartStepOrFail(scenarioId).getId();
 
         // Processor에 넘길 Context 구성
-        StepContext ctx = new StepContext(user, scenario, current, answer, byId, progress, runtime.badBranch(), runtime.badEnding(), startStepId);
+        StepContext ctx = new StepContext(user, scenario, current, answer, byId, progress, runtime.badBranch(), runtime.badEnding(), startStepId, runtime.hasChoices());
 
         StepProcessor processor = stepProcessorResolver.resolve(ctx);
         return processor.process(ctx, this);
@@ -389,7 +390,8 @@ public class ScenarioProgressService {
             ScenarioProgress progress,
             Optional<StepMeta> metaOpt,
             boolean badBranch,
-            boolean badEnding
+            boolean badEnding,
+            boolean hasChoices
     ) {
         boolean isBad() {
             return badBranch || badEnding;
@@ -422,7 +424,10 @@ public class ScenarioProgressService {
                         .build());
 
         // 5) 메타 정보 한 번만 파싱하여 배드 브랜치/배드 엔딩 여부 확인
-        Optional<StepMeta> metaOpt = contentService.getMeta(current);
+        ContentInfo info = contentService.parseContentInfo(current);
+        Optional<StepMeta> metaOpt = info.meta();
+        boolean hasChoices = info.hasChoices();
+
         boolean badBranch = metaOpt
                 .map(meta -> "bad".equalsIgnoreCase(meta.branch()))
                 .orElse(false);
@@ -430,6 +435,15 @@ public class ScenarioProgressService {
                 .map(meta -> Boolean.TRUE.equals(meta.badEnding()))
                 .orElse(false);
 
-        return new StepRuntime(scenario, byId, current, progress, metaOpt, badBranch, badEnding);
+        boolean hasQuiz = current.getQuiz() != null;
+        if (hasChoices && hasQuiz) {
+            throw new CommonException(
+                    ErrorCode.CONFLICT,
+                    "시나리오 정의 오류: 하나의 스텝에 quiz와 choices가 동시에 존재할 수 없습니다. " +
+                            "scenarioId=" + scenarioId + ", stepId=" + nowStepId
+            );
+        }
+
+        return new StepRuntime(scenario, byId, current, progress, metaOpt, badBranch, badEnding, hasChoices);
     }
 }

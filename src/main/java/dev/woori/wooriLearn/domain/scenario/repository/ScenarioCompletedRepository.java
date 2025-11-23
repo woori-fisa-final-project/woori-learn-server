@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface ScenarioCompletedRepository extends JpaRepository<ScenarioCompleted, Long> {
+
     boolean existsByUserAndScenario(Users user, Scenario scenario);
 
     @EntityGraph(attributePaths = "scenario")
