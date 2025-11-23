@@ -20,6 +20,7 @@ import dev.woori.wooriLearn.domain.scenario.repository.ScenarioStepRepository;
 import dev.woori.wooriLearn.domain.scenario.service.processor.StepProcessor;
 import dev.woori.wooriLearn.domain.scenario.service.processor.StepProcessorResolver;
 import dev.woori.wooriLearn.domain.user.entity.Users;
+import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,7 +46,7 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class ScenarioProgressService {
-
+    private final UserRepository userRepository;
     private final ScenarioRepository scenarioRepository;
     private final ScenarioStepRepository stepRepository;
     private final ScenarioProgressRepository progressRepository;
@@ -256,63 +257,7 @@ public class ScenarioProgressService {
     void saveProgress(ScenarioProgress progress) {
         progressRepository.save(progress);
     }
-
-    public AdvanceResDto handleScenarioCompletion(StepContext ctx) {
-        Scenario scenario = ctx.scenario();
-        ScenarioProgress progress = ctx.progress();
-
-        // 1) 완료 이력 한 번만 저장
-        boolean newlyCompleted = ensureCompletedOnce(ctx.user(), scenario);
-        if (newlyCompleted) {
-            // 개별 시나리오 완료 보상 1,000P
-            pointsDepositService.depositPoints(
-                    ctx.user().getUserId(),
-                    new PointsDepositRequestDto(1000, "시나리오 완료 보상")
-            );
-
-            // 전체 시나리오 완주 보상 10,000P (모든 시나리오 완료 시 1회)
-            long totalScenarioCount = scenarioRepository.count();
-            int userCompletedCount = completedRepository.findByUser(ctx.user()).size();
-            if (totalScenarioCount > 0 && userCompletedCount == totalScenarioCount) {
-                pointsDepositService.depositPoints(
-                        ctx.user().getUserId(),
-                        new PointsDepositRequestDto(10000, "전체 시나리오 완주 보상")
-                );
-            }
-        }
-
-        // 2) 진행률 100%로 올리되, 이전 값보다 뒤로 가지 않도록 보장
-        double rate = monotonicRate(progress, 100.0);
-
-        // 3) 시작 스텝으로 복귀
-        ScenarioStep start = ctx.startStep();
-        if (start == null) {
-            throw new CommonException(
-                    ErrorCode.INTERNAL_SERVER_ERROR,
-                    "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenario.getId()
-            );
-        }
-
-        progress.moveToStep(start, rate);
-        saveProgress(progress);
-
-        // 4) 프론트에는 COMPLETED 상태만 전달 (다음 스텝은 없음)
-        return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
-    }
-
-    /**
-     * 시나리오 완료 보상(포인트) 수동 지급
-     * - ScenarioCompleted 기반으로 최초 1회만 지급
-     */
-    @Transactional
-    public ScenarioRewardResDto claimScenarioReward(Users user, Long scenarioId) {
-        Scenario scenario = getScenarioOrThrow(scenarioId);
-
-        boolean newlyCompleted = ensureCompletedOnce(user, scenario);
-        if (!newlyCompleted) {
-            return new ScenarioRewardResDto(false, "이미 시나리오 보상을 받았습니다.");
-        }
-
+    private void grantCompletionRewards(Users user) {
         // 개별 시나리오 완료 보상 1,000P
         pointsDepositService.depositPoints(
                 user.getUserId(),
@@ -328,9 +273,71 @@ public class ScenarioProgressService {
                     new PointsDepositRequestDto(10000, "전체 시나리오 완주 보상")
             );
         }
+    }
+    @Transactional
+    public AdvanceResDto handleScenarioCompletion(StepContext ctx) {
+
+        // 🔒 user 객체 비관적 잠금 조회
+        Users lockedUser = userRepository.findByIdForUpdate(ctx.user().getId())
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "사용자를 찾을 수 없습니다. id=" + ctx.user().getId()
+                ));
+
+        Scenario scenario = ctx.scenario();
+        ScenarioProgress progress = ctx.progress();
+
+        boolean newlyCompleted = ensureCompletedOnce(lockedUser, scenario);
+        if (newlyCompleted) {
+            grantCompletionRewards(lockedUser); // 중복 로직 제거된 리팩토링 메소드
+        }
+
+        double rate = monotonicRate(progress, 100.0);
+
+        ScenarioStep start = ctx.startStep();
+        if (start == null) {
+            throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR,
+                    "시작 스텝을 계산할 수 없습니다. scenarioId=" + scenario.getId());
+        }
+
+        progress.moveToStep(start, rate);
+        saveProgress(progress);
+
+        return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
+    }
+
+
+    /**
+     * 시나리오 완료 보상(포인트) 수동 지급
+     * - ScenarioCompleted 기반으로 최초 1회만 지급
+     */
+    /**
+     * 시나리오 완료 보상(포인트) 수동 지급
+     * - ScenarioCompleted 기반으로 최초 1회만 지급
+     */
+    @Transactional
+    public ScenarioRewardResDto claimScenarioReward(Users user, Long scenarioId) {
+
+        // 🔒 user 비관적 잠금 조회
+        Users lockedUser = userRepository.findByIdForUpdate(user.getId())
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "사용자를 찾을 수 없습니다. id=" + user.getId()
+                ));
+
+        Scenario scenario = getScenarioOrThrow(scenarioId);
+
+        boolean newlyCompleted = ensureCompletedOnce(lockedUser, scenario);
+        if (!newlyCompleted) {
+            return new ScenarioRewardResDto(false, "이미 시나리오 보상을 받았습니다.");
+        }
+
+        grantCompletionRewards(lockedUser);
 
         return new ScenarioRewardResDto(true, "시나리오 완료 보상이 지급되었습니다.");
     }
+
+
 
     /**
      * ScenarioStep -> ProgressResumeResDto 매핑

@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class PointsExchangeController {
 
     private final PointsExchangeService pointsExchangeService;
-    private final Environment env;
+
 
     @PostMapping
     public ResponseEntity<BaseResponse<?>> requestExchange(

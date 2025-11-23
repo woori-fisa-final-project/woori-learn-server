@@ -9,6 +9,7 @@ import dev.woori.wooriLearn.domain.account.service.PointsHistoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,15 +21,11 @@ public class PointsHistoryController {
     private final PointsHistoryService service;
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BaseResponse<?>> getHistory(
             @AuthenticationPrincipal String principalUsername,
-            @RequestParam(required = false) String username,
             @ModelAttribute PointsUnifiedHistoryRequestDto request
     ) {
-        if (principalUsername == null) {
-            principalUsername = username;
-        }
-
         Page<PointsHistoryResponseDto> historyPage =
                 service.getUnifiedHistory(principalUsername, request)
                         .map(PointsHistoryResponseDto::new);

@@ -10,12 +10,16 @@ import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryQueryRepository;
+import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -34,7 +38,8 @@ public class PointsHistoryService {
 
     public Page<PointsHistory> getUnifiedHistory(String username, PointsUnifiedHistoryRequestDto request) {
 
-        Long userId = resolveUserId(username, request.userId());
+        boolean isAdmin = hasAdminRole();
+        Long userId = resolveUserId(username, request.userId(), isAdmin);
 
         DateRange range = resolveDateRange(request.startDate(), request.endDate(), request.period());
         TypeStatus ts = mapFilter(request.status());
@@ -56,8 +61,13 @@ public class PointsHistoryService {
         );
     }
 
-    private Long resolveUserId(String username, Long requestUserId) {
-        if (requestUserId != null) return requestUserId;
+    private Long resolveUserId(String username, Long requestUserId, boolean isAdmin) {
+        if (requestUserId != null) {
+            if (!isAdmin) {
+                throw new CommonException(ErrorCode.FORBIDDEN, "다른 사용자의 포인트 이력을 조회할 권한이 없습니다.");
+            }
+            return requestUserId;
+        }
         if (username == null || username.isEmpty()) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "userId or authenticated username is required");
         }
@@ -65,6 +75,17 @@ public class PointsHistoryService {
         return userRepository.findByUserId(actualUsername)
                 .map(Users::getId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + actualUsername));
+    }
+
+    private boolean hasAdminRole() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) return false;
+        for (GrantedAuthority authority : authentication.getAuthorities()) {
+            if (Role.ROLE_ADMIN.name().equals(authority.getAuthority())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private TypeStatus mapFilter(HistoryFilter filter) {
