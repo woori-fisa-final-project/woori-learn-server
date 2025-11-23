@@ -10,16 +10,11 @@ import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryQueryRepository;
-import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -33,12 +28,9 @@ public class PointsHistoryService {
 
     private final PointsHistoryQueryRepository queryRepository;
     private final UserRepository userRepository;
-    private final Environment env;
     private final Clock clock;
 
-    public Page<PointsHistory> getUnifiedHistory(String username, PointsUnifiedHistoryRequestDto request) {
-
-        boolean isAdmin = hasAdminRole();
+    public Page<PointsHistory> getUnifiedHistory(String username, PointsUnifiedHistoryRequestDto request, boolean isAdmin) {
         Long userId = resolveUserId(username, request.userId(), isAdmin);
 
         DateRange range = resolveDateRange(request.startDate(), request.endDate(), request.period());
@@ -71,21 +63,9 @@ public class PointsHistoryService {
         if (username == null || username.isEmpty()) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "userId or authenticated username is required");
         }
-        String actualUsername = env.acceptsProfiles("dev") ? "dev-user" : username;
-        return userRepository.findByUserId(actualUsername)
+        return userRepository.findByUserId(username)
                 .map(Users::getId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + actualUsername));
-    }
-
-    private boolean hasAdminRole() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null) return false;
-        for (GrantedAuthority authority : authentication.getAuthorities()) {
-            if (Role.ROLE_ADMIN.name().equals(authority.getAuthority())) {
-                return true;
-            }
-        }
-        return false;
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
     }
 
     private TypeStatus mapFilter(HistoryFilter filter) {

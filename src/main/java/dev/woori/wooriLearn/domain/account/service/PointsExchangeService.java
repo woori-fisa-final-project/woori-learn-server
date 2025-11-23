@@ -18,7 +18,6 @@ import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import jakarta.persistence.QueryTimeoutException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.env.Environment;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,19 +35,16 @@ public class PointsExchangeService {
     private final PointsHistoryRepository pointsHistoryRepository;
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
-    private final Environment env;
 
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 200;
 
     @Transactional
     public PointsExchangeResponseDto requestExchange(String username, PointsExchangeRequestDto dto) {
-        final String actualUsername = env.acceptsProfiles("dev") ? "dev-user" : username;
-
-        Users user = userRepository.findByUserIdForUpdate(actualUsername)
+        Users user = userRepository.findByUserIdForUpdate(username)
                 .orElseThrow(() -> new CommonException(
                         ErrorCode.ENTITY_NOT_FOUND,
-                        "사용자를 찾을 수 없습니다. userId=" + actualUsername
+                        "사용자를 찾을 수 없습니다. userId=" + username
                 ));
 
         if (dto.exchangeAmount() == null || dto.exchangeAmount() <= 0) {
@@ -110,14 +106,14 @@ public class PointsExchangeService {
             try {
                 user.subtractPoints(amount);
                 history.markSuccess(processedAt);
-                message = "정상적으로 처리되었습니다";
+                message = "정상적으로 처리되었습니다.";
             } catch (CommonException e) {
                 if (e.getErrorCode() == ErrorCode.CONFLICT) {
                     history.markFailed(PointsFailReason.INSUFFICIENT_POINTS, processedAt);
-                    message = "포인트가 부족하여 실패했습니다";
+                    message = "포인트가 부족하여 실패했습니다.";
                 } else {
                     history.markFailed(PointsFailReason.PROCESSING_ERROR, processedAt);
-                    message = "요청 처리 중 오류가 발생하여 실패했습니다";
+                    message = "요청 처리 중 오류가 발생하여 실패했습니다.";
                 }
             }
 

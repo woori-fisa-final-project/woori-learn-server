@@ -6,10 +6,13 @@ import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.account.dto.PointsUnifiedHistoryRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsHistoryResponseDto;
 import dev.woori.wooriLearn.domain.account.service.PointsHistoryService;
+import dev.woori.wooriLearn.domain.auth.entity.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,10 +27,16 @@ public class PointsHistoryController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<BaseResponse<?>> getHistory(
             @AuthenticationPrincipal String principalUsername,
+            Authentication authentication,
             @ModelAttribute PointsUnifiedHistoryRequestDto request
     ) {
+        boolean isAdmin = authentication != null
+                && authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(Role.ROLE_ADMIN.name()::equals);
+
         Page<PointsHistoryResponseDto> historyPage =
-                service.getUnifiedHistory(principalUsername, request)
+                service.getUnifiedHistory(principalUsername, request, isAdmin)
                         .map(PointsHistoryResponseDto::new);
 
         return ApiResponse.success(SuccessCode.OK, historyPage);
