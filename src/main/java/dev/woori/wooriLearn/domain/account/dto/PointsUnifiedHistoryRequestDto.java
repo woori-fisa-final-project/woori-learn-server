@@ -18,8 +18,11 @@ public record PointsUnifiedHistoryRequestDto(
         if (period == null) period = SearchPeriod.ALL;
         if (sort == null) sort = SortDirection.DESC;
         if (status == null) status = HistoryFilter.ALL;
-        if (page == null || page < 1) page = 1;
-        if (size == null || size < 1 || size > 200) size = 20;
+        if (size == null || size < 1) {
+            size = 20;
+        } else if (size > 200) {
+            size = 200;
+        }
     }
 }
 

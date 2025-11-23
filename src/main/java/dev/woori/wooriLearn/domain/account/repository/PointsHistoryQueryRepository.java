@@ -35,28 +35,24 @@ public class PointsHistoryQueryRepository {
             Pageable pageable
     ) {
 
+        BooleanExpression[] conditions = {
+                typeEq(type),
+                userIdEq(userId),
+                statusEq(status),
+                startGoe(start),
+                endLoe(end)
+        };
+
         var query = queryFactory
                 .select(pointsHistory)
                 .from(pointsHistory)
                 .join(pointsHistory.user, users).fetchJoin()
-                .where(
-                        typeEq(type),
-                        userIdEq(userId),
-                        statusEq(status),
-                        startGoe(start),
-                        endLoe(end)
-                );
+                .where(conditions);
 
         var countQuery = queryFactory
                 .select(pointsHistory.count())
                 .from(pointsHistory)
-                .where(
-                        typeEq(type),
-                        userIdEq(userId),
-                        statusEq(status),
-                        startGoe(start),
-                        endLoe(end)
-                );
+                .where(conditions);
 
         Sort sort = pageable.getSort();
 

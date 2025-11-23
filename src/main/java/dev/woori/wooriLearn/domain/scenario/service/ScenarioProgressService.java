@@ -54,6 +54,8 @@ public class ScenarioProgressService {
     private final ScenarioCompletedRepository completedRepository;
     private final PointsDepositService pointsDepositService;
 
+    private static final int SCENARIO_COMPLETION_REWARD_POINTS = 1000;
+    private static final int ALL_SCENARIOS_COMPLETION_REWARD_POINTS = 10000;
     // 스텝 타입/상태에 따라 적절한 StepProcessor를 찾아주는 Resolver
     private final StepProcessorResolver stepProcessorResolver;
 
@@ -259,19 +261,18 @@ public class ScenarioProgressService {
         progressRepository.save(progress);
     }
     private void grantCompletionRewards(Users user) {
-        // 개별 시나리오 완료 보상 1,000P
+        // 개별 시나리오 완료 보상
         pointsDepositService.depositPoints(
                 user.getUserId(),
-                new PointsDepositRequestDto(1000, "시나리오 완료 보상")
+                new PointsDepositRequestDto(SCENARIO_COMPLETION_REWARD_POINTS, "시나리오 완료 보상")
         );
-
-        // 전체 시나리오 완주 보상 10,000P (모든 시나리오 완료 시 1회)
+        // 전체 시나리오 완주 보상 (모든 시나리오 완료 시 1회)
         long totalScenarioCount = scenarioRepository.count();
         long userCompletedCount = completedRepository.countByUser(user);
         if (totalScenarioCount > 0 && userCompletedCount == totalScenarioCount) {
             pointsDepositService.depositPoints(
                     user.getUserId(),
-                    new PointsDepositRequestDto(10000, "전체 시나리오 완주 보상")
+                    new PointsDepositRequestDto(ALL_SCENARIOS_COMPLETION_REWARD_POINTS, "전체 시나리오 완주 보상")
             );
         }
     }
