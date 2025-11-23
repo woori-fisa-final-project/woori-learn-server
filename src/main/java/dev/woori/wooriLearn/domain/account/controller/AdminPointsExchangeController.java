@@ -23,4 +23,19 @@ public class AdminPointsExchangeController {
     public ResponseEntity<BaseResponse<?>> approve(@PathVariable Long requestId) {
         return ApiResponse.success(SuccessCode.OK, pointsExchangeService.approveExchange(requestId));
     }
+
+    /**
+     * 전체 회원의 환전 신청(APPLY 상태) 목록 조회 (관리자용)
+     */
+    @GetMapping("/apply")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BaseResponse<?>> listPending(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        return ApiResponse.success(
+                SuccessCode.OK,
+                pointsExchangeService.getPendingWithdrawals(page, size)
+        );
+    }
 }

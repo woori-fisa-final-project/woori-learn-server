@@ -4,6 +4,7 @@ import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
+import dev.woori.wooriLearn.domain.account.dto.PointsHistoryResponseDto;
 import dev.woori.wooriLearn.domain.account.entity.Account;
 import dev.woori.wooriLearn.domain.account.entity.PointsFailReason;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
@@ -19,6 +20,9 @@ import jakarta.persistence.QueryTimeoutException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +37,9 @@ public class PointsExchangeService {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
     private final Environment env;
+
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 200;
 
     @Transactional
     public PointsExchangeResponseDto requestExchange(String username, PointsExchangeRequestDto dto) {
@@ -130,5 +137,23 @@ public class PointsExchangeService {
                     ErrorCode.SERVICE_UNAVAILABLE,
                     "처리가 지연되었습니다. 잠시 후 다시 시도해 주세요");
         }
+    }
+
+    /**
+     * 관리자용: 환전 신청(APPLY) 전체 조회 (페이지네이션)
+     */
+    @Transactional(readOnly = true)
+    public Page<PointsHistoryResponseDto> getPendingWithdrawals(Integer page, Integer size) {
+        int pageNumber = (page == null || page < 1) ? 1 : page;
+        int pageSize = (size == null || size < 1) ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
+
+        PageRequest pageRequest = PageRequest.of(pageNumber - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        return pointsHistoryRepository.findByTypeAndStatus(
+                        PointsHistoryType.WITHDRAW,
+                        PointsStatus.APPLY,
+                        pageRequest
+                )
+                .map(PointsHistoryResponseDto::new);
     }
 }
