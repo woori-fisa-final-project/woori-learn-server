@@ -30,10 +30,8 @@ public class PointsHistoryController {
             Authentication authentication,
             @ModelAttribute PointsUnifiedHistoryRequestDto request
     ) {
-        boolean isAdmin = authentication != null
-                && authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(Role.ROLE_ADMIN.name()::equals);
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals(Role.ROLE_ADMIN.name()));
 
         Page<PointsHistoryResponseDto> historyPage =
                 service.getUnifiedHistory(principalUsername, request, isAdmin)

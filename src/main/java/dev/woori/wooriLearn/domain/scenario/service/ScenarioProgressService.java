@@ -23,6 +23,7 @@ import dev.woori.wooriLearn.domain.scenario.service.processor.StepProcessorResol
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -244,16 +245,18 @@ public class ScenarioProgressService {
 
     /** 동일 유저/시나리오에 대해 완료 이력을 1회만 저장하도록 보장 */
     boolean ensureCompletedOnce(Users user, Scenario scenario) {
-        if (completedRepository.existsByUserAndScenario(user, scenario)) {
+        try {
+            completedRepository.save(
+                    ScenarioCompleted.builder()
+                            .user(user)
+                            .scenario(scenario)
+                            .build()
+            );
+            return true;
+        } catch (DataIntegrityViolationException e) {
+            // 동시성 문제로 이미 완료 이력이 저장된 경우, false를 반환하여 정상 처리합니다.
             return false;
         }
-        completedRepository.save(
-                ScenarioCompleted.builder()
-                        .user(user)
-                        .scenario(scenario)
-                        .build()
-        );
-        return true;
     }
 
     /** 외부 Processor가 진행 엔티티 저장만 필요할 때 사용 */
