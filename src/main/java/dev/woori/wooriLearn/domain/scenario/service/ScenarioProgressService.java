@@ -243,20 +243,20 @@ public class ScenarioProgressService {
         return Math.max(prev, roundedCandidate);
     }
 
-    /** 동일 유저/시나리오에 대해 완료 이력을 1회만 저장하도록 보장 */
+    /**
+     * 한 시나리오별로 최초 1회만 등록하도록 보장
+     */
     boolean ensureCompletedOnce(Users user, Scenario scenario) {
-        try {
-            completedRepository.save(
-                    ScenarioCompleted.builder()
-                            .user(user)
-                            .scenario(scenario)
-                            .build()
-            );
-            return true;
-        } catch (DataIntegrityViolationException e) {
-            // 동시성 문제로 이미 완료 이력이 저장된 경우, false를 반환하여 정상 처리합니다.
+        if (completedRepository.existsByUserAndScenario(user, scenario)) {
             return false;
         }
+        completedRepository.save(
+                ScenarioCompleted.builder()
+                        .user(user)
+                        .scenario(scenario)
+                        .build()
+        );
+        return true;
     }
 
     /** 외부 Processor가 진행 엔티티 저장만 필요할 때 사용 */
@@ -319,7 +319,9 @@ public class ScenarioProgressService {
     @Transactional
     public ScenarioRewardResDto claimScenarioReward(Users user, Long scenarioId) {
 
-        // 🔒 user 비관적 잠금 조회
+
+
+        //  user 비관적 잠금 조회
         Users lockedUser = userRepository.findByIdForUpdate(user.getId())
                 .orElseThrow(() -> new CommonException(
                         ErrorCode.ENTITY_NOT_FOUND,
@@ -327,6 +329,14 @@ public class ScenarioProgressService {
                 ));
 
         Scenario scenario = getScenarioOrThrow(scenarioId);
+
+        // 시나리오를 완료했는지 확인
+        ScenarioProgress progress = progressRepository.findByUserAndScenario(lockedUser, scenario)
+                .orElseThrow(() -> new CommonException(ErrorCode.FORBIDDEN, "아직 시나리오를 시작하지 않았습니다."));
+
+        if (progress.getProgressRate() == null || progress.getProgressRate() < 100.0) {
+            throw new CommonException(ErrorCode.FORBIDDEN, "아직 시나리오를 완료하지 않았습니다.");
+        }
 
         boolean newlyCompleted = ensureCompletedOnce(lockedUser, scenario);
         if (!newlyCompleted) {
@@ -336,6 +346,8 @@ public class ScenarioProgressService {
         grantCompletionRewards(lockedUser);
 
         return new ScenarioRewardResDto(true, "시나리오 완료 보상이 지급되었습니다.");
+
+
     }
 
 
