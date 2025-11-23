@@ -266,7 +266,7 @@ public class ScenarioProgressService {
 
         // 전체 시나리오 완주 보상 10,000P (모든 시나리오 완료 시 1회)
         long totalScenarioCount = scenarioRepository.count();
-        int userCompletedCount = completedRepository.findByUser(user).size();
+        long userCompletedCount = completedRepository.countByUser(user);
         if (totalScenarioCount > 0 && userCompletedCount == totalScenarioCount) {
             pointsDepositService.depositPoints(
                     user.getUserId(),
@@ -307,10 +307,6 @@ public class ScenarioProgressService {
     }
 
 
-    /**
-     * 시나리오 완료 보상(포인트) 수동 지급
-     * - ScenarioCompleted 기반으로 최초 1회만 지급
-     */
     /**
      * 시나리오 완료 보상(포인트) 수동 지급
      * - ScenarioCompleted 기반으로 최초 1회만 지급
