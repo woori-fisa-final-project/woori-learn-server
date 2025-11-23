@@ -6,6 +6,7 @@ import dev.woori.wooriLearn.domain.account.dto.PointsDepositRequestDto;
 import dev.woori.wooriLearn.domain.account.service.PointsDepositService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,6 +21,7 @@ public class PointsDepositController {
     private final PointsDepositService pointsDepositService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BaseResponse<?>> deposit(
             @AuthenticationPrincipal String username,
             @RequestBody PointsDepositRequestDto dto

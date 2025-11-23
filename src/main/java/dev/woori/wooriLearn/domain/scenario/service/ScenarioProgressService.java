@@ -9,6 +9,7 @@ import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressSaveResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.QuizResDto;
+import dev.woori.wooriLearn.domain.scenario.dto.ScenarioRewardResDto;
 import dev.woori.wooriLearn.domain.scenario.entity.*;
 import dev.woori.wooriLearn.domain.scenario.model.AdvanceStatus;
 import dev.woori.wooriLearn.domain.scenario.model.ChoiceInfo;
@@ -297,6 +298,38 @@ public class ScenarioProgressService {
 
         // 4) 프론트에는 COMPLETED 상태만 전달 (다음 스텝은 없음)
         return new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
+    }
+
+    /**
+     * 시나리오 완료 보상(포인트) 수동 지급
+     * - ScenarioCompleted 기반으로 최초 1회만 지급
+     */
+    @Transactional
+    public ScenarioRewardResDto claimScenarioReward(Users user, Long scenarioId) {
+        Scenario scenario = getScenarioOrThrow(scenarioId);
+
+        boolean newlyCompleted = ensureCompletedOnce(user, scenario);
+        if (!newlyCompleted) {
+            return new ScenarioRewardResDto(false, "이미 시나리오 보상을 받았습니다.");
+        }
+
+        // 개별 시나리오 완료 보상 1,000P
+        pointsDepositService.depositPoints(
+                user.getUserId(),
+                new PointsDepositRequestDto(1000, "시나리오 완료 보상")
+        );
+
+        // 전체 시나리오 완주 보상 10,000P (모든 시나리오 완료 시 1회)
+        long totalScenarioCount = scenarioRepository.count();
+        int userCompletedCount = completedRepository.findByUser(user).size();
+        if (totalScenarioCount > 0 && userCompletedCount == totalScenarioCount) {
+            pointsDepositService.depositPoints(
+                    user.getUserId(),
+                    new PointsDepositRequestDto(10000, "전체 시나리오 완주 보상")
+            );
+        }
+
+        return new ScenarioRewardResDto(true, "시나리오 완료 보상이 지급되었습니다.");
     }
 
     /**
