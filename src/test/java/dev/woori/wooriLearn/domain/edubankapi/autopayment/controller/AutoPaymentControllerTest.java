@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,6 +26,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -32,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@WithMockUser(username = "testuser")
 class AutoPaymentControllerTest {
 
     @Autowired
@@ -53,6 +57,46 @@ class AutoPaymentControllerTest {
                 new AutoPaymentResponse(
                         1L,
                         educationalAccountId,
+                        "110-123-456789",  // accountNumber
+                        "우리은행",         // bankName
+                        "1234567890",      // depositNumber
+                        "001",             // depositBankCode
+                        50000,
+                        "김철수",
+                        "용돈",
+                        1,
+                        15,
+                        LocalDate.now(),
+                        LocalDate.now().plusYears(1),
+                        "ACTIVE"
+                )
+        );
+
+        given(autoPaymentService.getAutoPaymentList(eq(educationalAccountId), eq(status), eq("testuser")))
+                .willReturn(responses);
+
+        // when & then
+        mockMvc.perform(get("/education/auto-payment/list")
+                        .param("educationalAccountId", educationalAccountId.toString())
+                        .param("status", status))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data[0].id").value(1L))
+                .andExpect(jsonPath("$.data[0].depositNumber").value("1234567890"))
+                .andExpect(jsonPath("$.data[0].amount").value(50000));
+    }
+
+    @Test
+    @DisplayName("자동이체 목록 조회 - status 파라미터 미제공 시 기본값 ACTIVE 적용")
+    void getAutoPaymentList_DefaultStatusActive() throws Exception {
+        // given
+        Long educationalAccountId = 1L;
+        List<AutoPaymentResponse> responses = Arrays.asList(
+                new AutoPaymentResponse(
+                        1L,
+                        educationalAccountId,
+                        "110-123-456789",
+                        "우리은행",
                         "1234567890",
                         "001",
                         50000,
@@ -66,18 +110,16 @@ class AutoPaymentControllerTest {
                 )
         );
 
-        given(autoPaymentService.getAutoPaymentList(educationalAccountId, status))
+        // status 파라미터가 없으면 기본값 "ACTIVE"가 사용됨
+        given(autoPaymentService.getAutoPaymentList(eq(educationalAccountId), eq("ACTIVE"), eq("testuser")))
                 .willReturn(responses);
 
         // when & then
         mockMvc.perform(get("/education/auto-payment/list")
-                        .param("educationalAccountId", educationalAccountId.toString())
-                        .param("status", status))
+                        .param("educationalAccountId", educationalAccountId.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data[0].id").value(1L))
-                .andExpect(jsonPath("$.data[0].depositNumber").value("1234567890"))
-                .andExpect(jsonPath("$.data[0].amount").value(50000));
+                .andExpect(jsonPath("$.data[0].processingStatus").value("ACTIVE"));
     }
 
     @Test
@@ -98,8 +140,10 @@ class AutoPaymentControllerTest {
         AutoPaymentResponse response = new AutoPaymentResponse(
                 autoPaymentId,
                 1L,
-                "1234567890",
-                "001",
+                "110-123-456789",  // accountNumber
+                "우리은행",         // bankName
+                "1234567890",      // depositNumber
+                "001",             // depositBankCode
                 50000,
                 "김철수",
                 "용돈",
@@ -110,7 +154,7 @@ class AutoPaymentControllerTest {
                 "ACTIVE"
         );
 
-        given(autoPaymentService.getAutoPaymentDetail(autoPaymentId))
+        given(autoPaymentService.getAutoPaymentDetail(eq(autoPaymentId), anyString()))
                 .willReturn(response);
 
         // when & then
@@ -151,8 +195,10 @@ class AutoPaymentControllerTest {
         AutoPaymentResponse response = new AutoPaymentResponse(
                 1L,
                 1L,
-                "1234567890",
-                "001",
+                "110-123-456789",  // accountNumber
+                "우리은행",         // bankName
+                "1234567890",      // depositNumber
+                "001",             // depositBankCode
                 50000,
                 "김철수",
                 "용돈",
@@ -163,7 +209,7 @@ class AutoPaymentControllerTest {
                 "ACTIVE"
         );
 
-        given(autoPaymentService.createAutoPayment(any(AutoPaymentCreateRequest.class)))
+        given(autoPaymentService.createAutoPayment(any(AutoPaymentCreateRequest.class), anyString()))
                 .willReturn(response);
 
         // when & then
@@ -283,23 +329,24 @@ class AutoPaymentControllerTest {
         Long autoPaymentId = 1L;
         Long educationalAccountId = 1L;
 
-        EducationalAccount account = EducationalAccount.builder().id(educationalAccountId).build();
-        AutoPayment autoPaymentToReturn = AutoPayment.builder()
-                .id(autoPaymentId)
-                .educationalAccount(account)
-                .depositNumber("1234567890")
-                .depositBankCode("001")
-                .amount(50000)
-                .counterpartyName("김철수")
-                .displayName("용돈")
-                .transferCycle(1)
-                .designatedDate(15)
-                .startDate(LocalDate.now())
-                .expirationDate(LocalDate.now().plusYears(1))
-                .processingStatus(AutoPaymentStatus.CANCELLED)
-                .build();
-        given(autoPaymentService.cancelAutoPayment(autoPaymentId, educationalAccountId))
-                .willReturn(autoPaymentToReturn);
+        AutoPaymentResponse responseToReturn = new AutoPaymentResponse(
+                autoPaymentId,
+                educationalAccountId,
+                "1002-123-456789",
+                "우리은행",
+                "1234567890",
+                "001",
+                50000,
+                "김철수",
+                "용돈",
+                1,
+                15,
+                LocalDate.now(),
+                LocalDate.now().plusYears(1),
+                "CANCELLED"
+        );
+        given(autoPaymentService.cancelAutoPayment(eq(autoPaymentId), eq(educationalAccountId), anyString()))
+                .willReturn(responseToReturn);
 
         // when & then
         mockMvc.perform(post("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
@@ -320,7 +367,7 @@ class AutoPaymentControllerTest {
         // void 메소드에서 예외 발생은 doThrow 사용
         doThrow(new CommonException(ErrorCode.ENTITY_NOT_FOUND, "자동이체를 찾을 수 없습니다."))
                 .when(autoPaymentService)
-                .cancelAutoPayment(autoPaymentId, educationalAccountId);
+                .cancelAutoPayment(eq(autoPaymentId), eq(educationalAccountId), anyString());
 
         // when & then
         mockMvc.perform(post("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
@@ -337,7 +384,7 @@ class AutoPaymentControllerTest {
 
         doThrow(new CommonException(ErrorCode.ENTITY_NOT_FOUND, "자동이체를 찾을 수 없습니다."))
                 .when(autoPaymentService)
-                .cancelAutoPayment(autoPaymentId, educationalAccountId);
+                .cancelAutoPayment(eq(autoPaymentId), eq(educationalAccountId), anyString());
 
         // when & then
         mockMvc.perform(post("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
@@ -354,7 +401,7 @@ class AutoPaymentControllerTest {
 
         doThrow(new CommonException(ErrorCode.INVALID_REQUEST, "이미 해지된 자동이체입니다."))
                 .when(autoPaymentService)
-                .cancelAutoPayment(autoPaymentId, educationalAccountId);
+                .cancelAutoPayment(eq(autoPaymentId), eq(educationalAccountId), anyString());
 
         // when & then
         mockMvc.perform(post("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
