@@ -55,27 +55,34 @@ public class AutoPaymentService {
      */
     @Deprecated
     public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status, String currentUserId) {
-        // status를 정규화하여 캐시 키 중복 방지 ('active', 'ACTIVE', '' 등을 통일)
+        // 1. 먼저 유효성 검증 (유효하지 않으면 예외 발생)
+        validateAndResolveStatus(status);
+
+        // 2. 유효한 값이면 정규화하여 캐시 키 중복 방지 ('active', 'ACTIVE', '' 등을 통일)
         String normalizedStatus = normalizeStatusForCache(status);
+
         return getAutoPaymentListCached(educationalAccountId, normalizedStatus, currentUserId);
     }
 
     /**
      * 자동이체 목록 조회 (캐시 적용)
      * 정규화된 status를 사용하여 캐시 키 중복 방지
+     *
+     * Note: 이 메소드는 이미 검증된 status를 받으므로 추가 검증 불필요
      */
-    @Cacheable(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':' + #status")
-    private List<AutoPaymentResponse> getAutoPaymentListCached(Long educationalAccountId, String status, String currentUserId) {
-        log.info("자동이체 목록 조회 (캐시 미스) - 계좌ID: {}, 상태: {}", educationalAccountId, status);
+    @Cacheable(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':' + #normalizedStatus")
+    private List<AutoPaymentResponse> getAutoPaymentListCached(Long educationalAccountId, String normalizedStatus, String currentUserId) {
+        log.info("자동이체 목록 조회 (캐시 미스) - 계좌ID: {}, 상태: {}", educationalAccountId, normalizedStatus);
 
         // 권한 체크: 요청한 계좌가 현재 사용자의 것인지 확인
         validateAccountOwnership(educationalAccountId, currentUserId);
         List<AutoPayment> autoPayments;
 
-        if (ALL_STATUS.equalsIgnoreCase(status)) {
+        if (ALL_STATUS.equalsIgnoreCase(normalizedStatus)) {
             autoPayments = autoPaymentRepository.findByEducationalAccountId(educationalAccountId);
         } else {
-            AutoPaymentStatus paymentStatus = resolveStatus(status);
+            // normalizedStatus는 이미 유효성 검증되어 "ACTIVE" 또는 "CANCELLED"만 들어옴
+            AutoPaymentStatus paymentStatus = AutoPaymentStatus.valueOf(normalizedStatus);
             autoPayments = autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
                     educationalAccountId, paymentStatus);
         }
@@ -420,29 +427,53 @@ public class AutoPaymentService {
     }
 
     /**
+     * status 파라미터 유효성 검증
+     * - 빈 문자열, null, "ALL" → 유효 (통과)
+     * - "ACTIVE", "CANCELLED" (대소문자 무관) → 유효 (통과)
+     * - 그 외 → INVALID_REQUEST 예외 발생
+     *
+     * @param status 검증할 status 값
+     * @throws CommonException 유효하지 않은 status일 경우
+     */
+    private void validateAndResolveStatus(String status) {
+        // 빈 문자열이나 null은 유효 (기본값 ACTIVE로 처리됨)
+        if (!StringUtils.hasText(status)) {
+            return;
+        }
+
+        String upperStatus = status.toUpperCase();
+
+        // "ALL"은 유효
+        if (ALL_STATUS.equals(upperStatus)) {
+            return;
+        }
+
+        // "ACTIVE" 또는 "CANCELLED"인지 검증
+        try {
+            AutoPaymentStatus.valueOf(upperStatus);
+        } catch (IllegalArgumentException e) {
+            log.warn("유효하지 않은 status 파라미터: {}", status);
+            throw new CommonException(ErrorCode.INVALID_REQUEST,
+                    "유효하지 않은 상태 값입니다. (사용 가능: " + AutoPaymentStatus.getAvailableValues() + ")");
+        }
+    }
+
+    /**
      * 캐시 키 생성을 위한 status 정규화
      * - 빈 문자열 또는 null → "ACTIVE"
      * - 소문자 → 대문자 변환
      * - "ALL" → "ALL"
      *
-     * @param status 원본 status 파라미터
+     * Note: 이 메소드는 이미 유효성 검증된 status만 받는다고 가정
+     *
+     * @param status 원본 status 파라미터 (유효성 검증 완료)
      * @return 정규화된 status (ACTIVE, CANCELLED, ALL)
      */
     private String normalizeStatusForCache(String status) {
         if (!StringUtils.hasText(status)) {
             return "ACTIVE";
         }
-        String upperStatus = status.toUpperCase();
-        if (ALL_STATUS.equals(upperStatus)) {
-            return ALL_STATUS;
-        }
-        // ACTIVE 또는 CANCELLED로 정규화
-        try {
-            AutoPaymentStatus.valueOf(upperStatus);
-            return upperStatus;
-        } catch (IllegalArgumentException e) {
-            // 유효하지 않은 값은 ACTIVE로 처리 (resolveStatus에서 에러 발생할 것)
-            return "ACTIVE";
-        }
+        // 대문자 변환 (이미 검증되어 ACTIVE, CANCELLED, ALL 중 하나)
+        return status.toUpperCase();
     }
 }
