@@ -247,19 +247,28 @@ public class ScenarioProgressService {
      * 한 시나리오별로 최초 1회만 등록하도록 보장
      */
     boolean ensureCompletedOnce(Users user, Scenario scenario) {
-        if (completedRepository.existsByUserAndScenario(user, scenario)) {
-            return false;
+        try {
+            // saveAndFlush를 사용하여 DB 제약 조건 위반을 즉시 확인합니다.
+            completedRepository.saveAndFlush(
+                    ScenarioCompleted.builder()
+                            .user(user)
+                            .scenario(scenario)
+                            .build()
+            );
+            return true; // 신규 완료
+        } catch (DataIntegrityViolationException e) {
+            // Unique constraint 위반은 이미 완료 이력이 존재함을 의미합니다.
+            // 이는 정상적인 중복 요청일 수 있으므로, false를 반환하여 중복 보상 지급을 방지합니다.
+            return false; // 이미 완료됨
         }
-        completedRepository.save(
-                ScenarioCompleted.builder()
-                        .user(user)
-                        .scenario(scenario)
-                        .build()
-        );
-        return true;
     }
 
     /** 외부 Processor가 진행 엔티티 저장만 필요할 때 사용 */
+    boolean ensureCompletedOnceInsertIgnore(Users user, Scenario scenario) {
+        int inserted = completedRepository.insertIgnore(user.getId(), scenario.getId());
+        return inserted > 0;
+    }
+
     void saveProgress(ScenarioProgress progress) {
         progressRepository.save(progress);
     }
@@ -292,7 +301,7 @@ public class ScenarioProgressService {
         Scenario scenario = ctx.scenario();
         ScenarioProgress progress = ctx.progress();
 
-        boolean newlyCompleted = ensureCompletedOnce(lockedUser, scenario);
+        boolean newlyCompleted = ensureCompletedOnceInsertIgnore(lockedUser, scenario);
         if (newlyCompleted) {
             grantCompletionRewards(lockedUser); // 중복 로직 제거된 리팩토링 메소드
         }
@@ -338,7 +347,7 @@ public class ScenarioProgressService {
             throw new CommonException(ErrorCode.FORBIDDEN, "아직 시나리오를 완료하지 않았습니다.");
         }
 
-        boolean newlyCompleted = ensureCompletedOnce(lockedUser, scenario);
+        boolean newlyCompleted = ensureCompletedOnceInsertIgnore(lockedUser, scenario);
         if (!newlyCompleted) {
             return new ScenarioRewardResDto(false, "이미 시나리오 보상을 받았습니다.");
         }
