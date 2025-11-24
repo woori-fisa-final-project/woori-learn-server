@@ -13,6 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -51,7 +52,7 @@ public class RateLimitConfig implements WebMvcConfigurer {
                 .withDatabase(redisProperties.getDatabase());
 
         // 비밀번호 설정 (있는 경우)
-        if (redisProperties.getPassword() != null && !redisProperties.getPassword().isEmpty()) {
+        if (StringUtils.hasText(redisProperties.getPassword())) {
             builder.withPassword(redisProperties.getPassword().toCharArray());
         }
 
