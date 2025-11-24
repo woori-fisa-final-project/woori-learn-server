@@ -30,7 +30,8 @@ public class JwtUtilTest {
         jwtValidator = new JwtValidator(secretKey);
     }
 
-    @Test
+    @
+            Test
     @DisplayName("Access Token이 정상적으로 생성되고 username을 복호화할 수 있다")
     void generateAccessTokenAndExtractUsername() {
         // given
