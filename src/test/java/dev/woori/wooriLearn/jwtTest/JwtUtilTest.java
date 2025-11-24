@@ -8,7 +8,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -26,10 +25,8 @@ public class JwtUtilTest {
 
     @BeforeEach
     void setUp() {
-        jwtIssuer = new JwtIssuer(secretKey);
+        jwtIssuer = new JwtIssuer(secretKey, 3600000L, 604800000L);
         jwtValidator = new JwtValidator(secretKey);
-        ReflectionTestUtils.setField(jwtIssuer, "accessTokenExpiration", 3600000);
-        ReflectionTestUtils.setField(jwtIssuer, "refreshTokenExpiration", 604800000);
     }
 
     @Test
