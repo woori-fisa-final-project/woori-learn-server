@@ -7,7 +7,6 @@ import dev.woori.wooriLearn.config.response.SuccessCode;
 
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentCreateRequest;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentResponse;
-import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.service.AutoPaymentService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -112,13 +111,8 @@ public class AutoPaymentController {
         log.info("자동이체 해지 요청 - 자동이체ID: {}, 교육용계좌ID: {}, 사용자ID: {}",
                 autoPaymentId, educationalAccountId, currentUserId);
 
-        AutoPayment cancelledAutoPayment = autoPaymentService.cancelAutoPayment(
+        AutoPaymentResponse response = autoPaymentService.cancelAutoPayment(
                 autoPaymentId, educationalAccountId, currentUserId);
-
-        AutoPaymentResponse response = AutoPaymentResponse.of(
-                cancelledAutoPayment,
-                cancelledAutoPayment.getEducationalAccount().getId()
-        );
 
         return ApiResponse.success(SuccessCode.OK, response);
     }

@@ -17,6 +17,7 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.time.Duration;
@@ -98,7 +99,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private String getClientIp(HttpServletRequest request) {
         for (String header : IP_HEADER_CANDIDATES) {
             String ipAddress = request.getHeader(header);
-            if (ipAddress != null && !ipAddress.isEmpty() && !"unknown".equalsIgnoreCase(ipAddress)) {
+            if (StringUtils.hasText(ipAddress) && !"unknown".equalsIgnoreCase(ipAddress)) {
                 if (ipAddress.contains(",")) {
                     return ipAddress.split(",")[0].trim();
                 }

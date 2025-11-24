@@ -182,7 +182,7 @@ public class AutoPaymentService {
             @CacheEvict(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':ALL'"),
             @CacheEvict(value = "autoPaymentDetail", key = "#currentUserId + ':' + #autoPaymentId")
     })
-    public AutoPayment cancelAutoPayment(Long autoPaymentId, Long educationalAccountId, String currentUserId) {
+    public AutoPaymentResponse cancelAutoPayment(Long autoPaymentId, Long educationalAccountId, String currentUserId) {
         log.info("자동이체 해지 시작 - 자동이체ID: {}, 교육용계좌ID: {}, 사용자ID: {}",
                 autoPaymentId, educationalAccountId, currentUserId);
 
@@ -225,7 +225,7 @@ public class AutoPaymentService {
 
         log.info("자동이체 해지 완료 - ID: {}, 교육용계좌ID: {}", autoPaymentId, educationalAccountId);
 
-        return autoPayment;
+        return AutoPaymentResponse.of(autoPayment, educationalAccountId);
     }
 
     /**

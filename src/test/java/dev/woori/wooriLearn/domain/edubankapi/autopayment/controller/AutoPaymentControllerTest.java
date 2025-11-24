@@ -329,23 +329,24 @@ class AutoPaymentControllerTest {
         Long autoPaymentId = 1L;
         Long educationalAccountId = 1L;
 
-        EducationalAccount account = EducationalAccount.builder().id(educationalAccountId).build();
-        AutoPayment autoPaymentToReturn = AutoPayment.builder()
-                .id(autoPaymentId)
-                .educationalAccount(account)
-                .depositNumber("1234567890")
-                .depositBankCode("001")
-                .amount(50000)
-                .counterpartyName("김철수")
-                .displayName("용돈")
-                .transferCycle(1)
-                .designatedDate(15)
-                .startDate(LocalDate.now())
-                .expirationDate(LocalDate.now().plusYears(1))
-                .processingStatus(AutoPaymentStatus.CANCELLED)
-                .build();
+        AutoPaymentResponse responseToReturn = new AutoPaymentResponse(
+                autoPaymentId,
+                educationalAccountId,
+                "1002-123-456789",
+                "우리은행",
+                "1234567890",
+                "001",
+                50000,
+                "김철수",
+                "용돈",
+                1,
+                15,
+                LocalDate.now(),
+                LocalDate.now().plusYears(1),
+                "CANCELLED"
+        );
         given(autoPaymentService.cancelAutoPayment(eq(autoPaymentId), eq(educationalAccountId), anyString()))
-                .willReturn(autoPaymentToReturn);
+                .willReturn(responseToReturn);
 
         // when & then
         mockMvc.perform(post("/education/auto-payment/{autoPaymentId}/cancel", autoPaymentId)
