@@ -463,7 +463,7 @@ public class AutoPaymentService {
      * @param status 원본 status 파라미터 (유효성 검증 완료)
      * @return 정규화된 status (ACTIVE, CANCELLED, ALL)
      */
-    private String normalizeStatusForCache(String status) {
+    public static String normalizeStatusForCache(String status) {
         if (!StringUtils.hasText(status)) {
             return "ACTIVE";
         }
