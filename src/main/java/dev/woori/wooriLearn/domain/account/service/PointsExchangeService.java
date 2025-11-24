@@ -39,27 +39,39 @@ public class PointsExchangeService {
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 200;
 
+    /**
+     * 처리 순서
+     * 1) 사용자 행 잠금 조회 (for update)
+     * 2) 요청 금액/잔액 검증
+     * 3) 출금 계좌 소유자 검증
+     * 4) 출금 APPLY 이력 저장
+     * 5) 응답 DTO 구성
+     */
     @Transactional
     public PointsExchangeResponseDto requestExchange(String username, PointsExchangeRequestDto dto) {
+        // 1) 사용자 행 잠금 조회
         Users user = userRepository.findByUserIdForUpdate(username)
                 .orElseThrow(() -> new CommonException(
                         ErrorCode.ENTITY_NOT_FOUND,
                         "사용자를 찾을 수 없습니다. userId=" + username
                 ));
 
-        if (dto.exchangeAmount() == null || dto.exchangeAmount() <= 0) {
+        // 2) 요청 금액/잔액 검증
+        if (dto.exchangeAmount() <= 0) {
             throw new CommonException(ErrorCode.INVALID_REQUEST, "교환 요청 금액이 0보다 커야 합니다");
         }
         if (user.getPoints() < dto.exchangeAmount()) {
             throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족하여 출금 요청을 처리할 수 없습니다.");
         }
 
+        // 3) 출금 계좌 소유자 검증
         Account account = accountRepository.findByAccountNumber(dto.accountNum())
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "계좌를 찾을 수 없습니다. accountNum=" + dto.accountNum()));
         if (!account.getUser().getId().equals(user.getId())) {
             throw new CommonException(ErrorCode.FORBIDDEN, "해당 계좌의 소유자가 아닙니다.");
         }
 
+        // 4) 출금 APPLY 이력 저장
         PointsHistory history = pointsHistoryRepository.save(
                 PointsHistory.builder()
                         .user(user)
@@ -69,6 +81,7 @@ public class PointsExchangeService {
                         .build()
         );
 
+        // 5) 응답 DTO 구성
         return PointsExchangeResponseDto.builder()
                 .requestId(history.getId())
                 .userId(user.getId())
@@ -79,8 +92,16 @@ public class PointsExchangeService {
                 .build();
     }
 
+    /**
+     * 처리 순서
+     * 1) 출금 이력 조회 및 상태 확인(APPLY)
+     * 2) 사용자/이력 잠금 조회로 동시성 제어
+     * 3) 포인트 차감 시도 후 성공/실패 기록
+     * 4) 응답 DTO 구성
+     */
     @Transactional
     public PointsExchangeResponseDto approveExchange(Long requestId) {
+        // 1) 출금 이력 조회 및 상태 확인
         PointsHistory history = pointsHistoryRepository.findById(requestId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 요청을 찾을 수 없습니다. requestId=" + requestId));
 
@@ -89,6 +110,7 @@ public class PointsExchangeService {
         }
 
         try {
+            // 2) 사용자/이력 잠금 조회
             Long userId = history.getUser().getId();
             Users user = userRepository.findByIdForUpdate(userId)
                     .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. Id=" + userId));
@@ -100,6 +122,7 @@ public class PointsExchangeService {
                 throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다");
             }
 
+            // 3) 포인트 차감 시도 및 상태 기록
             int amount = history.getAmount();
             String message;
             LocalDateTime processedAt = LocalDateTime.now(clock);
@@ -117,6 +140,7 @@ public class PointsExchangeService {
                 }
             }
 
+            // 4) 응답 DTO 구성
             return PointsExchangeResponseDto.builder()
                     .requestId(requestId)
                     .userId(user.getId())

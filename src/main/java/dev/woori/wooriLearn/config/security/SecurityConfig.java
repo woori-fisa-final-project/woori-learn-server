@@ -70,7 +70,7 @@ public class SecurityConfig {
                 )
                 .addFilterBefore((request, response, chain) -> {
                     SecurityContextHolder.getContext().setAuthentication(
-                            new UsernamePasswordAuthenticationToken("dev-user", null, List.of())
+                            new UsernamePasswordAuthenticationToken("devuser1", null, List.of())
                     );
                     chain.doFilter(request, response);
                 }, UsernamePasswordAuthenticationFilter.class)

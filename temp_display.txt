@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.account.service;
+﻿package dev.woori.wooriLearn.domain.account.service;
 
 import dev.woori.wooriLearn.common.SearchPeriod;
 import dev.woori.wooriLearn.common.SortDirection;
@@ -30,24 +30,12 @@ public class PointsHistoryService {
     private final UserRepository userRepository;
     private final Clock clock;
 
-    /**
-     * 처리 순서
-     * 1) 조회 대상 사용자 식별 (관리자면 요청 userId 허용)
-     * 2) 날짜 범위 해석 (직접 입력 또는 기간 기준)
-     * 3) 상태/타입 필터 매핑
-     * 4) 정렬/페이징 구성
-     * 5) 통합 이력 조회 실행
-     */
     public Page<PointsHistory> getUnifiedHistory(String username, PointsUnifiedHistoryRequestDto request, boolean isAdmin) {
-        // 1) 조회 대상 사용자 식별
         Long userId = resolveUserId(username, request.userId(), isAdmin);
 
-        // 2) 날짜 범위 해석
         DateRange range = resolveDateRange(request.startDate(), request.endDate(), request.period());
-        // 3) 상태/타입 필터 매핑
         TypeStatus ts = mapFilter(request.status());
 
-        // 4) 정렬/페이징 구성
         SortDirection sort = request.sort();
         PageRequest pageRequest = PageRequest.of(
                 request.page() - 1,
@@ -55,7 +43,6 @@ public class PointsHistoryService {
                 sort.toSort("createdAt")
         );
 
-        // 5) 통합 이력 조회 실행
         return queryRepository.findAllByFilters(
                 userId,
                 ts.type(),
@@ -69,7 +56,7 @@ public class PointsHistoryService {
     private Long resolveUserId(String username, Long requestUserId, boolean isAdmin) {
         if (requestUserId != null) {
             if (!isAdmin) {
-                throw new CommonException(ErrorCode.FORBIDDEN, "다른 사용자의 포인트 이력을 조회할 권한이 없습니다.");
+                throw new CommonException(ErrorCode.FORBIDDEN, "?ㅻⅨ ?ъ슜?먯쓽 ?ъ씤???대젰??議고쉶??沅뚰븳???놁뒿?덈떎.");
             }
             return requestUserId;
         }
@@ -78,7 +65,7 @@ public class PointsHistoryService {
         }
         return userRepository.findByUserId(username)
                 .map(Users::getId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "?ъ슜?먮? 李얠쓣 ???놁뒿?덈떎. userId=" + username));
     }
 
     private TypeStatus mapFilter(HistoryFilter filter) {
@@ -120,7 +107,7 @@ public class PointsHistoryService {
         try {
             return LocalDate.parse(date).atStartOfDay();
         } catch (DateTimeParseException e) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "startDate 형식이 올바르지 않습니다. 예) 2025-11-01");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "startDate ?뺤떇???щ컮瑜댁? ?딆뒿?덈떎. ?? 2025-11-01");
         }
     }
 
@@ -129,7 +116,7 @@ public class PointsHistoryService {
         try {
             return LocalDate.parse(date).atTime(23, 59, 59);
         } catch (DateTimeParseException e) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "endDate 형식이 올바르지 않습니다. 예) 2025-11-30");
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "endDate ?뺤떇???щ컮瑜댁? ?딆뒿?덈떎. ?? 2025-11-30");
         }
     }
 
