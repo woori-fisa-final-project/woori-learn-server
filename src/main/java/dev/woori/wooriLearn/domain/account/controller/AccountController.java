@@ -5,6 +5,7 @@ import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.account.dto.AccountCreateReqDto;
 import dev.woori.wooriLearn.domain.account.service.AccountService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,8 +29,8 @@ public class AccountController {
     }
 
     @PostMapping("/created")
-    public ResponseEntity<BaseResponse<?>> accountCreated(@RequestBody AccountCreateReqDto request) {
+    public ResponseEntity<BaseResponse<?>> accountCreated(@Valid @RequestBody AccountCreateReqDto request) {
         accountService.registerAccount(request);
-        return ApiResponse.success(SuccessCode.OK);
+        return ApiResponse.success(SuccessCode.CREATED);
     }
 }

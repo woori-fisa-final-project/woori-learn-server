@@ -25,6 +25,8 @@ public class AccountService {
     @Value("${external.bank.account-url}")
     private String bankAccountUrl;
 
+    private static final String WOORI_BANK_CODE = "020";
+
     /**
      * userId를 토대로 은행의 url 및 url에 접근하기 위한 access token을 반환합니다.
      * @param userId 사용자 id
@@ -46,11 +48,16 @@ public class AccountService {
         Users user = userRepository.findByUserId(request.userId())
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
 
+        // 계좌번호 중복 확인
+        accountRepository.findByAccountNumber(request.accountNum()).ifPresent(account -> {
+            throw new CommonException(ErrorCode.CONFLICT, "이미 등록된 계좌번호입니다.");
+        });
+
         // 계좌 엔티티 생성
         Account account = Account.builder()
                 .accountName(request.name())
                 .accountNumber(request.accountNum())
-                .bankCode("020") // 우리은행 은행코드
+                .bankCode(WOORI_BANK_CODE)
                 .user(user)
                 .build();
 
