@@ -196,19 +196,19 @@ public class AutoPaymentService {
 
         EducationalAccount account = autoPayment.getEducationalAccount();
 
-        // 2. 소유자 일치 확인 (요청한 계좌 ID와 실제 계좌 ID 비교)
-        if (!autoPayment.isOwnedBy(educationalAccountId)) {
-            log.warn("자동이체 소유자 불일치 - 자동이체ID: {}, 요청계좌ID: {}, 실제계좌ID: {}",
-                    autoPaymentId, educationalAccountId, account.getId());
-            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND,
-                    "자동이체 정보를 찾을 수 없습니다.");
-        }
-
-        // 3. 계좌 소유권 확인 (현재 사용자가 계좌 소유자인지 확인)
+        // 2. 계좌 소유권 확인 (현재 사용자가 계좌 소유자인지 확인 - 우선 검증)
         String accountOwnerUserId = account.getUser().getUserId();
         if (!accountOwnerUserId.equals(currentUserId)) {
             log.warn("권한 없는 접근 시도 - 자동이체ID: {}, 요청사용자: {}, 계좌소유자: {}",
                     autoPaymentId, currentUserId, accountOwnerUserId);
+            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                    "자동이체 정보를 찾을 수 없습니다.");
+        }
+
+        // 3. 파라미터 일관성 확인 (요청한 계좌 ID와 실제 계좌 ID 비교)
+        if (!autoPayment.isOwnedBy(educationalAccountId)) {
+            log.warn("자동이체 소유자 불일치 - 자동이체ID: {}, 요청계좌ID: {}, 실제계좌ID: {}",
+                    autoPaymentId, educationalAccountId, account.getId());
             throw new CommonException(ErrorCode.ENTITY_NOT_FOUND,
                     "자동이체 정보를 찾을 수 없습니다.");
         }
@@ -346,5 +346,39 @@ public class AutoPaymentService {
         }
 
         log.debug("자동이체 금액 한도 검증 성공 - 금액: {}, 최대한도: {}", amount, maxTransferAmount);
+    }
+
+    /**
+     * 교육 초기화 시 활성화된 자동이체 일괄 해지
+     * - 교육 처음부터 시작하기 기능에서 호출
+     * - 해당 계좌의 모든 ACTIVE 자동이체를 CANCELLED로 변경
+     *
+     * @param educationalAccountId 교육용 계좌 ID
+     * @param currentUserId 현재 사용자 ID
+     * @return 해지된 자동이체 건수
+     */
+    @Transactional
+    public int cancelAllActiveAutoPayments(Long educationalAccountId, String currentUserId) {
+        log.info("교육 초기화 - 활성화된 자동이체 일괄 해지 시작 - 계좌ID: {}, 사용자ID: {}",
+                educationalAccountId, currentUserId);
+
+        // 권한 체크: 요청한 계좌가 현재 사용자의 것인지 확인
+        validateAccountOwnership(educationalAccountId, currentUserId);
+
+        // 활성화된 자동이체 조회
+        List<AutoPayment> activePayments = autoPaymentRepository
+                .findByEducationalAccountIdAndProcessingStatus(
+                        educationalAccountId,
+                        AutoPaymentStatus.ACTIVE
+                );
+
+        // 일괄 해지 처리
+        activePayments.forEach(AutoPayment::cancel);
+
+        int cancelledCount = activePayments.size();
+        log.info("교육 초기화 - 자동이체 일괄 해지 완료 - 계좌ID: {}, 해지건수: {}",
+                educationalAccountId, cancelledCount);
+
+        return cancelledCount;
     }
 }
