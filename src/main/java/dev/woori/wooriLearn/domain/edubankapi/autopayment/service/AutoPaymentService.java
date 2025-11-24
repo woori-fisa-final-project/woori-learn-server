@@ -13,6 +13,8 @@ import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -35,6 +37,7 @@ public class AutoPaymentService {
     private final AutoPaymentRepository autoPaymentRepository;
     private final EdubankapiAccountRepository edubankapiAccountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CacheManager cacheManager;
 
     @Value("${app.auto-payment.max-amount:5000000}")
     private int maxTransferAmount;
@@ -51,8 +54,18 @@ public class AutoPaymentService {
      * @deprecated 페이징 처리된 getAutoPaymentListPaged() 사용 권장
      */
     @Deprecated
-    @Cacheable(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':' + #status")
     public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status, String currentUserId) {
+        // status를 정규화하여 캐시 키 중복 방지 ('active', 'ACTIVE', '' 등을 통일)
+        String normalizedStatus = normalizeStatusForCache(status);
+        return getAutoPaymentListCached(educationalAccountId, normalizedStatus, currentUserId);
+    }
+
+    /**
+     * 자동이체 목록 조회 (캐시 적용)
+     * 정규화된 status를 사용하여 캐시 키 중복 방지
+     */
+    @Cacheable(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':' + #status")
+    private List<AutoPaymentResponse> getAutoPaymentListCached(Long educationalAccountId, String status, String currentUserId) {
         log.info("자동이체 목록 조회 (캐시 미스) - 계좌ID: {}, 상태: {}", educationalAccountId, status);
 
         // 권한 체크: 요청한 계좌가 현재 사용자의 것인지 확인
@@ -352,12 +365,18 @@ public class AutoPaymentService {
      * 교육 초기화 시 활성화된 자동이체 일괄 해지
      * - 교육 처음부터 시작하기 기능에서 호출
      * - 해당 계좌의 모든 ACTIVE 자동이체를 CANCELLED로 변경
+     * - 캐시 무효화: 목록 캐시 삭제
      *
      * @param educationalAccountId 교육용 계좌 ID
      * @param currentUserId 현재 사용자 ID
      * @return 해지된 자동이체 건수
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':ACTIVE'"),
+            @CacheEvict(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':CANCELLED'"),
+            @CacheEvict(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':ALL'")
+    })
     public int cancelAllActiveAutoPayments(Long educationalAccountId, String currentUserId) {
         log.info("교육 초기화 - 활성화된 자동이체 일괄 해지 시작 - 계좌ID: {}, 사용자ID: {}",
                 educationalAccountId, currentUserId);
@@ -375,10 +394,55 @@ public class AutoPaymentService {
         // 일괄 해지 처리
         activePayments.forEach(AutoPayment::cancel);
 
+        // 개별 상세 캐시도 무효화 (각 자동이체의 상세 정보 캐시 삭제)
+        evictAutoPaymentDetailCaches(activePayments, currentUserId);
+
         int cancelledCount = activePayments.size();
         log.info("교육 초기화 - 자동이체 일괄 해지 완료 - 계좌ID: {}, 해지건수: {}",
                 educationalAccountId, cancelledCount);
 
         return cancelledCount;
+    }
+
+    /**
+     * 여러 자동이체의 상세 캐시를 수동으로 무효화
+     * @CacheEvict로는 동적인 여러 키를 삭제할 수 없어 CacheManager 사용
+     */
+    private void evictAutoPaymentDetailCaches(List<AutoPayment> autoPayments, String currentUserId) {
+        Cache detailCache = cacheManager.getCache("autoPaymentDetail");
+        if (detailCache != null) {
+            autoPayments.forEach(payment -> {
+                String cacheKey = currentUserId + ":" + payment.getId();
+                detailCache.evict(cacheKey);
+                log.debug("개별 상세 캐시 삭제 - 키: {}", cacheKey);
+            });
+        }
+    }
+
+    /**
+     * 캐시 키 생성을 위한 status 정규화
+     * - 빈 문자열 또는 null → "ACTIVE"
+     * - 소문자 → 대문자 변환
+     * - "ALL" → "ALL"
+     *
+     * @param status 원본 status 파라미터
+     * @return 정규화된 status (ACTIVE, CANCELLED, ALL)
+     */
+    private String normalizeStatusForCache(String status) {
+        if (!StringUtils.hasText(status)) {
+            return "ACTIVE";
+        }
+        String upperStatus = status.toUpperCase();
+        if (ALL_STATUS.equals(upperStatus)) {
+            return ALL_STATUS;
+        }
+        // ACTIVE 또는 CANCELLED로 정규화
+        try {
+            AutoPaymentStatus.valueOf(upperStatus);
+            return upperStatus;
+        } catch (IllegalArgumentException e) {
+            // 유효하지 않은 값은 ACTIVE로 처리 (resolveStatus에서 에러 발생할 것)
+            return "ACTIVE";
+        }
     }
 }
