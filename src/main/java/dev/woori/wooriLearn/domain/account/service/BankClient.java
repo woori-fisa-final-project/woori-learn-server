@@ -12,12 +12,16 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class BankClient {
     private final RestTemplate restTemplate;
+    private static final String APP_KEY_HEADER = "appKey";
+    private static final String SECRET_KEY_HEADER = "secretKey";
+
     @Value("${external.bank.base-url}")
     private String bankUrl;
     @Value("${spring.env.app-key}")
@@ -27,13 +31,13 @@ public class BankClient {
 
     public TokenData requestBankToken(String userId) {
         // url 지정
-        String url = bankUrl + "/auth/token";
+        String url = UriComponentsBuilder.fromHttpUrl(bankUrl).path("/auth/token").toUriString();
 
         // 헤더 지정
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.add("appKey", appKey);
-        headers.add("secretKey", secretKey);
+        headers.add(APP_KEY_HEADER, appKey);
+        headers.add(SECRET_KEY_HEADER, secretKey);
 
         // body 지정
         BankTokenReqDto payload = BankTokenReqDto.builder().userId(userId).build();
@@ -47,7 +51,6 @@ public class BankClient {
                     .postForEntity(url, entity, BankTokenResDto.class);
 
             BankTokenResDto body = response.getBody();
-            System.out.println(body);
             if (!response.getStatusCode().is2xxSuccessful() || body == null) {
                 log.error("인증서버 응답 오류: status={}, body={}", response.getStatusCode(), body);
                 throw new CommonException(ErrorCode.INTERNAL_SERVER_ERROR, "인증서버 응답이 올바르지 않습니다.");
