@@ -2,14 +2,15 @@ package dev.woori.wooriLearn.config.ratelimit;
 
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.codec.StringCodec;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -37,17 +38,37 @@ public class RateLimitConfig implements WebMvcConfigurer {
 
     /**
      * Redis 클라이언트 빈 등록
-     * @param redisHost Redis 호스트
-     * @param redisPort Redis 포트
+     * - RedisProperties를 주입받아 application.properties의 모든 Redis 설정 반영
+     * - 비밀번호, 데이터베이스, SSL 등 추가 설정 지원
+     * @param redisProperties Spring Boot Redis 설정
      * @return RedisClient 인스턴스
      */
     @Bean(destroyMethod = "shutdown")
-    public RedisClient redisClient(
-            @Value("${spring.data.redis.host:localhost}") String redisHost,
-            @Value("${spring.data.redis.port:6379}") int redisPort) {
+    public RedisClient redisClient(RedisProperties redisProperties) {
+        RedisURI.Builder builder = RedisURI.builder()
+                .withHost(redisProperties.getHost())
+                .withPort(redisProperties.getPort())
+                .withDatabase(redisProperties.getDatabase());
 
-        log.info("Creating RedisClient for Rate Limiting - Redis: {}:{}", redisHost, redisPort);
-        return RedisClient.create("redis://" + redisHost + ":" + redisPort);
+        // 비밀번호 설정 (있는 경우)
+        if (redisProperties.getPassword() != null && !redisProperties.getPassword().isEmpty()) {
+            builder.withPassword(redisProperties.getPassword().toCharArray());
+        }
+
+        // SSL 설정 (활성화된 경우)
+        if (redisProperties.getSsl().isEnabled()) {
+            builder.withSsl(true);
+        }
+
+        RedisURI redisURI = builder.build();
+
+        log.info("Creating RedisClient for Rate Limiting - Redis: {}:{}, DB: {}, SSL: {}",
+                redisProperties.getHost(),
+                redisProperties.getPort(),
+                redisProperties.getDatabase(),
+                redisProperties.getSsl().isEnabled());
+
+        return RedisClient.create(redisURI);
     }
 
     /**
