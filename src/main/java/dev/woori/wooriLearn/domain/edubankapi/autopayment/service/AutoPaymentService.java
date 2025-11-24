@@ -107,15 +107,22 @@ public class AutoPaymentService {
         log.info("자동이체 목록 조회 (페이징) - 계좌ID: {}, 상태: {}, 페이지: {}, 크기: {}",
                 educationalAccountId, status, pageable.getPageNumber(), pageable.getPageSize());
 
-        // 권한 체크: 요청한 계좌가 현재 사용자의 것인지 확인
+        // 1. status 유효성 검증 (유효하지 않으면 예외 발생)
+        validateAndResolveStatus(status);
+
+        // 2. status 정규화 (대소문자 통일)
+        String normalizedStatus = normalizeStatusForCache(status);
+
+        // 3. 권한 체크: 요청한 계좌가 현재 사용자의 것인지 확인
         validateAccountOwnership(educationalAccountId, currentUserId);
 
         Page<AutoPayment> autoPayments;
 
-        if (ALL_STATUS.equalsIgnoreCase(status)) {
+        if (ALL_STATUS.equalsIgnoreCase(normalizedStatus)) {
             autoPayments = autoPaymentRepository.findByEducationalAccountId(educationalAccountId, pageable);
         } else {
-            AutoPaymentStatus paymentStatus = resolveStatus(status);
+            // normalizedStatus는 이미 검증되어 "ACTIVE" 또는 "CANCELLED"만 들어옴
+            AutoPaymentStatus paymentStatus = AutoPaymentStatus.valueOf(normalizedStatus);
             autoPayments = autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
                     educationalAccountId, paymentStatus, pageable);
         }
@@ -311,19 +318,6 @@ public class AutoPaymentService {
             throw new CommonException(ErrorCode.UNAUTHORIZED, "계좌 비밀번호가 일치하지 않습니다.");
         }
         log.debug("계좌 비밀번호 검증 성공 - 계좌ID: {}", account.getId());
-    }
-
-    private AutoPaymentStatus resolveStatus(String status) {
-        if (!StringUtils.hasText(status)) {
-            return AutoPaymentStatus.ACTIVE;
-        }
-
-        try {
-            return AutoPaymentStatus.valueOf(status.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST,
-                    "유효하지 않은 상태 값입니다. (사용 가능: " + AutoPaymentStatus.getAvailableValues() + ")");
-        }
     }
 
     /**
