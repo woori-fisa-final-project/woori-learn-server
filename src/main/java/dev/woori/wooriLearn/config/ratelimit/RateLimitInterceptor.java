@@ -7,6 +7,7 @@ import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.Refill;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,28 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     private static final String RATE_LIMIT_KEY_PREFIX = "rate_limit:";
 
+    /**
+     * BucketConfiguration을 필드에 캐싱하여 매번 생성하는 비용 절감
+     */
+    private BucketConfiguration bucketConfiguration;
+
+    /**
+     * 인터셉터 초기화 시 BucketConfiguration을 한 번만 생성
+     */
+    @PostConstruct
+    public void initBucketConfiguration() {
+        Bandwidth limit = Bandwidth.classic(
+                capacity,
+                Refill.intervally(refillTokens, Duration.ofMinutes(refillDurationMinutes))
+        );
+        this.bucketConfiguration = BucketConfiguration.builder()
+                .addLimit(limit)
+                .build();
+
+        log.info("Rate limit BucketConfiguration initialized - capacity: {}, refill: {} tokens per {} minute(s)",
+                capacity, refillTokens, refillDurationMinutes);
+    }
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -59,7 +82,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         }
         String bucketKey = RATE_LIMIT_KEY_PREFIX + key;
 
-        Bucket bucket = proxyManager.builder().build(bucketKey, this::getConfigurationSupplier);
+        Bucket bucket = proxyManager.builder().build(bucketKey, () -> bucketConfiguration);
 
         if (bucket.tryConsume(1)) {
             long availableTokens = bucket.getAvailableTokens();
@@ -74,16 +97,6 @@ public class RateLimitInterceptor implements HandlerInterceptor {
                     String.format("요청 한도를 초과했습니다. %d분 후 다시 시도해주세요.", refillDurationMinutes)
             );
         }
-    }
-
-    private BucketConfiguration getConfigurationSupplier() {
-        Bandwidth limit = Bandwidth.classic(
-                capacity,
-                Refill.intervally(refillTokens, Duration.ofMinutes(refillDurationMinutes))
-        );
-        return BucketConfiguration.builder()
-                .addLimit(limit)
-                .build();
     }
 
     private static final String[] IP_HEADER_CANDIDATES = {

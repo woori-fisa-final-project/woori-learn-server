@@ -1,8 +1,6 @@
 package dev.woori.wooriLearn.config.cache;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -28,14 +26,13 @@ public class RedisConfig {
 
     /**
      * 캐시 매니저 설정
-     * - Spring Boot가 자동 설정한 RedisConnectionFactory 사용
+     * - Spring Boot가 자동 설정한 RedisConnectionFactory와 ObjectMapper 사용
+     * - ObjectMapper는 Spring 컨테이너가 관리하는 빈을 주입받아 일관된 설정 유지
      */
     @Bean
-    public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-        // Jackson ObjectMapper 설정 (LocalDate, LocalDateTime 직렬화 지원)
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    public CacheManager cacheManager(
+            RedisConnectionFactory connectionFactory,
+            ObjectMapper objectMapper) {
 
         // Redis 직렬화 설정
         RedisCacheConfiguration cacheConfig = RedisCacheConfiguration.defaultCacheConfig()
