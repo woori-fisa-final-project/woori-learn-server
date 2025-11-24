@@ -10,6 +10,7 @@ import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,11 +49,6 @@ public class AccountService {
         Users user = userRepository.findByUserId(request.userId())
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
 
-        // 계좌번호 중복 확인
-        accountRepository.findByAccountNumber(request.accountNum()).ifPresent(account -> {
-            throw new CommonException(ErrorCode.CONFLICT, "이미 등록된 계좌번호입니다.");
-        });
-
         // 계좌 엔티티 생성
         Account account = Account.builder()
                 .accountName(request.name())
@@ -60,7 +56,10 @@ public class AccountService {
                 .bankCode(WOORI_BANK_CODE)
                 .user(user)
                 .build();
-
-        accountRepository.save(account);
+        try {
+            accountRepository.save(account);
+        } catch (DataIntegrityViolationException e) {
+            throw new CommonException(ErrorCode.CONFLICT, "이미 등록된 계좌번호입니다.");
+        }
     }
 }
