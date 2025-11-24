@@ -51,7 +51,7 @@ public class AutoPaymentService {
      * @deprecated 페이징 처리된 getAutoPaymentListPaged() 사용 권장
      */
     @Deprecated
-    @Cacheable(value = "autoPaymentList", key = "#educationalAccountId + ':' + #status")
+    @Cacheable(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':' + #status")
     public List<AutoPaymentResponse> getAutoPaymentList(Long educationalAccountId, String status, String currentUserId) {
         log.info("자동이체 목록 조회 (캐시 미스) - 계좌ID: {}, 상태: {}", educationalAccountId, status);
 
@@ -103,7 +103,7 @@ public class AutoPaymentService {
         return autoPayments.map(autoPayment -> AutoPaymentResponse.of(autoPayment, educationalAccountId));
     }
 
-    @Cacheable(value = "autoPaymentDetail", key = "#autoPaymentId", unless = "#result == null")
+    @Cacheable(value = "autoPaymentDetail", key = "#currentUserId + ':' + #autoPaymentId", unless = "#result == null")
     public AutoPaymentResponse getAutoPaymentDetail(Long autoPaymentId, String currentUserId) {
         // N+1 문제 방지: 교육용 계좌 및 사용자 정보를 한 번에 조회
         AutoPayment autoPayment = autoPaymentRepository.findByIdWithAccountAndUser(autoPaymentId)
@@ -136,9 +136,9 @@ public class AutoPaymentService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':ACTIVE'"),
-            @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':CANCELLED'"),
-            @CacheEvict(value = "autoPaymentList", key = "#request.educationalAccountId() + ':ALL'")
+            @CacheEvict(value = "autoPaymentList", key = "#currentUserId + ':' + #request.educationalAccountId() + ':ACTIVE'"),
+            @CacheEvict(value = "autoPaymentList", key = "#currentUserId + ':' + #request.educationalAccountId() + ':CANCELLED'"),
+            @CacheEvict(value = "autoPaymentList", key = "#currentUserId + ':' + #request.educationalAccountId() + ':ALL'")
     })
     public AutoPaymentResponse createAutoPayment(AutoPaymentCreateRequest request, String currentUserId) {
         // 1. 금액 한도 검증
@@ -177,10 +177,10 @@ public class AutoPaymentService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':ACTIVE'"),
-            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':CANCELLED'"),
-            @CacheEvict(value = "autoPaymentList", key = "#educationalAccountId + ':ALL'"),
-            @CacheEvict(value = "autoPaymentDetail", key = "#autoPaymentId")
+            @CacheEvict(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':ACTIVE'"),
+            @CacheEvict(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':CANCELLED'"),
+            @CacheEvict(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':ALL'"),
+            @CacheEvict(value = "autoPaymentDetail", key = "#currentUserId + ':' + #autoPaymentId")
     })
     public AutoPayment cancelAutoPayment(Long autoPaymentId, Long educationalAccountId, String currentUserId) {
         log.info("자동이체 해지 시작 - 자동이체ID: {}, 교육용계좌ID: {}, 사용자ID: {}",
