@@ -6,6 +6,7 @@ import dev.woori.wooriLearn.domain.user.entity.Users;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
@@ -26,4 +27,8 @@ public interface ScenarioCompletedRepository extends JpaRepository<ScenarioCompl
         GROUP BY sc.user.id
     """)
     List<ScenarioCompletedCount> countCompletedByUserIds(@Param("userIds") List<Long> userIds);
+
+    @Modifying
+    @Query(value = "INSERT IGNORE INTO scenario_completed (user_id, scenario_id, completed_at) VALUES (:userId, :scenarioId, NOW(6))", nativeQuery = true)
+    int insertIgnore(@Param("userId") Long userId, @Param("scenarioId") Long scenarioId);
 }
