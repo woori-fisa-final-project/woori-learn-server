@@ -22,13 +22,23 @@ public class PointsDepositService {
     private final PointsHistoryRepository pointsHistoryRepository;
     private static final String DEFAULT_DEPOSIT_MESSAGE = "포인트 적립 완료";
 
+    /**
+     * 처리 순서
+     * 1) 사용자 행 잠금 조회 (for update)로 동시성 이슈 방지
+     * 2) 포인트 증액 (엔티티 검증 포함)
+     * 3) 포인트 이력 저장 (DEPOSIT/SUCCESS)
+     * 4) 응답 DTO 구성 후 반환
+     */
     @Transactional
     public PointsDepositResponseDto depositPoints(String username, PointsDepositRequestDto dto) {
+        // 1) 사용자 행 잠금 조회
         Users user = userRepository.findByUserIdForUpdate(username)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + username));
 
+        // 2) 포인트 증액
         user.addPoints(dto.amount());
 
+        // 3) 포인트 이력 저장
         PointsHistory history = pointsHistoryRepository.save(
                 PointsHistory.builder()
                         .user(user)
@@ -38,6 +48,7 @@ public class PointsDepositService {
                         .build()
         );
 
+        // 4) 응답 DTO 구성 및 반환
         return PointsDepositResponseDto.builder()
                 .userId(user.getId())
                 .addedPoint(dto.amount())
