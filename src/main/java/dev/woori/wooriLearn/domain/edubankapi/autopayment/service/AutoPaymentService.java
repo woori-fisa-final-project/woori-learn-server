@@ -307,32 +307,24 @@ public class AutoPaymentService {
     }
 
     /**
-     * 계좌 소유자 권한 검증
+     * 계좌 소유자 권한 검증 (효율적인 exists 쿼리 사용)
+     *
+     * 목록 조회 시 엔티티 전체를 로드하지 않고 소유권만 확인
+     * SELECT COUNT(*) 쿼리로 성능 최적화
+     *
      * @param accountId 검증할 계좌 ID
      * @param currentUserId 현재 로그인한 사용자 ID (username)
      */
     private void validateAccountOwnership(Long accountId, String currentUserId) {
-        // N+1 문제 방지: User 정보를 JOIN FETCH로 한 번에 조회
-        EducationalAccount account = edubankapiAccountRepository.findByIdWithUser(accountId)
-                .orElseThrow(() -> {
-                    log.error("교육용 계좌 조회 실패 - 계좌ID: {}", accountId);
-                    return new CommonException(ErrorCode.ENTITY_NOT_FOUND,
-                            "교육용 계좌를 찾을 수 없습니다.");
-                });
+        boolean isOwner = edubankapiAccountRepository.existsByIdAndUser_UserId(accountId, currentUserId);
 
-        // 계좌 소유자의 userId와 현재 사용자의 userId 비교
-        String accountOwnerUserId = account.getUser().getUserId();
-        log.info("계좌 소유권 검증 - 계좌ID: {}, 요청사용자: {}, 계좌소유자: {}",
-                accountId, currentUserId, accountOwnerUserId);
-
-        if (!accountOwnerUserId.equals(currentUserId)) {
-            log.warn("권한 없는 접근 시도 - 계좌ID: {}, 요청사용자: {}, 계좌소유자: {}",
-                    accountId, currentUserId, accountOwnerUserId);
+        if (!isOwner) {
+            log.warn("계좌 소유권 검증 실패 - 계좌ID: {}, 요청사용자: {}", accountId, currentUserId);
             throw new CommonException(ErrorCode.ENTITY_NOT_FOUND,
                     "교육용 계좌를 찾을 수 없습니다.");
         }
 
-        log.debug("계좌 소유자 권한 검증 성공 - 계좌ID: {}, 사용자ID: {}", accountId, currentUserId);
+        log.debug("계좌 소유권 검증 성공 - 계좌ID: {}, 사용자ID: {}", accountId, currentUserId);
     }
 
     /**
