@@ -84,17 +84,25 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
         Bucket bucket = proxyManager.builder().build(bucketKey, () -> bucketConfiguration);
 
-        if (bucket.tryConsume(1)) {
-            long availableTokens = bucket.getAvailableTokens();
-            response.setHeader("X-Rate-Limit-Remaining", String.valueOf(availableTokens));
-            log.debug("Rate limit OK - Key: {}, Remaining: {}", key, availableTokens);
+        // ConsumptionProbe를 사용하여 정확한 정보 얻기
+        var probe = bucket.tryConsumeAndReturnRemaining(1);
+
+        if (probe.isConsumed()) {
+            // 요청 허용: 남은 토큰 수를 헤더에 추가
+            response.setHeader("X-Rate-Limit-Remaining", String.valueOf(probe.getRemainingTokens()));
+            log.debug("Rate limit OK - Key: {}, Remaining: {}", key, probe.getRemainingTokens());
             return true;
         } else {
-            log.warn("Rate limit exceeded - Key: {}", key);
-            response.setHeader("X-Rate-Limit-Retry-After-Seconds", String.valueOf(refillDurationMinutes * 60));
+            // 요청 거부: 정확한 대기 시간 계산
+            long nanosToWait = probe.getNanosToWaitForRefill();
+            long secondsToWait = (nanosToWait / 1_000_000_000) + 1; // 나노초를 초로 변환 (올림)
+
+            log.warn("Rate limit exceeded - Key: {}, Retry after: {}s", key, secondsToWait);
+            response.setHeader("X-Rate-Limit-Retry-After-Seconds", String.valueOf(secondsToWait));
+
             throw new CommonException(
                     ErrorCode.TOO_MANY_REQUESTS,
-                    String.format("요청 한도를 초과했습니다. %d분 후 다시 시도해주세요.", refillDurationMinutes)
+                    String.format("요청 한도를 초과했습니다. %d초 후 다시 시도해주세요.", secondsToWait)
             );
         }
     }
