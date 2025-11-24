@@ -95,7 +95,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         } else {
             // 요청 거부: 정확한 대기 시간 계산
             long nanosToWait = probe.getNanosToWaitForRefill();
-            long secondsToWait = (nanosToWait / 1_000_000_000) + 1; // 나노초를 초로 변환 (올림)
+            long secondsToWait = (nanosToWait - 1) / 1_000_000_000L + 1; // 나노초를 초로 변환 (올림)
 
             log.warn("Rate limit exceeded - Key: {}, Retry after: {}s", key, secondsToWait);
             response.setHeader("X-Rate-Limit-Retry-After-Seconds", String.valueOf(secondsToWait));
