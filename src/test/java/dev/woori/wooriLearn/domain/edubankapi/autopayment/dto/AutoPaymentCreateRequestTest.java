@@ -158,7 +158,7 @@ class AutoPaymentCreateRequestTest {
         assertThat(violations).hasSize(1);
         assertThat(violations)
                 .extracting(ConstraintViolation::getMessage)
-                .contains("지정일은 31일 이하여야 합니다.");
+                .contains("지정일은 1~31 또는 99(말일)여야 합니다.");
     }
 
     @Test
@@ -181,7 +181,7 @@ class AutoPaymentCreateRequestTest {
         assertThat(violations).hasSize(1);
         assertThat(violations)
                 .extracting(ConstraintViolation::getMessage)
-                .contains("지정일은 1일 이상이어야 합니다.");
+                .contains("지정일은 1~31 또는 99(말일)여야 합니다.");
     }
 
     @Test
@@ -323,7 +323,7 @@ class AutoPaymentCreateRequestTest {
                         "교육용 계좌 ID는 필수입니다.",
                         "입금 은행 코드는 필수입니다.",
                         "이체 금액은 양수여야 합니다.",
-                        "지정일은 31일 이하여야 합니다.",
+                        "지정일은 1~31 또는 99(말일)여야 합니다.",
                         "만료일은 시작일 이후여야 합니다.",
                         "계좌 비밀번호는 4자리여야 합니다."
                 );

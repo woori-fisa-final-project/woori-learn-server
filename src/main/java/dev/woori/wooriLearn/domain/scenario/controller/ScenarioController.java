@@ -94,4 +94,19 @@ public class ScenarioController {
         return ApiResponse.success(SuccessCode.OK,
                 progressService.advance(me, scenarioId, req.nowStepId(), req.answer()));
     }
+
+    /**
+     * 시나리오 완료 보상 수령 (최초 1회만 적립)
+     * ex) POST /users/me/scenarios/{scenarioId}/reward
+     */
+    @PostMapping("/reward")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<BaseResponse<?>> claimReward(
+            @AuthenticationPrincipal String username,
+            @PathVariable("scenarioId") Long scenarioId
+    ) {
+        Users me = userService.getByUserIdOrThrow(username);
+        return ApiResponse.success(SuccessCode.OK,
+                progressService.claimScenarioReward(me, scenarioId));
+    }
 }
