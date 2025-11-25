@@ -4,10 +4,7 @@ pipeline {
     environment {
         AWS_HOST = "43.200.2.107"
         DOCKER_IMAGE = "bae1234/woori-learn-server:latest"
-
-        DB_URL = "jdbc:mysql://us.loclx.io:49210/wooriLearn?serverTimezone=Asia/Seoul&characterEncoding=UTF-8"
-    }
-
+   }
     stages {
 
         stage('Checkout') {
@@ -53,6 +50,7 @@ pipeline {
                         usernamePassword(credentialsId: 'db-credential',
                                          usernameVariable: 'DB_USER',
                                          passwordVariable: 'DB_PASS'),
+			string(credentialsId: 'db-url',variable: 'DB_URL'),
                         string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
                     ]) {
 
