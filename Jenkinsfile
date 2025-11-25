@@ -50,7 +50,7 @@ pipeline {
                         usernamePassword(credentialsId: 'db-credential',
                                          usernameVariable: 'DB_USER',
                                          passwordVariable: 'DB_PASS'),
-			string(credentialsId: 'db-url',variable: 'DB_URL'),
+                        string(credentialsId: 'db-url', variable: 'DB_URL'),
                         string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
                     ]) {
 
@@ -62,7 +62,7 @@ pipeline {
                                 -e SPRING_DATASOURCE_URL="${DB_URL}" \
                                 -e SPRING_DATASOURCE_USERNAME="${DB_USER}" \
                                 -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
-                                -e spring.jwt.secret="${JWT_SECRET}" \
+                                -e JWT_SECRET="${JWT_SECRET}" \
                                 ${DOCKER_IMAGE}
                         EOF
                         """
