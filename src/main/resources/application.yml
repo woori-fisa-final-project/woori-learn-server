@@ -29,4 +29,7 @@ spring:
 client:
   base-url: ${CLIENT_BASE_URL}
 
+account:
+  external-auth:
+    base-url: ${ACCOUNT_EXTERNAL_AUTH_BASE_URL}
 
