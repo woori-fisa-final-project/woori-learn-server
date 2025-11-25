@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        AWS_HOST = "43.200.2.107"
+        AWS_HOST = "43.202.43.243"
         DOCKER_IMAGE = "bae1234/woori-learn-server:latest"
    }
     stages {
