@@ -45,11 +45,14 @@ public class AccountService {
                     .url(bankAccountUrl)
                     .build();
         }catch(HttpClientErrorException e){
-            log.warn("Bank API token request failed {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
-            throw new CommonException(ErrorCode.UNAUTHORIZED, "은행 인증 토큰을 가져오는 데 실패했습니다.");
+            log.warn("API 요청 실패 - [{}]: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 401) {
+                throw new CommonException(ErrorCode.UNAUTHORIZED, "은행 인증 토큰을 가져오는 데 실패했습니다.");
+            }
+            throw new CommonException(ErrorCode.EXTERNAL_API_FAIL, "은행 API 요청 중 클라이언트 오류가 발생했습니다.");
         }
         catch (RestClientException e) {
-            log.error(e.getMessage());
+            log.error("API 요청 오류: {}", e.getMessage(), e);
             throw new CommonException(ErrorCode.EXTERNAL_API_FAIL);
         }
     }
@@ -84,24 +87,26 @@ public class AccountService {
         } catch (HttpClientErrorException e) {
             // 4xx 클라이언트 에러 처리 (가장 자주 발생하는 케이스)
             HttpStatusCode statusCode = e.getStatusCode();
-            log.warn("Bank API Client Error: Status Code {}", statusCode);
+            log.warn("은행 서버 오류 [{}]", statusCode);
 
-            if (statusCode.value() == 401) {
-                // 401 Unauthorized (인증 실패/토큰 만료 등)
-                throw new CommonException(ErrorCode.UNAUTHORIZED, "은행 인증 정보가 유효하지 않습니다.");
-            } else if (statusCode.value() == 404) {
-                // 404 Not Found (요청한 리소스를 찾을 수 없음, 예를 들어 유효하지 않은 코드)
-                throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "은행 계좌 등록 요청 정보가 유효하지 않습니다.");
-            } else if (statusCode.value() == 400) {
-                // 400 Bad Request (잘못된 요청 형식)
-                throw new CommonException(ErrorCode.INVALID_REQUEST, "은행 API 요청 형식이 잘못되었습니다.");
+            switch (statusCode.value()) {
+                case 401:
+                    // 401 Unauthorized (인증 실패/토큰 만료 등)
+                    throw new CommonException(ErrorCode.UNAUTHORIZED, "은행 인증 정보가 유효하지 않습니다.");
+                case 404:
+                    // 404 Not Found (요청한 리소스를 찾을 수 없음, 예를 들어 유효하지 않은 코드)
+                    throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "은행 계좌 등록 요청 정보가 유효하지 않습니다.");
+                case 400:
+                    // 400 Bad Request (잘못된 요청 형식)
+                    throw new CommonException(ErrorCode.INVALID_REQUEST, "은행 API 요청 형식이 잘못되었습니다.");
+                default:
+                    // 그 외 4xx 에러는 통합 처리
+                    throw new CommonException(ErrorCode.EXTERNAL_API_FAIL, "은행 API 처리 중 클라이언트 오류가 발생했습니다.");
             }
-            // 그 외 4xx 에러는 통합 처리
-            throw new CommonException(ErrorCode.EXTERNAL_API_FAIL, "은행 API 처리 중 클라이언트 오류가 발생했습니다.");
 
         } catch (RestClientException e) {
             // 4xx가 아닌 모든 예외 (5xx 서버 에러, 연결 실패 등)
-            log.error("Bank API General Error: {}", e.getMessage(), e);
+            log.error("은행 서버에서 에러 발생: {}", e.getMessage(), e);
 
             // 5xx 서버 에러는 그대로 외부 API 실패로 처리
             throw new CommonException(ErrorCode.EXTERNAL_API_FAIL, "은행 서버 내부 오류 또는 연결 오류가 발생했습니다.");

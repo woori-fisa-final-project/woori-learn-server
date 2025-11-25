@@ -25,6 +25,11 @@ public class RestClientConfig {
     @Value("${spring.env.secret-key}")
     private String secretKey;
 
+    @Value("${api.client.connect-timeout}")
+    private Duration connectTimeout;
+    @Value("${api.client.read-timeout}")
+    private Duration readTimeout;
+
     @Bean
     public AccountClient accountClient() {
         return HttpServiceProxyFactory
@@ -39,10 +44,11 @@ public class RestClientConfig {
                 .createClient(AccountClient.class);
     }
 
-    ClientHttpRequestFactory customRequestFactory() {
+    // 타임아웃 설정
+    private ClientHttpRequestFactory customRequestFactory() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofSeconds(5)); // 연결 타임아웃을 5초로 설정
-        factory.setReadTimeout(Duration.ofSeconds(5));  // 읽기 타임아웃을 5초로 설정
+        factory.setConnectTimeout(connectTimeout);
+        factory.setReadTimeout(readTimeout);
         return factory;
     }
 }
