@@ -10,5 +10,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 public class WooriLearnApplication {
 	public static void main(String[] args) {
         SpringApplication.run(WooriLearnApplication.class, args);
-	}
+
+    }
 }
