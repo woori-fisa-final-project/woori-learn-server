@@ -16,7 +16,8 @@ public enum ErrorCode {
     ENTITY_NOT_FOUND(HttpStatus.NOT_FOUND, 404, "대상을 찾을 수 없습니다."),
     CONFLICT(HttpStatus.CONFLICT, 409, "중복된 자원입니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 500, "서버 오류가 발생했습니다."),
-    SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, 503, "처리가 지연되고 있습니다. 잠시 후 다시 시도해 주세요.");
+    SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, 503, "처리가 지연되고 있습니다. 잠시 후 다시 시도해 주세요."),
+    EXTERNAL_API_FAIL(HttpStatus.BAD_GATEWAY, 3001, "외부 서버 통신 실패");
 
     private final HttpStatus status;
     private final int code;

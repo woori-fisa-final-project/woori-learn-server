@@ -1,10 +1,10 @@
 package dev.woori.wooriLearn.domain.account.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import lombok.Builder;
 
+@Builder
 public record AccountCreateReqDto(
-        @NotBlank String userId,
-        @NotBlank String accountNum,
-        @NotBlank String name
+        String id,
+        String code
 ) {
 }

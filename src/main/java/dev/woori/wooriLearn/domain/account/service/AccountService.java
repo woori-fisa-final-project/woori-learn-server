@@ -2,24 +2,28 @@ package dev.woori.wooriLearn.domain.account.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.domain.account.dto.AccountCreateReqDto;
-import dev.woori.wooriLearn.domain.account.dto.AccountUrlResDto;
+import dev.woori.wooriLearn.domain.account.dto.*;
 import dev.woori.wooriLearn.domain.account.entity.Account;
 import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class AccountService {
 
-    private final BankClient bankClient;
+    private final AccountClient accountClient;
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
 
@@ -34,32 +38,72 @@ public class AccountService {
      * @return String url - 계좌개설 url / String accessToken
      */
     public AccountUrlResDto getAccountUrl(String userId) {
-        return AccountUrlResDto.builder()
-                .accessToken(bankClient.requestBankToken(userId).accessToken())
-                .url(bankAccountUrl)
-                .build();
+        try{
+            BankTokenResDto response = accountClient.getAccountUrl(new BankTokenReqDto(userId));
+            return AccountUrlResDto.builder()
+                    .accessToken(response.data().accessToken())
+                    .url(bankAccountUrl)
+                    .build();
+        } catch (RestClientException e) {
+            log.warn(e.getMessage());
+            throw new CommonException(ErrorCode.EXTERNAL_API_FAIL);
+        }
     }
 
     /**
      * 요청에 담긴 정보를 토대로 계좌번호를 저장합니다.
-     * @param request userId / accountNum / name(계좌주 실명)
+     * @param request accountNum / name(계좌주 실명)
      */
-    public void registerAccount(AccountCreateReqDto request){
+    public void registerAccount(String userId, AccountCreateReqDto request){
         // 사용자 찾기
-        Users user = userRepository.findByUserId(request.userId())
+        Users user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
 
-        // 계좌 엔티티 생성
-        Account account = Account.builder()
-                .accountName(request.name())
-                .accountNumber(request.accountNum())
-                .bankCode(WOORI_BANK_CODE)
-                .user(user)
-                .build();
         try {
+            // 은행 서버에서 계좌번호 받아오기
+            AccountCreateResDto response = accountClient.getAccountNum(
+                    AccountCreateReqDto.builder()
+                            .id(userId)
+                            .code(request.code())
+                            .build()
+            );
+
+            // 계좌번호 저장하기
+            Account account = Account.builder()
+                    .accountName(response.data().name())
+                    .accountNumber(response.data().accountNum())
+                    .bankCode(WOORI_BANK_CODE)
+                    .user(user)
+                    .build();
             accountRepository.save(account);
+
         } catch (DataIntegrityViolationException e) {
             throw new CommonException(ErrorCode.CONFLICT, "이미 등록된 계좌번호입니다.");
+        }catch (HttpClientErrorException e) {
+            // 4xx 클라이언트 에러 처리 (가장 자주 발생하는 케이스)
+            HttpStatusCode statusCode = e.getStatusCode();
+            if (statusCode.is4xxClientError()) {
+                log.warn("Bank API Client Error: Status Code {}", statusCode);
+
+                if (statusCode.value() == 401) {
+                    // 401 Unauthorized (인증 실패/토큰 만료 등)
+                    throw new CommonException(ErrorCode.UNAUTHORIZED, "은행 인증 정보가 유효하지 않습니다.");
+                } else if (statusCode.value() == 404) {
+                    // 404 Not Found (요청한 리소스를 찾을 수 없음, 예를 들어 유효하지 않은 코드)
+                    throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "은행 계좌 등록 요청 정보가 유효하지 않습니다.");
+                } else if (statusCode.value() == 400) {
+                    // 400 Bad Request (잘못된 요청 형식)
+                    throw new CommonException(ErrorCode.INVALID_REQUEST, "은행 API 요청 형식이 잘못되었습니다.");
+                }
+                // 그 외 4xx 에러는 통합 처리
+                throw new CommonException(ErrorCode.EXTERNAL_API_FAIL, "은행 API 처리 중 클라이언트 오류가 발생했습니다.");
+            }
+        } catch (RestClientException e) {
+            // 4xx가 아닌 모든 예외 (5xx 서버 에러, 연결 실패 등)
+            log.error("Bank API General Error: {}", e.getMessage(), e);
+
+            // 5xx 서버 에러는 그대로 외부 API 실패로 처리
+            throw new CommonException(ErrorCode.EXTERNAL_API_FAIL, "은행 서버 내부 오류 또는 연결 오류가 발생했습니다.");
         }
     }
 }
