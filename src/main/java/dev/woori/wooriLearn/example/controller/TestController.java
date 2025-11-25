@@ -27,7 +27,7 @@ public class TestController {
 
         return ApiResponse.success(SuccessCode.OK);
         // or
-        // return ApiResponse.success(SuccessCode.OK, "성공적으로 요청이 완료되었습니다!");
+        // return ApiResponse.success(SuccessCode.OK, "성공적으로 요청이 완료되었습니다!");;;
     }
 
     @GetMapping("/get")
