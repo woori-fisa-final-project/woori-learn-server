@@ -2,7 +2,7 @@ package dev.woori.wooriLearn.domain.user.dto;
 
 import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsHistoryDto;
-import dev.woori.wooriLearn.domain.account.dto.PointsHistorySearchRequestDto;
+
 import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.scenario.dto.ScenarioProgressResDto;
 import lombok.Builder;
