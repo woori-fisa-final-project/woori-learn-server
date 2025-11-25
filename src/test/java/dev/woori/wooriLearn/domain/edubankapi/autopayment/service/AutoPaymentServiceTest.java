@@ -18,7 +18,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -34,7 +40,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("자동이체 Service 테스트")
 class AutoPaymentServiceTest {
-
     @Mock
     private AutoPaymentRepository autoPaymentRepository;
 
@@ -55,7 +60,8 @@ class AutoPaymentServiceTest {
     void setUp() {
         Users mockUser = Users.builder()
                 .id(1L)
-                .authUser(AuthUsers.builder().build())
+                .userId("testuser")
+                .authUser(AuthUsers.builder().userId("testuser").build())
                 .build();
 
         mockAccount = EducationalAccount.builder()
@@ -95,7 +101,8 @@ class AutoPaymentServiceTest {
     @DisplayName("자동이체 등록 성공")
     void createAutoPayment_Success() {
         // given
-        given(edubankapiAccountRepository.findById(anyLong()))
+        // findAndValidateAccountWithOwnership에서 1번만 호출됨 (최적화)
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
                 .willReturn(Optional.of(mockAccount));
         given(passwordEncoder.matches(anyString(), anyString()))
                 .willReturn(true);
@@ -103,7 +110,7 @@ class AutoPaymentServiceTest {
                 .willReturn(mockAutoPayment);
 
         // when
-        AutoPaymentResponse response = autoPaymentService.createAutoPayment(validRequest);
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(validRequest,"testuser");
 
         // then
         assertThat(response).isNotNull();
@@ -113,7 +120,7 @@ class AutoPaymentServiceTest {
         assertThat(response.startDate()).isEqualTo(LocalDate.of(2025, 1, 1));
         assertThat(response.expirationDate()).isEqualTo(LocalDate.of(2025, 12, 31));
 
-        verify(edubankapiAccountRepository).findById(1L);
+        verify(edubankapiAccountRepository, times(1)).findByIdWithUser(1L);  // 최적화로 1번만 호출됨
         verify(passwordEncoder).matches("1234", mockAccount.getAccountPassword());
         verify(autoPaymentRepository).save(any(AutoPayment.class));
     }
@@ -145,7 +152,7 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        given(edubankapiAccountRepository.findById(anyLong()))
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
                 .willReturn(Optional.of(mockAccount));
         given(passwordEncoder.matches(anyString(), anyString()))
                 .willReturn(true);
@@ -153,13 +160,14 @@ class AutoPaymentServiceTest {
                 .willReturn(sameDateAutoPayment);
 
         // when
-        AutoPaymentResponse response = autoPaymentService.createAutoPayment(sameDateRequest);
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(sameDateRequest,"testuser");
 
         // then
         assertThat(response).isNotNull();
         assertThat(response.startDate()).isEqualTo(sameDate);
         assertThat(response.expirationDate()).isEqualTo(sameDate);
 
+        verify(edubankapiAccountRepository, times(1)).findByIdWithUser(1L);
         verify(autoPaymentRepository).save(any(AutoPayment.class));
     }
 
@@ -167,12 +175,12 @@ class AutoPaymentServiceTest {
     @DisplayName("자동이체 등록 실패 - 계좌 없음 (ENTITY_NOT_FOUND)")
     void createAutoPayment_Fail_AccountNotFound() {
         // given
-        given(edubankapiAccountRepository.findById(anyLong()))
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
                 .willReturn(Optional.empty());
 
         // when
         CommonException exception = catchThrowableOfType(
-                () -> autoPaymentService.createAutoPayment(validRequest),
+                () -> autoPaymentService.createAutoPayment(validRequest,"testuser"),
                 CommonException.class
         );
 
@@ -181,7 +189,7 @@ class AutoPaymentServiceTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
         assertThat(exception.getMessage()).contains("교육용 계좌를 찾을 수 없습니다");
 
-        verify(edubankapiAccountRepository).findById(1L);
+        verify(edubankapiAccountRepository).findByIdWithUser(1L);
         verify(passwordEncoder, never()).matches(anyString(), anyString());
         verify(autoPaymentRepository, never()).save(any());
     }
@@ -190,14 +198,14 @@ class AutoPaymentServiceTest {
     @DisplayName("자동이체 등록 실패 - 비밀번호 불일치 (UNAUTHORIZED)")
     void createAutoPayment_Fail_WrongPassword() {
         // given
-        given(edubankapiAccountRepository.findById(anyLong()))
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
                 .willReturn(Optional.of(mockAccount));
         given(passwordEncoder.matches(anyString(), anyString()))
                 .willReturn(false);
 
         // when
         CommonException exception = catchThrowableOfType(
-                () -> autoPaymentService.createAutoPayment(validRequest),
+                () -> autoPaymentService.createAutoPayment(validRequest,"testuser"),
                 CommonException.class
         );
 
@@ -206,7 +214,7 @@ class AutoPaymentServiceTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
         assertThat(exception.getMessage()).contains("계좌 비밀번호가 일치하지 않습니다");
 
-        verify(edubankapiAccountRepository).findById(1L);
+        verify(edubankapiAccountRepository, times(1)).findByIdWithUser(1L);  // 최적화로 1번만 호출됨
         verify(passwordEncoder).matches("1234", mockAccount.getAccountPassword());
         verify(autoPaymentRepository, never()).save(any());
     }
@@ -215,17 +223,17 @@ class AutoPaymentServiceTest {
     @DisplayName("자동이체 목록 조회 성공 - 전체")
     void getAutoPaymentList_All_Success() {
         // given
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
+                .willReturn(true);
         given(autoPaymentRepository.findByEducationalAccountId(anyLong()))
                 .willReturn(List.of(mockAutoPayment));
-
         // when
-        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "ALL");
-
+        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "ALL","testuser");
         // then
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).id()).isEqualTo(1L);
         assertThat(responses.get(0).processingStatus()).isEqualTo("ACTIVE");
-
+        verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
         verify(autoPaymentRepository).findByEducationalAccountId(1L);
     }
 
@@ -233,17 +241,20 @@ class AutoPaymentServiceTest {
     @DisplayName("자동이체 목록 조회 성공 - ACTIVE만")
     void getAutoPaymentList_ActiveOnly_Success() {
         // given
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
+                .willReturn(true);
         given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
                 anyLong(), any(AutoPaymentStatus.class)))
                 .willReturn(List.of(mockAutoPayment));
 
         // when
-        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "ACTIVE");
+        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "ACTIVE","testuser");
 
         // then
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).processingStatus()).isEqualTo("ACTIVE");
 
+        verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
         verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
                 1L, AutoPaymentStatus.ACTIVE);
     }
@@ -252,11 +263,11 @@ class AutoPaymentServiceTest {
     @DisplayName("자동이체 상세 조회 성공")
     void getAutoPaymentDetail_Success() {
         // given
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.of(mockAutoPayment));
 
         // when
-        AutoPaymentResponse response = autoPaymentService.getAutoPaymentDetail(1L);
+        AutoPaymentResponse response = autoPaymentService.getAutoPaymentDetail(1L,"testuser");
 
         // then
         assertThat(response).isNotNull();
@@ -264,19 +275,19 @@ class AutoPaymentServiceTest {
         assertThat(response.displayName()).isEqualTo("월세");
         assertThat(response.processingStatus()).isEqualTo("ACTIVE");
 
-        verify(autoPaymentRepository).findById(1L);
+        verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
     }
 
     @Test
     @DisplayName("자동이체 상세 조회 실패 - 존재하지 않음 (ENTITY_NOT_FOUND)")
     void getAutoPaymentDetail_Fail_NotFound() {
         // given
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.empty());
 
         // when
         CommonException exception = catchThrowableOfType(
-                () -> autoPaymentService.getAutoPaymentDetail(1L),
+                () -> autoPaymentService.getAutoPaymentDetail(1L,"testuser"),
                 CommonException.class
         );
 
@@ -285,15 +296,19 @@ class AutoPaymentServiceTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
         assertThat(exception.getMessage()).contains("자동이체 정보를 찾을 수 없습니다");
 
-        verify(autoPaymentRepository).findById(1L);
+        verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
     }
 
     @Test
     @DisplayName("상태 변환 실패 - 잘못된 상태값 (INVALID_REQUEST)")
     void resolveStatus_Invalid() {
+        // given
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
+                .willReturn(true);
+
         // when
         CommonException exception = catchThrowableOfType(
-                () -> autoPaymentService.getAutoPaymentList(1L, "INVALID_STATUS"),
+                () -> autoPaymentService.getAutoPaymentList(1L, "INVALID_STATUS","testuser"),
                 CommonException.class
         );
 
@@ -307,29 +322,29 @@ class AutoPaymentServiceTest {
     @DisplayName("자동이체 해지 성공")
     void cancelAutoPayment_Success() {
         // given
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.of(mockAutoPayment));
 
         // when
-        autoPaymentService.cancelAutoPayment(1L, 1L);
+        autoPaymentService.cancelAutoPayment(1L, 1L,"testuser");
 
         // then
         assertThat(mockAutoPayment.getProcessingStatus())
                 .isEqualTo(AutoPaymentStatus.CANCELLED);
 
-        verify(autoPaymentRepository).findById(1L);
+        verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
     }
 
     @Test
     @DisplayName("자동이체 해지 실패 - 존재하지 않음 (ENTITY_NOT_FOUND)")
     void cancelAutoPayment_Fail_NotFound() {
         // given
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.empty());
 
         // when
         CommonException exception = catchThrowableOfType(
-                () -> autoPaymentService.cancelAutoPayment(1L, 1L),
+                () -> autoPaymentService.cancelAutoPayment(1L, 1L,"testuser"),
                 CommonException.class
         );
 
@@ -338,15 +353,16 @@ class AutoPaymentServiceTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
         assertThat(exception.getMessage()).contains("자동이체 정보를 찾을 수 없습니다");
 
-        verify(autoPaymentRepository).findById(1L);
+        verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
     }
 
     @Test
-    @DisplayName("자동이체 해지 실패 - 소유자 불일치 시 존재 여부 숨김 (ENTITY_NOT_FOUND)")
+    @DisplayName("자동이체 해지 실패 - 타인 계좌 접근 시 정보 은닉 (ENTITY_NOT_FOUND)")
     void cancelAutoPayment_Fail_NotOwner() {
         // given
         Users otherUser = Users.builder()
                 .id(2L)
+                .userId("otheruser")
                 .authUser(AuthUsers.builder().userId("otheruser").build())
                 .build();
 
@@ -358,16 +374,17 @@ class AutoPaymentServiceTest {
 
         AutoPayment otherAutoPayment = AutoPayment.builder()
                 .id(1L)
-                .educationalAccount(otherAccount)  // 다른 계좌!
+                .educationalAccount(otherAccount)
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        given(autoPaymentRepository.findById(anyLong()))
+        // 자동이체는 찾아지지만 다른 사람의 계좌
+        given(autoPaymentRepository.findByIdWithAccountAndUser(1L))
                 .willReturn(Optional.of(otherAutoPayment));
 
         // when
         CommonException exception = catchThrowableOfType(
-                () -> autoPaymentService.cancelAutoPayment(1L, 1L),  // 내 계좌(1L)로 시도
+                () -> autoPaymentService.cancelAutoPayment(1L, 2L,"testuser"),  // 다른 사람 계좌(2L)로 시도
                 CommonException.class
         );
 
@@ -376,7 +393,7 @@ class AutoPaymentServiceTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
         assertThat(exception.getMessage()).contains("자동이체 정보를 찾을 수 없습니다");
 
-        verify(autoPaymentRepository).findById(1L);
+        verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
     }
 
     @Test
@@ -389,12 +406,12 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.CANCELLED)  // 이미 해지됨!
                 .build();
 
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.of(cancelledAutoPayment));
 
         // when
         CommonException exception = catchThrowableOfType(
-                () -> autoPaymentService.cancelAutoPayment(1L, 1L),
+                () -> autoPaymentService.cancelAutoPayment(1L, 1L,"testuser"),
                 CommonException.class
         );
 
@@ -403,7 +420,7 @@ class AutoPaymentServiceTest {
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
         assertThat(exception.getMessage()).contains("이미 해지된 자동이체입니다");
 
-        verify(autoPaymentRepository).findById(1L);
+        verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
     }
 
     @Test
@@ -419,7 +436,7 @@ class AutoPaymentServiceTest {
                 "1234"
         );
 
-        given(edubankapiAccountRepository.findById(anyLong()))
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
                 .willReturn(Optional.of(mockAccount));
         given(passwordEncoder.matches(anyString(), anyString()))
                 .willReturn(true);
@@ -427,10 +444,11 @@ class AutoPaymentServiceTest {
                 .willReturn(mockAutoPayment);
 
         // when
-        AutoPaymentResponse response = autoPaymentService.createAutoPayment(requestWith31);
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(requestWith31,"testuser");
 
         // then
         assertThat(response).isNotNull();
+        verify(edubankapiAccountRepository, times(1)).findByIdWithUser(1L);
         verify(autoPaymentRepository).save(any(AutoPayment.class));
     }
 
@@ -447,7 +465,7 @@ class AutoPaymentServiceTest {
                 "1234"
         );
 
-        given(edubankapiAccountRepository.findById(anyLong()))
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
                 .willReturn(Optional.of(mockAccount));
         given(passwordEncoder.matches(anyString(), anyString()))
                 .willReturn(true);
@@ -455,10 +473,11 @@ class AutoPaymentServiceTest {
                 .willReturn(mockAutoPayment);
 
         // when
-        AutoPaymentResponse response = autoPaymentService.createAutoPayment(requestWith1);
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(requestWith1,"testuser");
 
         // then
         assertThat(response).isNotNull();
+        verify(edubankapiAccountRepository, times(1)).findByIdWithUser(1L);
         verify(autoPaymentRepository).save(any(AutoPayment.class));
     }
 
@@ -489,7 +508,7 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        given(edubankapiAccountRepository.findById(anyLong()))
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
                 .willReturn(Optional.of(mockAccount));
         given(passwordEncoder.matches(anyString(), anyString()))
                 .willReturn(true);
@@ -497,11 +516,12 @@ class AutoPaymentServiceTest {
                 .willReturn(leapYearAutoPayment);
 
         // when
-        AutoPaymentResponse response = autoPaymentService.createAutoPayment(leapYearRequest);
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(leapYearRequest,"testuser");
 
         // then
         assertThat(response).isNotNull();
         assertThat(response.expirationDate()).isEqualTo(LocalDate.of(2024, 2, 29));
+        verify(edubankapiAccountRepository, times(1)).findByIdWithUser(1L);
     }
 
     @Test
@@ -534,7 +554,7 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        given(edubankapiAccountRepository.findById(anyLong()))
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
                 .willReturn(Optional.of(mockAccount));
         given(passwordEncoder.matches(anyString(), anyString()))
                 .willReturn(true);
@@ -542,12 +562,13 @@ class AutoPaymentServiceTest {
                 .willReturn(oneYearAutoPayment);
 
         // when
-        AutoPaymentResponse response = autoPaymentService.createAutoPayment(oneYearRequest);
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(oneYearRequest,"testuser");
 
         // then
         assertThat(response).isNotNull();
         assertThat(response.startDate()).isEqualTo(startDate);
         assertThat(response.expirationDate()).isEqualTo(expirationDate);
+        verify(edubankapiAccountRepository, times(1)).findByIdWithUser(1L);
     }
 
     @Test
@@ -578,7 +599,7 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        given(edubankapiAccountRepository.findById(anyLong()))
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
                 .willReturn(Optional.of(mockAccount));
         given(passwordEncoder.matches(anyString(), anyString()))
                 .willReturn(true);
@@ -586,11 +607,12 @@ class AutoPaymentServiceTest {
                 .willReturn(minAmountAutoPayment);
 
         // when
-        AutoPaymentResponse response = autoPaymentService.createAutoPayment(minAmountRequest);
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(minAmountRequest,"testuser");
 
         // then
         assertThat(response).isNotNull();
         assertThat(response.amount()).isEqualTo(1);
+        verify(edubankapiAccountRepository, times(1)).findByIdWithUser(1L);
     }
 
     @Test
@@ -621,7 +643,7 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        given(edubankapiAccountRepository.findById(anyLong()))
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
                 .willReturn(Optional.of(mockAccount));
         given(passwordEncoder.matches(anyString(), anyString()))
                 .willReturn(true);
@@ -629,11 +651,12 @@ class AutoPaymentServiceTest {
                 .willReturn(largeAmountAutoPayment);
 
         // when
-        AutoPaymentResponse response = autoPaymentService.createAutoPayment(largeAmountRequest);
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(largeAmountRequest,"testuser");
 
         // then
         assertThat(response).isNotNull();
         assertThat(response.amount()).isEqualTo(1_000_000);
+        verify(edubankapiAccountRepository, times(1)).findByIdWithUser(1L);
     }
 
     @Test
@@ -666,7 +689,7 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        given(edubankapiAccountRepository.findById(anyLong()))
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
                 .willReturn(Optional.of(mockAccount));
         given(passwordEncoder.matches(anyString(), anyString()))
                 .willReturn(true);
@@ -674,11 +697,12 @@ class AutoPaymentServiceTest {
                 .willReturn(maxNameAutoPayment);
 
         // when
-        AutoPaymentResponse response = autoPaymentService.createAutoPayment(maxNameRequest);
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(maxNameRequest,"testuser");
 
         // then
         assertThat(response).isNotNull();
         assertThat(response.displayName()).hasSize(30);
+        verify(edubankapiAccountRepository, times(1)).findByIdWithUser(1L);
     }
 
     @Test
@@ -711,7 +735,7 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        given(edubankapiAccountRepository.findById(anyLong()))
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
                 .willReturn(Optional.of(mockAccount));
         given(passwordEncoder.matches(anyString(), anyString()))
                 .willReturn(true);
@@ -719,11 +743,12 @@ class AutoPaymentServiceTest {
                 .willReturn(maxAccountAutoPayment);
 
         // when
-        AutoPaymentResponse response = autoPaymentService.createAutoPayment(maxAccountRequest);
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(maxAccountRequest,"testuser");
 
         // then
         assertThat(response).isNotNull();
         assertThat(response.depositNumber()).hasSize(20);
+        verify(edubankapiAccountRepository, times(1)).findByIdWithUser(1L);
     }
 
     @Test
@@ -745,11 +770,11 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.of(freshAutoPayment));
 
         // when
-        autoPaymentService.cancelAutoPayment(1L, 1L);
+        autoPaymentService.cancelAutoPayment(1L, 1L,"testuser");
 
         // then
         assertThat(freshAutoPayment.getProcessingStatus())
@@ -775,11 +800,11 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
-        given(autoPaymentRepository.findById(anyLong()))
+        given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.of(almostExpiredAutoPayment));
 
         // when
-        autoPaymentService.cancelAutoPayment(1L, 1L);
+        autoPaymentService.cancelAutoPayment(1L, 1L,"testuser");
 
         // then
         assertThat(almostExpiredAutoPayment.getProcessingStatus())
@@ -790,14 +815,17 @@ class AutoPaymentServiceTest {
     @DisplayName("자동이체 목록 조회 - 빈 목록 반환")
     void getAutoPaymentList_EmptyList_Success() {
         // given
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
+                .willReturn(true);
         given(autoPaymentRepository.findByEducationalAccountId(anyLong()))
                 .willReturn(List.of());  // 빈 리스트
 
         // when
-        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "ALL");
+        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "ALL","testuser");
 
         // then
         assertThat(responses).isEmpty();
+        verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
         verify(autoPaymentRepository).findByEducationalAccountId(1L);
     }
 
@@ -820,16 +848,19 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.CANCELLED)
                 .build();
 
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
+                .willReturn(true);
         given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
                 anyLong(), any(AutoPaymentStatus.class)))
                 .willReturn(List.of(cancelledAutoPayment));
 
         // when
-        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "CANCELLED");
+        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "CANCELLED","testuser");
 
         // then
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).processingStatus()).isEqualTo("CANCELLED");
+        verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
         verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
                 1L, AutoPaymentStatus.CANCELLED);
     }
@@ -868,31 +899,37 @@ class AutoPaymentServiceTest {
                 .processingStatus(AutoPaymentStatus.ACTIVE)
                 .build();
 
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
+                .willReturn(true);
         given(autoPaymentRepository.findByEducationalAccountId(anyLong()))
                 .willReturn(List.of(autoPayment1, autoPayment2));
 
         // when
-        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "ALL");
+        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "ALL","testuser");
 
         // then
         assertThat(responses).hasSize(2);
         assertThat(responses).extracting(AutoPaymentResponse::displayName)
                 .containsExactly("월세", "관리비");
+        verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
     }
 
     @Test
     @DisplayName("상태 변환 - 소문자 'active' 입력 시 정상 처리")
     void resolveStatus_LowercaseActive_Success() {
         // given
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
+                .willReturn(true);
         given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
                 anyLong(), any(AutoPaymentStatus.class)))
                 .willReturn(List.of(mockAutoPayment));
 
         // when
-        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "active");
+        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "active","testuser");
 
         // then
         assertThat(responses).hasSize(1);
+        verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
         verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
                 1L, AutoPaymentStatus.ACTIVE);
     }
@@ -901,15 +938,18 @@ class AutoPaymentServiceTest {
     @DisplayName("상태 변환 - 대소문자 섞인 'AcTiVe' 입력 시 정상 처리")
     void resolveStatus_MixedCaseActive_Success() {
         // given
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
+                .willReturn(true);
         given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
                 anyLong(), any(AutoPaymentStatus.class)))
                 .willReturn(List.of(mockAutoPayment));
 
         // when
-        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "AcTiVe");
+        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "AcTiVe","testuser");
 
         // then
         assertThat(responses).hasSize(1);
+        verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
         verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
                 1L, AutoPaymentStatus.ACTIVE);
     }
@@ -918,16 +958,544 @@ class AutoPaymentServiceTest {
     @DisplayName("상태 변환 - 빈 문자열 입력 시 ACTIVE로 처리")
     void resolveStatus_EmptyString_DefaultToActive() {
         // given
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
+                .willReturn(true);
         given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
                 anyLong(), any(AutoPaymentStatus.class)))
                 .willReturn(List.of(mockAutoPayment));
 
         // when
-        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "");
+        List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "","testuser");
 
         // then
         assertThat(responses).hasSize(1);
+        verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
         verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
                 1L, AutoPaymentStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("말일 이체 기능 - 2월 시작 (28일 또는 29일)")
+    void createAutoPayment_EndOfMonth_February() {
+        // given - 2024년 2월(윤년, 29일까지)
+        AutoPaymentCreateRequest februaryRequest = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 50000,
+                "홍길동", "월세", 1, 99,  // designatedDate = 99 (말일)
+                LocalDate.of(2024, 2, 1),
+                LocalDate.of(2024, 12, 31),
+                "1234"
+        );
+
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
+                .willReturn(Optional.of(mockAccount));
+        given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
+        given(autoPaymentRepository.save(any(AutoPayment.class))).willAnswer(invocation -> {
+            AutoPayment saved = invocation.getArgument(0);
+            return AutoPayment.builder()
+                    .id(1L)
+                    .educationalAccount(saved.getEducationalAccount())
+                    .depositNumber(saved.getDepositNumber())
+                    .depositBankCode(saved.getDepositBankCode())
+                    .amount(saved.getAmount())
+                    .counterpartyName(saved.getCounterpartyName())
+                    .displayName(saved.getDisplayName())
+                    .transferCycle(saved.getTransferCycle())
+                    .designatedDate(saved.getDesignatedDate())  // 실제 변환된 날짜
+                    .startDate(saved.getStartDate())
+                    .expirationDate(saved.getExpirationDate())
+                    .processingStatus(saved.getProcessingStatus())
+                    .build();
+        });
+
+        // when
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(februaryRequest, "testuser");
+
+        // then
+        assertThat(response).isNotNull();
+        verify(autoPaymentRepository).save(any(AutoPayment.class));
+
+        // designatedDate가 29일(2024년 2월 말일)로 변환되었는지 확인
+        verify(autoPaymentRepository).save(argThat(autoPayment ->
+                autoPayment.getDesignatedDate() == 29  // 2024년 2월은 윤년이므로 29일
+        ));
+    }
+
+    @Test
+    @DisplayName("말일 이체 기능 - 3월 시작 (31일)")
+    void createAutoPayment_EndOfMonth_March() {
+        // given - 2024년 3월(31일까지)
+        AutoPaymentCreateRequest marchRequest = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 50000,
+                "홍길동", "월세", 1, 99,  // designatedDate = 99 (말일)
+                LocalDate.of(2024, 3, 1),
+                LocalDate.of(2024, 12, 31),
+                "1234"
+        );
+
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
+                .willReturn(Optional.of(mockAccount));
+        given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
+        given(autoPaymentRepository.save(any(AutoPayment.class))).willAnswer(invocation -> {
+            AutoPayment saved = invocation.getArgument(0);
+            return AutoPayment.builder()
+                    .id(1L)
+                    .educationalAccount(saved.getEducationalAccount())
+                    .depositNumber(saved.getDepositNumber())
+                    .depositBankCode(saved.getDepositBankCode())
+                    .amount(saved.getAmount())
+                    .counterpartyName(saved.getCounterpartyName())
+                    .displayName(saved.getDisplayName())
+                    .transferCycle(saved.getTransferCycle())
+                    .designatedDate(saved.getDesignatedDate())
+                    .startDate(saved.getStartDate())
+                    .expirationDate(saved.getExpirationDate())
+                    .processingStatus(saved.getProcessingStatus())
+                    .build();
+        });
+
+        // when
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(marchRequest, "testuser");
+
+        // then
+        assertThat(response).isNotNull();
+        verify(autoPaymentRepository).save(argThat(autoPayment ->
+                autoPayment.getDesignatedDate() == 31  // 3월은 31일
+        ));
+    }
+
+    @Test
+    @DisplayName("말일 이체 기능 - 평년 2월 시작 (28일)")
+    void createAutoPayment_EndOfMonth_FebruaryNonLeapYear() {
+        // given - 2025년 2월(평년, 28일까지)
+        AutoPaymentCreateRequest februaryRequest = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 50000,
+                "홍길동", "월세", 1, 99,  // designatedDate = 99 (말일)
+                LocalDate.of(2025, 2, 1),
+                LocalDate.of(2025, 12, 31),
+                "1234"
+        );
+
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
+                .willReturn(Optional.of(mockAccount));
+        given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
+        given(autoPaymentRepository.save(any(AutoPayment.class))).willAnswer(invocation -> {
+            AutoPayment saved = invocation.getArgument(0);
+            return AutoPayment.builder()
+                    .id(1L)
+                    .educationalAccount(saved.getEducationalAccount())
+                    .depositNumber(saved.getDepositNumber())
+                    .depositBankCode(saved.getDepositBankCode())
+                    .amount(saved.getAmount())
+                    .counterpartyName(saved.getCounterpartyName())
+                    .displayName(saved.getDisplayName())
+                    .transferCycle(saved.getTransferCycle())
+                    .designatedDate(saved.getDesignatedDate())
+                    .startDate(saved.getStartDate())
+                    .expirationDate(saved.getExpirationDate())
+                    .processingStatus(saved.getProcessingStatus())
+                    .build();
+        });
+
+        // when
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(februaryRequest, "testuser");
+
+        // then
+        assertThat(response).isNotNull();
+        verify(autoPaymentRepository).save(argThat(autoPayment ->
+                autoPayment.getDesignatedDate() == 28  // 2025년 2월은 평년이므로 28일
+        ));
+    }
+
+    @Test
+    @DisplayName("일반 지정일 - 99가 아닌 경우 그대로 사용")
+    void createAutoPayment_NormalDesignatedDate() {
+        // given - 일반 지정일 15일
+        AutoPaymentCreateRequest normalRequest = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 50000,
+                "홍길동", "월세", 1, 15,  // designatedDate = 15
+                LocalDate.of(2024, 2, 1),
+                LocalDate.of(2024, 12, 31),
+                "1234"
+        );
+
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
+                .willReturn(Optional.of(mockAccount));
+        given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
+        given(autoPaymentRepository.save(any(AutoPayment.class))).willAnswer(invocation -> {
+            AutoPayment saved = invocation.getArgument(0);
+            return AutoPayment.builder()
+                    .id(1L)
+                    .educationalAccount(saved.getEducationalAccount())
+                    .depositNumber(saved.getDepositNumber())
+                    .depositBankCode(saved.getDepositBankCode())
+                    .amount(saved.getAmount())
+                    .counterpartyName(saved.getCounterpartyName())
+                    .displayName(saved.getDisplayName())
+                    .transferCycle(saved.getTransferCycle())
+                    .designatedDate(saved.getDesignatedDate())
+                    .startDate(saved.getStartDate())
+                    .expirationDate(saved.getExpirationDate())
+                    .processingStatus(saved.getProcessingStatus())
+                    .build();
+        });
+
+        // when
+        AutoPaymentResponse response = autoPaymentService.createAutoPayment(normalRequest, "testuser");
+
+        // then
+        assertThat(response).isNotNull();
+        verify(autoPaymentRepository).save(argThat(autoPayment ->
+                autoPayment.getDesignatedDate() == 15  // 15일 그대로 유지
+        ));
+    }
+
+    // ========== getAutoPaymentListPaged 테스트 ==========
+
+    @Test
+    @DisplayName("자동이체 목록 페이징 조회 성공 - ACTIVE 필터링")
+    void getAutoPaymentListPaged_ActiveFilter_Success() {
+        // given
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "startDate"));
+
+        // 소유권 검증 mock
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(1L, "testuser"))
+                .willReturn(true);
+
+        AutoPayment activePayment1 = AutoPayment.builder()
+                .id(1L)
+                .educationalAccount(mockAccount)
+                .depositNumber("110-123-456789")
+                .depositBankCode("020")
+                .amount(50000)
+                .counterpartyName("홍길동")
+                .displayName("월세")
+                .transferCycle(1)
+                .designatedDate(5)
+                .startDate(LocalDate.of(2025, 1, 1))
+                .expirationDate(LocalDate.of(2025, 12, 31))
+                .processingStatus(AutoPaymentStatus.ACTIVE)
+                .build();
+
+        AutoPayment activePayment2 = AutoPayment.builder()
+                .id(2L)
+                .educationalAccount(mockAccount)
+                .depositNumber("110-987-654321")
+                .depositBankCode("020")
+                .amount(30000)
+                .counterpartyName("김철수")
+                .displayName("관리비")
+                .transferCycle(1)
+                .designatedDate(10)
+                .startDate(LocalDate.of(2025, 2, 1))
+                .expirationDate(LocalDate.of(2025, 12, 31))
+                .processingStatus(AutoPaymentStatus.ACTIVE)
+                .build();
+
+        Page<AutoPayment> mockPage = new PageImpl<>(List.of(activePayment2, activePayment1), pageable, 2);
+
+        given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
+                1L, AutoPaymentStatus.ACTIVE, pageable))
+                .willReturn(mockPage);
+
+        // when
+        Page<AutoPaymentResponse> result = autoPaymentService.getAutoPaymentListPaged(
+                1L, "ACTIVE", "testuser", pageable);
+
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.getContent().get(0).id()).isEqualTo(2L); // 정렬 확인
+        assertThat(result.getContent().get(1).id()).isEqualTo(1L);
+        verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
+                1L, AutoPaymentStatus.ACTIVE, pageable);
+    }
+
+    @Test
+    @DisplayName("자동이체 목록 페이징 조회 성공 - CANCELLED 필터링")
+    void getAutoPaymentListPaged_CancelledFilter_Success() {
+        // given
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "startDate"));
+
+        // 소유권 검증 mock
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(1L, "testuser"))
+                .willReturn(true);
+
+        AutoPayment cancelledPayment = AutoPayment.builder()
+                .id(1L)
+                .educationalAccount(mockAccount)
+                .depositNumber("110-123-456789")
+                .depositBankCode("020")
+                .amount(50000)
+                .counterpartyName("홍길동")
+                .displayName("월세")
+                .transferCycle(1)
+                .designatedDate(5)
+                .startDate(LocalDate.of(2025, 1, 1))
+                .expirationDate(LocalDate.of(2025, 12, 31))
+                .processingStatus(AutoPaymentStatus.CANCELLED)
+                .build();
+
+        Page<AutoPayment> mockPage = new PageImpl<>(List.of(cancelledPayment), pageable, 1);
+
+        given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
+                1L, AutoPaymentStatus.CANCELLED, pageable))
+                .willReturn(mockPage);
+
+        // when
+        Page<AutoPaymentResponse> result = autoPaymentService.getAutoPaymentListPaged(
+                1L, "CANCELLED", "testuser", pageable);
+
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
+                1L, AutoPaymentStatus.CANCELLED, pageable);
+    }
+
+    @Test
+    @DisplayName("자동이체 목록 페이징 조회 성공 - ALL 필터링")
+    void getAutoPaymentListPaged_AllFilter_Success() {
+        // given
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "startDate"));
+
+        // 소유권 검증 mock
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(1L, "testuser"))
+                .willReturn(true);
+
+        AutoPayment activePayment = AutoPayment.builder()
+                .id(1L)
+                .educationalAccount(mockAccount)
+                .depositNumber("110-123-456789")
+                .depositBankCode("020")
+                .amount(50000)
+                .counterpartyName("홍길동")
+                .displayName("월세")
+                .transferCycle(1)
+                .designatedDate(5)
+                .startDate(LocalDate.of(2025, 1, 1))
+                .expirationDate(LocalDate.of(2025, 12, 31))
+                .processingStatus(AutoPaymentStatus.ACTIVE)
+                .build();
+
+        AutoPayment cancelledPayment = AutoPayment.builder()
+                .id(2L)
+                .educationalAccount(mockAccount)
+                .depositNumber("110-987-654321")
+                .depositBankCode("020")
+                .amount(30000)
+                .counterpartyName("김철수")
+                .displayName("관리비")
+                .transferCycle(1)
+                .designatedDate(10)
+                .startDate(LocalDate.of(2025, 2, 1))
+                .expirationDate(LocalDate.of(2025, 12, 31))
+                .processingStatus(AutoPaymentStatus.CANCELLED)
+                .build();
+
+        Page<AutoPayment> mockPage = new PageImpl<>(List.of(cancelledPayment, activePayment), pageable, 2);
+
+        given(autoPaymentRepository.findByEducationalAccountId(1L, pageable))
+                .willReturn(mockPage);
+
+        // when
+        Page<AutoPaymentResponse> result = autoPaymentService.getAutoPaymentListPaged(
+                1L, "ALL", "testuser", pageable);
+
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        verify(autoPaymentRepository).findByEducationalAccountId(1L, pageable);
+    }
+
+    @Test
+    @DisplayName("자동이체 목록 페이징 조회 성공 - 빈 페이지")
+    void getAutoPaymentListPaged_EmptyPage_Success() {
+        // given
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "startDate"));
+
+        // 소유권 검증 mock
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(1L, "testuser"))
+                .willReturn(true);
+
+        Page<AutoPayment> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+
+        given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
+                1L, AutoPaymentStatus.ACTIVE, pageable))
+                .willReturn(emptyPage);
+
+        // when
+        Page<AutoPaymentResponse> result = autoPaymentService.getAutoPaymentListPaged(
+                1L, "ACTIVE", "testuser", pageable);
+
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getTotalElements()).isEqualTo(0);
+        verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
+                1L, AutoPaymentStatus.ACTIVE, pageable);
+    }
+
+    @Test
+    @DisplayName("자동이체 목록 페이징 조회 성공 - 두 번째 페이지")
+    void getAutoPaymentListPaged_SecondPage_Success() {
+        // given
+        Pageable pageable = PageRequest.of(1, 2, Sort.by(Sort.Direction.DESC, "startDate")); // 2번째 페이지
+
+        // 소유권 검증 mock
+        given(edubankapiAccountRepository.existsByIdAndUser_UserId(1L, "testuser"))
+                .willReturn(true);
+
+        AutoPayment payment3 = AutoPayment.builder()
+                .id(3L)
+                .educationalAccount(mockAccount)
+                .depositNumber("110-333-333333")
+                .depositBankCode("020")
+                .amount(40000)
+                .counterpartyName("박영희")
+                .displayName("전기세")
+                .transferCycle(1)
+                .designatedDate(15)
+                .startDate(LocalDate.of(2025, 3, 1))
+                .expirationDate(LocalDate.of(2025, 12, 31))
+                .processingStatus(AutoPaymentStatus.ACTIVE)
+                .build();
+
+        Page<AutoPayment> mockPage = new PageImpl<>(List.of(payment3), pageable, 5);
+
+        given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
+                1L, AutoPaymentStatus.ACTIVE, pageable))
+                .willReturn(mockPage);
+
+        // when
+        Page<AutoPaymentResponse> result = autoPaymentService.getAutoPaymentListPaged(
+                1L, "ACTIVE", "testuser", pageable);
+
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(5);
+        assertThat(result.getTotalPages()).isEqualTo(3); // 5개 / 2개씩 = 3페이지
+        assertThat(result.getNumber()).isEqualTo(1); // 현재 페이지 번호
+    }
+
+    // ========== validateAmountLimit 테스트 ==========
+
+    @Test
+    @DisplayName("금액 한도 검증 성공 - 한도 이하 (createAutoPayment 통해 테스트)")
+    void validateAmountLimit_UnderLimit_Success() {
+        // given
+        ReflectionTestUtils.setField(autoPaymentService, "amountLimitEnabled", true);
+        ReflectionTestUtils.setField(autoPaymentService, "maxTransferAmount", 1000000);
+
+        AutoPaymentCreateRequest request = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 500000,  // 한도 이하
+                "홍길동", "월세", 1, 5,
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 12, 31),
+                "1234"
+        );
+
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
+                .willReturn(Optional.of(mockAccount));
+        given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
+        given(autoPaymentRepository.save(any(AutoPayment.class))).willReturn(mockAutoPayment);
+
+        // when & then - 예외 발생하지 않음
+        assertThatCode(() ->
+            autoPaymentService.createAutoPayment(request, "testuser")
+        ).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("금액 한도 검증 실패 - 한도 초과")
+    void validateAmountLimit_ExceedsLimit_ThrowsException() {
+        // given
+        ReflectionTestUtils.setField(autoPaymentService, "amountLimitEnabled", true);
+        ReflectionTestUtils.setField(autoPaymentService, "maxTransferAmount", 1000000);
+
+        AutoPaymentCreateRequest request = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 1000001,  // 한도 초과
+                "홍길동", "월세", 1, 5,
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 12, 31),
+                "1234"
+        );
+
+        // when & then
+        assertThatThrownBy(() ->
+            autoPaymentService.createAutoPayment(request, "testuser")
+        )
+        .isInstanceOf(CommonException.class)
+        .hasMessageContaining("자동이체 금액은 1회 최대");
+    }
+
+    @Test
+    @DisplayName("금액 한도 검증 비활성화 시 - 한도 초과해도 통과")
+    void validateAmountLimit_Disabled_NoValidation() {
+        // given
+        ReflectionTestUtils.setField(autoPaymentService, "amountLimitEnabled", false);
+        ReflectionTestUtils.setField(autoPaymentService, "maxTransferAmount", 1000000);
+
+        AutoPaymentCreateRequest request = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 10000000,  // 한도 초과하지만 검증 비활성화
+                "홍길동", "월세", 1, 5,
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 12, 31),
+                "1234"
+        );
+
+        given(edubankapiAccountRepository.findByIdWithUser(anyLong()))
+                .willReturn(Optional.of(mockAccount));
+        given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
+        given(autoPaymentRepository.save(any(AutoPayment.class))).willReturn(mockAutoPayment);
+
+        // when & then - 비활성화 상태이므로 예외 발생하지 않음
+        assertThatCode(() ->
+            autoPaymentService.createAutoPayment(request, "testuser")
+        ).doesNotThrowAnyException();
+    }
+
+    // ========== 소유권 및 비밀번호 검증 테스트 ==========
+
+    @Test
+    @DisplayName("계좌 소유권 검증 실패 - 다른 사용자의 계좌 (createAutoPayment 통해 테스트)")
+    void findAndValidateAccountWithOwnership_NotOwner_ThrowsException() {
+        // given
+        Users otherUser = Users.builder()
+                .id(2L)
+                .userId("otheruser")
+                .authUser(AuthUsers.builder().userId("otheruser").build())
+                .build();
+
+        EducationalAccount otherAccount = EducationalAccount.builder()
+                .id(1L)
+                .accountNumber("1002-123-456789")
+                .accountPassword("$2a$10$encodedPassword")
+                .accountName("다른사람계좌")
+                .balance(1000000)
+                .user(otherUser)
+                .build();
+
+        AutoPaymentCreateRequest request = new AutoPaymentCreateRequest(
+                1L, "020", "110-123-456789", 50000,
+                "홍길동", "월세", 1, 5,
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 12, 31),
+                "1234"
+        );
+
+        given(edubankapiAccountRepository.findByIdWithUser(1L))
+                .willReturn(Optional.of(otherAccount));
+
+        // when & then - 다른 사용자의 계좌이므로 ENTITY_NOT_FOUND (정보 은닉)
+        assertThatThrownBy(() ->
+            autoPaymentService.createAutoPayment(request, "testuser")
+        )
+        .isInstanceOf(CommonException.class)
+        .extracting("errorCode")
+        .isEqualTo(ErrorCode.ENTITY_NOT_FOUND);
     }
 }

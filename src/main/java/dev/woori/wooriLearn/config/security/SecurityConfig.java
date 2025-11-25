@@ -71,7 +71,10 @@ public class SecurityConfig {
                 .addFilterBefore((request, response, chain) -> {
                     // dev/test용 임시 인증 세팅
                     SecurityContextHolder.getContext().setAuthentication(
-                            new UsernamePasswordAuthenticationToken("devuser1", null, List.of())
+
+
+                            new UsernamePasswordAuthenticationToken("testuser", null, List.of())
+
                     );
                     chain.doFilter(request, response);
                 }, UsernamePasswordAuthenticationFilter.class)
