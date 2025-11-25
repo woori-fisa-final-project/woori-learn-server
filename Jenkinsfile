@@ -55,7 +55,7 @@ pipeline {
                     ]) {
 
                         sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} << 'EOF'
+                        ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} << EOF
                             docker pull ${DOCKER_IMAGE}
                             docker rm -f woori_backend || true
                             docker run -d --name woori_backend -p 8080:8080 \
