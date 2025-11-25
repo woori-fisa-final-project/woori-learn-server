@@ -26,16 +26,18 @@ spring:
     refresh-expiration: ${JWT_REFRESH_EXPIRATION:31536000000}
 
   env:
-    app-key: this-is-app-key
-    secret-key: "MY_SECRET_ABC123"
+    app-key: ${spring.env.app-key}
+    secret-key: ${spring.env.secret-key}
+
 client:
   base-url: ${CLIENT_BASE_URL}
 
 account:
   external-auth:
     base-url: ${ACCOUNT_EXTERNAL_AUTH_BASE_URL}
+    request-path: ${ACCOUNT_EXTERNAL_AUTH_REQUEST_PATH:/otp}
 
 external:
   bank:
-    base-url: http://localhost:9000
+    base-url: ${external.bank.base-url}
 

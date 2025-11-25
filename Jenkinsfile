@@ -60,9 +60,12 @@ docker run -d --name woori_backend -p 8080:8080 \
     -e SPRING_DATASOURCE_URL="${DB_URL}" \
     -e SPRING_DATASOURCE_USERNAME="${DB_USER}" \
     -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
-    -e spring.jwt.secret="${JWT_SECRET}" \
-    -e CLIENT_BASE_URL="http://43.202.43.243:3000" \
+    -e JWT_SECRET="${JWT_SECRET}" \
+    -e CLIENT_BASE_URL="http://${AWS_HOST}:3000" \
     -e ACCOUNT_EXTERNAL_AUTH_BASE_URL="http://localhost:9000" \
+    -e external.bank.base-url="http://localhost:9000" \
+    -e spring.env.app-key="this-is-app-key" \
+    -e spring.env.secret-key="MY_SECRET_ABC123" \
     ${DOCKER_IMAGE}
 EOF
 """
