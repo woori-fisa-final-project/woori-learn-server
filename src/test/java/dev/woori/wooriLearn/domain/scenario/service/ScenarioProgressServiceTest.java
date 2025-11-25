@@ -3,6 +3,7 @@ package dev.woori.wooriLearn.domain.scenario.service;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
+import dev.woori.wooriLearn.domain.account.service.PointsDepositService;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressResumeResDto;
 import dev.woori.wooriLearn.domain.scenario.dto.ProgressSaveResDto;
 import dev.woori.wooriLearn.domain.scenario.entity.Quiz;
@@ -17,6 +18,7 @@ import dev.woori.wooriLearn.domain.scenario.repository.ScenarioRepository;
 import dev.woori.wooriLearn.domain.scenario.repository.ScenarioStepRepository;
 import dev.woori.wooriLearn.domain.scenario.service.processor.*;
 import dev.woori.wooriLearn.domain.user.entity.Users;
+import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,6 +41,8 @@ class ScenarioProgressServiceTest {
     @Mock private ScenarioStepRepository stepRepository;
     @Mock private ScenarioProgressRepository progressRepository;
     @Mock private ScenarioCompletedRepository completedRepository;
+    @Mock private UserRepository userRepository;
+    @Mock private PointsDepositService pointsDepositService;
 
     private ScenarioProgressService service;
 
@@ -62,10 +66,12 @@ class ScenarioProgressServiceTest {
         );
 
         service = new ScenarioProgressService(
+                userRepository,
                 scenarioRepository,
                 stepRepository,
                 progressRepository,
                 completedRepository,
+                pointsDepositService,
                 stepProcessorResolver,
                 contentService
         );
