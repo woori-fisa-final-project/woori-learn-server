@@ -1,9 +1,6 @@
 package dev.woori.wooriLearn.domain.account.service;
 
-import dev.woori.wooriLearn.domain.account.dto.AccountCreateReqDto;
-import dev.woori.wooriLearn.domain.account.dto.AccountCreateResDto;
-import dev.woori.wooriLearn.domain.account.dto.BankTokenReqDto;
-import dev.woori.wooriLearn.domain.account.dto.BankTokenResDto;
+import dev.woori.wooriLearn.domain.account.dto.*;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.annotation.PostExchange;
@@ -16,5 +13,5 @@ public interface AccountClient {
     BankTokenResDto getAccountUrl(@RequestBody BankTokenReqDto bankTokenReqDto);
 
     @PostExchange("/account/lookup")
-    AccountCreateResDto getAccountNum(@RequestBody AccountCreateReqDto accountCreateReqDto);
+    AccountCreateResDto getAccountNum(@RequestBody AccountCheckReqDto accountCheckReqDto);
 }
