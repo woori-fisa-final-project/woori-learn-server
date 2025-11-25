@@ -17,7 +17,8 @@ public enum ErrorCode {
     CONFLICT(HttpStatus.CONFLICT, 409, "중복된 자원입니다."),
     TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, 429, "요청 한도를 초과했습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 500, "서버 오류가 발생했습니다."),
-    SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, 503, "처리가 지연되고 있습니다. 잠시 후 다시 시도해 주세요.");
+    SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, 503, "처리가 지연되고 있습니다. 잠시 후 다시 시도해 주세요."),
+    EXTERNAL_API_FAIL(HttpStatus.BAD_GATEWAY, 3001, "외부 서버 통신 실패");
 
     private final HttpStatus status;
     private final int code;
