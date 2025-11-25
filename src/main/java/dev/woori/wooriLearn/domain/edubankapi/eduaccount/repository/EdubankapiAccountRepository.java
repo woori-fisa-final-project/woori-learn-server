@@ -53,4 +53,28 @@ public interface EdubankapiAccountRepository extends JpaRepository<EducationalAc
     @Query("SELECT e FROM EducationalAccount e WHERE e.accountNumber = :accountNumber")
     Optional<EducationalAccount> findByAccountNumber(@Param("accountNumber") String accountNumber);
 
+    /**
+     * ID로 계좌 조회 (User 정보 JOIN FETCH - N+1 문제 방지)
+     *
+     * validateAccountOwnership에서 account.getUser().getUserId() 호출 시
+     * LAZY 로딩으로 인한 추가 쿼리 발생을 방지하기 위해 JOIN FETCH 사용
+     *
+     * @param id 계좌 ID
+     * @return Optional<EducationalAccount> (User 정보 포함)
+     */
+    @Query("SELECT e FROM EducationalAccount e JOIN FETCH e.user WHERE e.id = :id")
+    Optional<EducationalAccount> findByIdWithUser(@Param("id") Long id);
+
+    /**
+     * 계좌 소유권 존재 여부 확인 (효율적인 쿼리)
+     *
+     * 목록 조회 API에서 소유권만 확인할 때 사용
+     * SELECT COUNT(*) 쿼리로 엔티티를 로드하지 않고 존재 여부만 확인
+     *
+     * @param id 계좌 ID
+     * @param userId 사용자 ID
+     * @return 계좌가 존재하고 해당 사용자 소유인지 여부
+     */
+    boolean existsByIdAndUser_UserId(Long id, String userId);
+
 }

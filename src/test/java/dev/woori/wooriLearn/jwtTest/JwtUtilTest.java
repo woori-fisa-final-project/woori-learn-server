@@ -9,7 +9,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -27,13 +26,12 @@ public class JwtUtilTest {
 
     @BeforeEach
     void setUp() {
-        long refreshTokenExpiration = 604800000;
-        long accessTokenExpiration = 3600000;
-        jwtIssuer = new JwtIssuer(secretKey, accessTokenExpiration, refreshTokenExpiration);
+        jwtIssuer = new JwtIssuer(secretKey, 3600000L, 604800000L);
         jwtValidator = new JwtValidator(secretKey);
     }
 
-    @Test
+    @
+            Test
     @DisplayName("Access Token이 정상적으로 생성되고 username을 복호화할 수 있다")
     void generateAccessTokenAndExtractUsername() {
         // given
