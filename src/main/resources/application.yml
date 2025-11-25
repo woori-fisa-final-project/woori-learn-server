@@ -25,6 +25,8 @@ spring:
     access-expiration: ${JWT_ACCESS_EXPIRATION:3600000}
     refresh-expiration: ${JWT_REFRESH_EXPIRATION:31536000000}
 
+  env:
+    app-key: this-is-app-key
 
 client:
   base-url: ${CLIENT_BASE_URL}
@@ -32,6 +34,7 @@ client:
 account:
   external-auth:
     base-url: ${ACCOUNT_EXTERNAL_AUTH_BASE_URL}
+
 external:
   bank:
     base-url: http://localhost:9000
