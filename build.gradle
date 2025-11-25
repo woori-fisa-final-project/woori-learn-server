@@ -40,7 +40,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'// JWT
     implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
     implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
@@ -49,7 +49,13 @@ dependencies {
     annotationProcessor "com.querydsl:querydsl-apt:5.0.0:jakarta"
     annotationProcessor "org.hibernate.orm:hibernate-jpamodelgen:6.6.1.Final"
 
+    // Redis Cache
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
 
+    // Rate Limiting
+    implementation 'com.bucket4j:bucket4j-core:8.10.1'
+    implementation 'com.bucket4j:bucket4j-redis:8.10.1'
     runtimeOnly 'com.h2database:h2'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -69,23 +75,23 @@ jacoco {
 }
 
 jacocoTestReport {
-    dependsOn test
+    dependsOn test // 테스트 실행 후 리포트 생성
 
     reports {
         xml.required = true
         html.required = true
         csv.required = false
     }
-
+    // 리포트에서 제외할 파일들
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: [
-                    '**/config/**',
-                    '**/dto/*Response*',
-                    '**/entity/**',
-                    '**/exception/**',
-                    '**/*Application.class',
-                    '**/response/**',
+                    '**/config/**',           // 설정 파일
+                    '**/dto/*Response*',      // Response DTO만 제외
+                    '**/entity/**',           // Entity
+                    '**/exception/**',        // Exception
+                    '**/*Application.class',  // 메인 클래스
+                    '**/response/**',          // 공통 응답
                     '**/adapter'
             ])
         }))
@@ -99,7 +105,7 @@ jacocoTestCoverageVerification {
             limit {
                 counter = 'LINE'
                 value = 'COVEREDRATIO'
-                minimum = 0.80
+                minimum = 0.80 // 80% 이상
             }
         }
 
@@ -108,7 +114,7 @@ jacocoTestCoverageVerification {
             limit {
                 counter = 'LINE'
                 value = 'COVEREDRATIO'
-                minimum = 0.70
+                minimum = 0.70// 70% 이상
             }
         }
     }
