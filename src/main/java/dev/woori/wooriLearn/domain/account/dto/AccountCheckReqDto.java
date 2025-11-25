@@ -1,9 +1,7 @@
 package dev.woori.wooriLearn.domain.account.dto;
 
-import lombok.Builder;
-
-@Builder
-public record AccountCreateReqDto(
+public record AccountCheckReqDto (
+        String id,
         String code
-) {
+){
 }
