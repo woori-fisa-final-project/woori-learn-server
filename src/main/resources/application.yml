@@ -27,7 +27,7 @@ spring:
 
   env:
     app-key: this-is-app-key
-
+    secret-key: "MY_SECRET_ABC123"
 client:
   base-url: ${CLIENT_BASE_URL}
 
