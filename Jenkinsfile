@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        AWS_HOST = "43.202.43.243"
+        AWS_HOST = "52.79.70.229"
         DOCKER_IMAGE = "bae1234/woori-learn-server:latest"
     }
 
@@ -14,35 +14,7 @@ pipeline {
             }
         }
 
-        stage('Gradle Build') {
-            steps {
-                sh '''
-                chmod +x gradlew
-                ./gradlew clean build -x test
-                '''
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                sh "docker build -t ${DOCKER_IMAGE} ."
-            }
-        }
-
-        stage('Docker Push') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-cred',
-                                                 usernameVariable: 'DOCKERHUB_USR',
-                                                 passwordVariable: 'DOCKERHUB_PSW')]) {
-                    sh '''
-                    echo "${DOCKERHUB_PSW}" | docker login -u "${DOCKERHUB_USR}" --password-stdin
-                    docker push ${DOCKER_IMAGE}
-                    '''
-                }
-            }
-        }
-
-        stage('Deploy to AWS') {
+        stage('Build & Deploy on AWS') {
             steps {
                 sshagent(['aws-ssh-key']) {
                     withCredentials([
@@ -50,12 +22,46 @@ pipeline {
                                          usernameVariable: 'DB_USER',
                                          passwordVariable: 'DB_PASS'),
                         string(credentialsId: 'db-url', variable: 'DB_URL'),
-                        string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
+                        string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET'),
+                        usernamePassword(credentialsId: 'dockerhub-cred',
+                                         usernameVariable: 'DOCKERHUB_USR',
+                                         passwordVariable: 'DOCKERHUB_PSW')
                     ]) {
                         sh """
-ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} << EOF
-docker pull ${DOCKER_IMAGE}
+ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} << 'EOF'
+
+# --------------------------
+# 1) Repo 준비
+# --------------------------
+if [ ! -d "woori-learn-server" ]; then
+    git clone https://github.com/woori-fisa-final-project/woori-learn-server.git
+fi
+
+cd woori-learn-server
+git pull origin aws-test
+
+# --------------------------
+# 2) Gradle Build (AWS에서 실행)
+# --------------------------
+chmod +x gradlew
+./gradlew clean build -x test
+
+# --------------------------
+# 3) Docker Build (AWS에서 실행)
+# --------------------------
+docker build -t ${DOCKER_IMAGE} .
+
+# --------------------------
+# 4) DockerHub Login & Push
+# --------------------------
+echo "${DOCKERHUB_PSW}" | docker login -u "${DOCKERHUB_USR}" --password-stdin
+docker push ${DOCKER_IMAGE}
+
+# --------------------------
+# 5) 기존 컨테이너 종료 후 재실행
+# --------------------------
 docker rm -f woori_backend || true
+
 docker run -d --name woori_backend -p 8080:8080 \
     -e SPRING_DATASOURCE_URL="${DB_URL}" \
     -e SPRING_DATASOURCE_USERNAME="${DB_USER}" \
@@ -68,6 +74,7 @@ docker run -d --name woori_backend -p 8080:8080 \
     -e spring.env.secret-key="MY_SECRET_ABC123" \
     -e external.bank.account-url="http://localhost:9000/account" \
     ${DOCKER_IMAGE}
+
 EOF
 """
                     }
