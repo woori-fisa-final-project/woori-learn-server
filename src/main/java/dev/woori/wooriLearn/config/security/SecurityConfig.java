@@ -36,6 +36,7 @@ public class SecurityConfig {
 
     @Value("${client.base-url}")
     private String baseUrl;
+
     // 인증 없이도 접근 가능한 엔드포인트 목록
     private static final List<String> whiteList = List.of(
             "/auth/login",
@@ -43,10 +44,12 @@ public class SecurityConfig {
             "/auth/verify",
             "/auth/refresh"   // develop 기존 내용까지 포함
     );
+
     // 관리자만 접근 가능한 엔드포인트 목록
     private static final List<String> adminList = List.of(
             "/admin/**"
     );
+
     // 개발 모드와 테스트 모드에서는 인증 적용 x
     @Bean
     @Profile({"dev", "test"})
@@ -71,16 +74,14 @@ public class SecurityConfig {
                 .addFilterBefore((request, response, chain) -> {
                     // dev/test용 임시 인증 세팅
                     SecurityContextHolder.getContext().setAuthentication(
-
-
                             new UsernamePasswordAuthenticationToken("testuser", null, List.of())
-
                     );
                     chain.doFilter(request, response);
                 }, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .build();
     }
+
     @Bean
     @Profile("!dev & !test")
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -98,7 +99,6 @@ public class SecurityConfig {
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
-
 
     @Bean
     public PasswordEncoder passwordEncoder() {

@@ -2,7 +2,7 @@ package dev.woori.wooriLearn.domain.scenario.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.domain.account.dto.PointsDepositRequestDto;
+import dev.woori.wooriLearn.domain.account.dto.request.PointsDepositRequestDto;
 import dev.woori.wooriLearn.domain.account.service.PointsDepositService;
 import dev.woori.wooriLearn.domain.scenario.content.StepMeta;
 import dev.woori.wooriLearn.domain.scenario.dto.AdvanceResDto;
