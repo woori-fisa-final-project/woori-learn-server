@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 // redis 저장소
@@ -12,12 +13,12 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class AccountStoreRedis {
     private final RedisTemplate<String, Object> redisTemplate;
-    @Value("${spring.cache.redis.time-to-live}")
-    private long sessionTtl;
+    @Value("${spring.data.redis.ttl}")
+    private Duration sessionTtl;
 
     // 세션 id를 키값으로 session 객체를 저장
     public void save(String sessionId, AccountSession session) {
-        redisTemplate.opsForValue().set(sessionId, session, sessionTtl, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set(sessionId, session, sessionTtl);
     }
 
     // id에 매핑된 객체를 불러옴
