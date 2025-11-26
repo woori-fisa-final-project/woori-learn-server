@@ -15,7 +15,8 @@ public record EdubankapiAccountDto(
         Long id,
         String accountName,
         String accountNumber,
-        Integer balance
+        Integer balance,
+        String userId
 ) {
     /*
         정적 팩토리 메서드
@@ -27,7 +28,8 @@ public record EdubankapiAccountDto(
                 account.getId(),
                 account.getAccountName(),
                 account.getAccountNumber(),
-                account.getBalance()
+                account.getBalance(),
+                account.getUser().getUserId()
         );
     }
 
