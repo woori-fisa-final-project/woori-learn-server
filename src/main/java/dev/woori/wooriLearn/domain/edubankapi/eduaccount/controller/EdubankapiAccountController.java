@@ -12,6 +12,7 @@ import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiTrans
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,17 +32,17 @@ public class EdubankapiAccountController {
     /**
      *   계좌 목록 조회
      *   postman
-     *   => [GET] /accounts/list/{userId}
-     *   => 특정 사용자 {userId}의 모든 교육용 계좌를 조회
+     *   => [GET] /accounts/list
+     *   => JWT 토큰에서 추출한 사용자의 모든 교육용 계좌를 조회
      *
-     *   @param userId: 사용자 고유 ID
+     *   @param username: JWT 토큰에서 추출한 사용자 ID (username)
      *   @return : 계좌목록 (계좌명, 계좌번호, 잔액)
      **/
-    @GetMapping("/list/{userId}")
-    public ResponseEntity<BaseResponse<?>> getAccountsList(@PathVariable long userId){
+    @GetMapping("/list")
+    public ResponseEntity<BaseResponse<?>> getAccountsList(@AuthenticationPrincipal String username){
 
-        // 서비스 호출을 통해 userId 계좌 목록 조회
-        List<EdubankapiAccountDto> accounts = edubankapiAccountService.getAccountByUserId(userId);
+        // 서비스 호출을 통해 username으로 계좌 목록 조회
+        List<EdubankapiAccountDto> accounts = edubankapiAccountService.getAccountByUsername(username);
 
         // 조회 성공 응답 반환
         return ApiResponse.success(SuccessCode.OK, accounts);
@@ -53,12 +54,17 @@ public class EdubankapiAccountController {
      *      거래 구분 : ALL, DEPOSIT, WITHDRAW
      *      미선택 시 최근 1개월, 최신순 30건
      *
-     *      @RequestParm : accountId, period, startDate, endDate, type가 쿼리로 들어오기 때문에 사용
+     *      @param username JWT 토큰에서 추출한 사용자 ID
+     *      @param request accountId, period, startDate, endDate, type 쿼리 파라미터
      */
     @GetMapping("/transactions")
-    public ResponseEntity<BaseResponse<?>> getTransactionList(TransactionListReqDto request) {
+    public ResponseEntity<BaseResponse<?>> getTransactionList(
+            @AuthenticationPrincipal String username,
+            TransactionListReqDto request) {
+
         List<EdubankapiTransactionHistoryDto> transactions =
                 edubankapiAccountService.getTransactionList(
+                        username,
                         request.accountId(),
                         request.periodOrDefault(),
                         request.startDate(),
@@ -73,21 +79,25 @@ public class EdubankapiAccountController {
      *      POST /accounts/transfer
      *      - 요청 Body: EdubankapiTransferRequestDto(JSON)
      *      - 응답 Body: EdubankapiTransferResponseDto(JSON)
+     *
+     *      @param username JWT 토큰에서 추출한 사용자 ID
+     *      @param request 계좌이체 요청 정보
      */
     @PostMapping("/transfer")
-    public ResponseEntity<BaseResponse<?>> transfer(@RequestBody EdubankapiTransferRequestDto request) {
-        // 요청 본문(JSON)을 EdubankapiTransferRequestDto 객체로 매핑
-        // @RequestBody: JSON → DTO 자동 변환
+    public ResponseEntity<BaseResponse<?>> transfer(
+            @AuthenticationPrincipal String username,
+            @RequestBody EdubankapiTransferRequestDto request) {
 
         //디버깅 및 추적용
-        log.info("[계좌이체 요청]: {}", request);
+        log.info("[계좌이체 요청] username={}, request={}", username, request);
 
         /*
              Service 계층의 transfer() 메서드 호출
+             → 출금 계좌 소유권 검증
              → 실제 계좌 잔액 검증, 출금 처리, 입금 처리, 거래내역 저장 등을 수행
              → 그 결과로 Response DTO 반환
          */
-        return ApiResponse.success(SuccessCode.OK, transferService.transfer(request));
+        return ApiResponse.success(SuccessCode.OK, transferService.transfer(username, request));
     }
 
 

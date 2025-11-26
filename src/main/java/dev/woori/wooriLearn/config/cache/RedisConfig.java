@@ -18,7 +18,7 @@ import java.time.Duration;
  * Redis 캐시 설정
  * - 자동이체 목록 조회 성능 향상
  * - TTL: 5분 (자주 변경되지 않는 데이터)
- * - RedisConnectionFactory는 Spring Boot 자동 설정 사용 (application.properties 기반)
+ * - RedisConnectionFactory는 Spring Boot 자동 설정 사용 (application.yml 기반)
  */
 @Configuration
 @EnableCaching
