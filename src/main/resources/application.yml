@@ -41,3 +41,8 @@ external:
   bank:
     base-url: ${external.bank.base-url}
     account-url: ${external.bank.account-url}
+
+api:
+  client:
+    connect-timeout: 5s
+    read-timeout: 5s
