@@ -40,4 +40,4 @@ account:
 external:
   bank:
     base-url: ${external.bank.base-url}
-		account-url: ${external.bank.account-url}
+    account-url: ${external.bank.account-url}
