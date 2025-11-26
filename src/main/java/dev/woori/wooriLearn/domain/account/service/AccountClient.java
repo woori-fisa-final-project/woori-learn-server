@@ -1,10 +1,8 @@
 package dev.woori.wooriLearn.domain.account.service;
 
 import dev.woori.wooriLearn.domain.account.dto.external.request.ExternalAccountCheckReqDto;
-import dev.woori.wooriLearn.domain.account.dto.external.request.ExternalAccountUrlReqDto;
 import dev.woori.wooriLearn.domain.account.dto.external.response.ExternalAccountUrlResDto;
 import dev.woori.wooriLearn.domain.account.dto.response.AccountCreateResDto;
-import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.annotation.PostExchange;
@@ -14,8 +12,8 @@ import org.springframework.web.service.annotation.PostExchange;
 public interface AccountClient {
 
     @PostExchange("/account/tid")
-    ExternalAccountUrlResDto getAccountUrl(@Valid @RequestBody ExternalAccountUrlReqDto externalAccountUrlReqDto);
+    ExternalAccountUrlResDto getAccountUrl();
 
     @PostExchange("/account/lookup")
-    AccountCreateResDto getAccountNum(@Valid @RequestBody ExternalAccountCheckReqDto accountCheckReqDto);
+    AccountCreateResDto getAccountNum(@RequestBody ExternalAccountCheckReqDto accountCheckReqDto);
 }

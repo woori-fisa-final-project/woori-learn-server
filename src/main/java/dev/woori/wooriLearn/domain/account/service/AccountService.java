@@ -3,7 +3,6 @@ package dev.woori.wooriLearn.domain.account.service;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.account.dto.external.request.ExternalAccountCheckReqDto;
-import dev.woori.wooriLearn.domain.account.dto.external.request.ExternalAccountUrlReqDto;
 import dev.woori.wooriLearn.domain.account.dto.external.response.ExternalAccountUrlResDto;
 import dev.woori.wooriLearn.domain.account.dto.request.AccountCreateReqDto;
 import dev.woori.wooriLearn.domain.account.dto.response.AccountCreateResDto;
@@ -38,14 +37,11 @@ public class AccountService {
     @Value("${external.bank.account-url}")
     private String bankAccountUrl;
 
-    @Value("${spring.env.client-id}")
-    private String clientId;
-
     private static final String WOORI_BANK_CODE = "020";
 
     public AccountUrlResDto getAccountUrl(String userId) {
         try{
-            ExternalAccountUrlResDto response = accountClient.getAccountUrl(new ExternalAccountUrlReqDto(clientId));
+            ExternalAccountUrlResDto response = accountClient.getAccountUrl();
             String tid = response.data().tid();
             redis.save(tid, new AccountSession(userId));
             return new AccountUrlResDto(bankAccountUrl, tid);
