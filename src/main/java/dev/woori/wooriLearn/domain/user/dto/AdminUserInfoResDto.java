@@ -1,6 +1,5 @@
 package dev.woori.wooriLearn.domain.user.dto;
 
-import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.dto.PointsHistoryDto;
 
 import dev.woori.wooriLearn.domain.auth.entity.Role;

@@ -5,19 +5,16 @@ import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
-import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
-import dev.woori.wooriLearn.domain.account.dto.PointsHistoryResponseDto;
-import dev.woori.wooriLearn.domain.account.dto.PointsUnifiedHistoryRequestDto;
+import dev.woori.wooriLearn.domain.account.dto.request.PointsExchangeRequestDto;
+import dev.woori.wooriLearn.domain.account.dto.response.PointsHistoryResponseDto;
+import dev.woori.wooriLearn.domain.account.dto.request.PointsUnifiedHistoryRequestDto;
 import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
 import dev.woori.wooriLearn.domain.account.service.PointsHistoryService;
-import dev.woori.wooriLearn.domain.auth.entity.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController

@@ -2,8 +2,15 @@ package dev.woori.wooriLearn.domain.account.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.domain.account.dto.*;
+import dev.woori.wooriLearn.domain.account.dto.external.request.ExternalAccountCheckReqDto;
+import dev.woori.wooriLearn.domain.account.dto.external.request.ExternalAccountUrlReqDto;
+import dev.woori.wooriLearn.domain.account.dto.external.response.ExternalAccountUrlResDto;
+import dev.woori.wooriLearn.domain.account.dto.request.AccountCreateReqDto;
+import dev.woori.wooriLearn.domain.account.dto.response.AccountCreateResDto;
+import dev.woori.wooriLearn.domain.account.dto.response.AccountUrlResDto;
 import dev.woori.wooriLearn.domain.account.entity.Account;
+import dev.woori.wooriLearn.domain.account.entity.AccountSession;
+import dev.woori.wooriLearn.domain.account.entity.AccountStoreRedis;
 import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
@@ -26,28 +33,26 @@ public class AccountService {
     private final AccountClient accountClient;
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
+    private final AccountStoreRedis redis;
 
     @Value("${external.bank.account-url}")
     private String bankAccountUrl;
 
+    @Value("${spring.env.client-id}")
+    private String clientId;
+
     private static final String WOORI_BANK_CODE = "020";
 
-    /**
-     * userId를 토대로 은행의 url 및 url에 접근하기 위한 access token을 반환합니다.
-     * @param userId 사용자 id
-     * @return String url - 계좌개설 url / String accessToken
-     */
     public AccountUrlResDto getAccountUrl(String userId) {
         try{
-            BankTokenResDto response = accountClient.getAccountUrl(new BankTokenReqDto(userId));
-            return AccountUrlResDto.builder()
-                    .accessToken(response.data().accessToken())
-                    .url(bankAccountUrl)
-                    .build();
+            ExternalAccountUrlResDto response = accountClient.getAccountUrl(new ExternalAccountUrlReqDto(clientId));
+            String tid = response.data().tid();
+            redis.save(tid, new AccountSession(userId));
+            return new AccountUrlResDto(bankAccountUrl, tid);
         }catch(HttpClientErrorException e){
             log.warn("API 요청 실패 - [{}]: {}", e.getStatusCode(), e.getResponseBodyAsString());
             if (e.getStatusCode().value() == 401) {
-                throw new CommonException(ErrorCode.UNAUTHORIZED, "은행 인증 토큰을 가져오는 데 실패했습니다.");
+                throw new CommonException(ErrorCode.UNAUTHORIZED, "은행 url을 가져오는 데 실패했습니다.");
             }
             throw new CommonException(ErrorCode.EXTERNAL_API_FAIL, "은행 API 요청 중 클라이언트 오류가 발생했습니다.");
         }
@@ -63,6 +68,11 @@ public class AccountService {
      * @param request 은행과의 통신에 사용할 임시 코드
      */
     public void registerAccount(String userId, AccountCreateReqDto request){
+        // tid 검증
+        if(!redis.get(request.tid()).getUserId().equals(userId)){
+            throw new CommonException(ErrorCode.FORBIDDEN, "잘못된 요청입니다.");
+        }
+
         // 사용자 찾기
         Users user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "해당 사용자를 찾을 수 없습니다."));
@@ -70,7 +80,7 @@ public class AccountService {
         try {
             // 은행 서버에서 계좌번호 받아오기
             AccountCreateResDto response = accountClient.getAccountNum(
-                    new AccountCheckReqDto(userId, request.code())
+                    new ExternalAccountCheckReqDto(request.tid())
             );
 
             // 응답값의 null 체크
@@ -87,6 +97,8 @@ public class AccountService {
                     .user(user)
                     .build();
             accountRepository.save(account);
+
+            redis.delete(request.tid());
 
         } catch (DataIntegrityViolationException e) {
             throw new CommonException(ErrorCode.CONFLICT, "이미 등록된 계좌번호입니다.");

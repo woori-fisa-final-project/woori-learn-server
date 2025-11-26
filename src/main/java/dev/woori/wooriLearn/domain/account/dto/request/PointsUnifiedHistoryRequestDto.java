@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.account.dto;
+package dev.woori.wooriLearn.domain.account.dto.request;
 
 import dev.woori.wooriLearn.common.SearchPeriod;
 import dev.woori.wooriLearn.common.SortDirection;
