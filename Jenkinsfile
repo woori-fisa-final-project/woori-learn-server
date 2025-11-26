@@ -31,7 +31,7 @@ pipeline {
                             passwordVariable: 'DOCKERHUB_PSW'
                         )
                     ]) {
-                        sh """
+                        sh '''
 ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} << EOF
 
 # --------------------------
@@ -87,7 +87,7 @@ docker run -d --name woori_backend -p 8080:8080 \
 docker image prune -f
 
 EOF
-"""
+'''
                     }
                 }
             }
