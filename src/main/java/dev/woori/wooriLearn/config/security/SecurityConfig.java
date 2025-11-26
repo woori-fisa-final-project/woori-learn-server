@@ -73,7 +73,7 @@ public class SecurityConfig {
                     SecurityContextHolder.getContext().setAuthentication(
 
 
-                            new UsernamePasswordAuthenticationToken("testuser", null, List.of())
+                            new UsernamePasswordAuthenticationToken("devuser1", null, List.of())
 
                     );
                     chain.doFilter(request, response);
