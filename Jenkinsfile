@@ -53,7 +53,7 @@ pipeline {
                         string(credentialsId: 'db-url', variable: 'DB_URL'),
                         string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
                     ]) {
-                        sh """
+                        sh '''
 ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} << EOF
 docker pull ${DOCKER_IMAGE}
 docker rm -f woori_backend || true
@@ -67,10 +67,10 @@ docker run -d --name woori_backend -p 8080:8080 \
     -e external.bank.base-url="http://localhost:9000" \
     -e spring.env.app-key="this-is-app-key" \
     -e spring.env.secret-key="MY_SECRET_ABC123" \
-    -e external.bank.account-url="http://localhost:9000/account"
+    -e external.bank.account-url="http://localhost:9000/account" \
     ${DOCKER_IMAGE}
 EOF
-"""
+'''
                     }
                 }
             }
