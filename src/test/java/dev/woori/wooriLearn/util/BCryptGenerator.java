@@ -12,7 +12,7 @@ public class BCryptGenerator {
     public static void main(String[] args) {
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-        String[] passwords = args.length > 0 ? args : new String[]{"1234"};
+        String[] passwords = args.length > 0 ? args : new String[]{"test1234"};
 
         System.out.println("=".repeat(80));
         System.out.println("BCrypt Password Hash Generator");
@@ -30,7 +30,7 @@ public class BCryptGenerator {
 
         System.out.println("\nSQL UPDATE 예시:");
         System.out.println("UPDATE educational_account SET account_password = '" +
-                          encoder.encode("1234") + "' WHERE id = 1;");
+                          encoder.encode("test1234") + "' WHERE id = 1;");
         System.out.println("=".repeat(80));
     }
 }
