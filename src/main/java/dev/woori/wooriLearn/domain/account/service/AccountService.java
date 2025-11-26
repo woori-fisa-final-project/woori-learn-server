@@ -69,7 +69,8 @@ public class AccountService {
      */
     public void registerAccount(String userId, AccountCreateReqDto request){
         // tid 검증
-        if(!redis.get(request.tid()).getUserId().equals(userId)){
+        AccountSession session = redis.get(request.tid());
+        if(session == null || !session.getUserId().equals(userId)){
             throw new CommonException(ErrorCode.FORBIDDEN, "잘못된 요청입니다.");
         }
 
