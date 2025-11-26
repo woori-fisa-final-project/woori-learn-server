@@ -42,9 +42,15 @@ public class AccountService {
     public AccountUrlResDto getAccountUrl(String userId) {
         try{
             ExternalAccountUrlResDto response = accountClient.getAccountUrl();
+
             String tid = response.data().tid();
+            if(tid == null){
+                throw new CommonException(ErrorCode.EXTERNAL_API_FAIL);
+            }
+
             redis.save(tid, new AccountSession(userId));
             return new AccountUrlResDto(bankAccountUrl, tid);
+
         }catch(HttpClientErrorException e){
             log.warn("API 요청 실패 - [{}]: {}", e.getStatusCode(), e.getResponseBodyAsString());
             if (e.getStatusCode().value() == 401) {
