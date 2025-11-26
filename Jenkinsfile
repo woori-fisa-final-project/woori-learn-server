@@ -18,17 +18,21 @@ pipeline {
             steps {
                 sshagent(['aws-ssh-key']) {
                     withCredentials([
-                        usernamePassword(credentialsId: 'db-credential',
-                                         usernameVariable: 'DB_USER',
-                                         passwordVariable: 'DB_PASS'),
+                        usernamePassword(
+                            credentialsId: 'db-credential',
+                            usernameVariable: 'DB_USER',
+                            passwordVariable: 'DB_PASS'
+                        ),
                         string(credentialsId: 'db-url', variable: 'DB_URL'),
                         string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET'),
-                        usernamePassword(credentialsId: 'dockerhub-cred',
-                                         usernameVariable: 'DOCKERHUB_USR',
-                                         passwordVariable: 'DOCKERHUB_PSW')
+                        usernamePassword(
+                            credentialsId: 'dockerhub-cred',
+                            usernameVariable: 'DOCKERHUB_USR',
+                            passwordVariable: 'DOCKERHUB_PSW'
+                        )
                     ]) {
                         sh """
-ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} << 'EOF'
+ssh -o StrictHostKeyChecking=no ubuntu@${AWS_HOST} << EOF
 
 # --------------------------
 # 1) Repo 준비
@@ -50,6 +54,10 @@ chmod +x gradlew
 # 3) Docker Build (AWS에서 실행)
 # --------------------------
 docker build -t ${DOCKER_IMAGE} .
+
+# >>> Dangling 이미지 정리
+docker image prune -f
+docker builder prune -f
 
 # --------------------------
 # 4) DockerHub Login & Push
@@ -74,6 +82,9 @@ docker run -d --name woori_backend -p 8080:8080 \
     -e spring.env.secret-key="MY_SECRET_ABC123" \
     -e external.bank.account-url="http://localhost:9000/account" \
     ${DOCKER_IMAGE}
+
+# >>> 컨테이너 띄운 후에도 이미지 한 번 더 정리
+docker image prune -f
 
 EOF
 """
