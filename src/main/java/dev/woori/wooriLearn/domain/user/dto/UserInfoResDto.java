@@ -5,6 +5,7 @@ import lombok.Builder;
 @Builder
 public record UserInfoResDto(
     String nickname,
-    int point
+    int point,
+    String account
 ) {
 }
