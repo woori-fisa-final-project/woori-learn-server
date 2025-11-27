@@ -43,12 +43,12 @@ class EdubankapiAccountServiceTest {
 
         /*
          * ----------------------------------------------------------
-         * 1. 계좌 목록 조회 테스트
+         * 1. 계좌 목록 조회 테스트 (JWT 인증 기반)
          * ----------------------------------------------------------
          */
         @Test
-        void testGetAccountByUserId() {
-                // Mock User 객체 생성 (NullPointerException 방지)
+        void testGetAccountByUsername_Success() {
+                // Mock User 객체 생성
                 dev.woori.wooriLearn.domain.user.entity.Users mockUser =
                         dev.woori.wooriLearn.domain.user.entity.Users.builder()
                                 .id(1L)
@@ -62,30 +62,56 @@ class EdubankapiAccountServiceTest {
                                 .accountNumber("1111")
                                 .balance(5000)
                                 .accountName("계좌1")
-                                .user(mockUser)  // user 추가
+                                .user(mockUser)
                                 .build();
                 EducationalAccount acc2 = EducationalAccount.builder()
                                 .id(2L)
                                 .accountNumber("2222")
                                 .balance(7000)
                                 .accountName("계좌2")
-                                .user(mockUser)  // user 추가
+                                .user(mockUser)
                                 .build();
 
+                // UserRepository mock 설정
+                when(userRepository.findByUserId(TEST_USERNAME))
+                                .thenReturn(Optional.of(mockUser));
                 when(accountRepository.findByUser_Id(1L))
                                 .thenReturn(List.of(acc1, acc2));
 
-                List<EdubankapiAccountDto> list = service.getAccountByUserId(1);
+                // when
+                List<EdubankapiAccountDto> list = service.getAccountByUsername(TEST_USERNAME);
 
+                // then
                 assertEquals(2, list.size());
                 assertEquals("1111", list.get(0).accountNumber());
-                assertEquals(TEST_USERNAME, list.get(0).userId());  // userId 검증 추가
+                assertEquals(TEST_USERNAME, list.get(0).userId());
+                verify(userRepository, times(1)).findByUserId(TEST_USERNAME);
                 verify(accountRepository, times(1)).findByUser_Id(1L);
         }
 
         /*
          * ----------------------------------------------------------
-         * 2. 거래내역 조회 - 기본 1개월 조회 테스트
+         * 2. 계좌 목록 조회 실패 - 존재하지 않는 사용자
+         * ----------------------------------------------------------
+         */
+        @Test
+        void testGetAccountByUsername_UserNotFound() {
+                // Mock 설정: 사용자를 찾을 수 없음
+                when(userRepository.findByUserId("nonexistent"))
+                                .thenReturn(Optional.empty());
+
+                // when & then
+                CommonException exception = assertThrows(CommonException.class,
+                                () -> service.getAccountByUsername("nonexistent"));
+
+                assertEquals("사용자를 찾을 수 없습니다.", exception.getMessage());
+                verify(userRepository, times(1)).findByUserId("nonexistent");
+                verify(accountRepository, never()).findByUser_Id(any());
+        }
+
+        /*
+         * ----------------------------------------------------------
+         * 3. 거래내역 조회 - 기본 1개월 조회 테스트
          * ----------------------------------------------------------
          */
         @Test
@@ -116,7 +142,7 @@ class EdubankapiAccountServiceTest {
 
         /*
          * ----------------------------------------------------------
-         * 3. 기간 직접 입력(startDate, endDate)
+         * 4. 기간 직접 입력(startDate, endDate)
          * ----------------------------------------------------------
          */
         @Test
@@ -151,7 +177,7 @@ class EdubankapiAccountServiceTest {
 
         /*
          * ----------------------------------------------------------
-         * 4. Period 지정 (3개월)
+         * 5. Period 지정 (3개월)
          * ----------------------------------------------------------
          */
         @Test
@@ -171,7 +197,7 @@ class EdubankapiAccountServiceTest {
 
         /*
          * ----------------------------------------------------------
-         * 5. 거래유형 필터링 (DEPOSIT)
+         * 6. 거래유형 필터링 (DEPOSIT)
          * ----------------------------------------------------------
          */
         @Test
@@ -195,7 +221,7 @@ class EdubankapiAccountServiceTest {
 
         /*
          * ----------------------------------------------------------
-         * 6. 거래유형 필터링 (WITHDRAW)
+         * 7. 거래유형 필터링 (WITHDRAW)
          * ----------------------------------------------------------
          */
         @Test
@@ -219,7 +245,7 @@ class EdubankapiAccountServiceTest {
 
         /*
          * ----------------------------------------------------------
-         * 7. 기간 타입이 잘못된 경우 예외
+         * 8. 기간 타입이 잘못된 경우 예외
          * ----------------------------------------------------------
          */
         @Test
@@ -234,7 +260,7 @@ class EdubankapiAccountServiceTest {
 
         /*
          * ----------------------------------------------------------
-         * 8. 30건 초과 → 30건만 리턴되는지 테스트
+         * 9. 30건 초과 → 30건만 리턴되는지 테스트
          * ----------------------------------------------------------
          */
         @Test
@@ -259,7 +285,7 @@ class EdubankapiAccountServiceTest {
 
         /*
          * ----------------------------------------------------------
-         * 9. 소유권 검증 실패 - 타인 계좌 접근 시도
+         * 10. 소유권 검증 실패 - 타인 계좌 접근 시도
          * ----------------------------------------------------------
          */
         @Test
@@ -278,7 +304,7 @@ class EdubankapiAccountServiceTest {
 
         /*
          * ----------------------------------------------------------
-         * 10. accountId가 null인 경우 예외 발생
+         * 11. accountId가 null인 경우 예외 발생
          * ----------------------------------------------------------
          */
         @Test
