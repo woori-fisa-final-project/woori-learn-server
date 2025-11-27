@@ -71,7 +71,7 @@ public class AutoPaymentService {
      * Note: 이 메소드는 이미 검증된 status를 받으므로 추가 검증 불필요
      */
     @Cacheable(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':' + #normalizedStatus")
-    private List<AutoPaymentResponse> getAutoPaymentListCached(Long educationalAccountId, String normalizedStatus, String currentUserId) {
+    public List<AutoPaymentResponse> getAutoPaymentListCached(Long educationalAccountId, String normalizedStatus, String currentUserId) {
         log.info("자동이체 목록 조회 (캐시 미스) - 계좌ID: {}, 상태: {}", educationalAccountId, normalizedStatus);
 
         // 권한 체크: 요청한 계좌가 현재 사용자의 것인지 확인
