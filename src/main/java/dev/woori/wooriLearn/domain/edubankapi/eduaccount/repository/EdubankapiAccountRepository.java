@@ -39,18 +39,18 @@ public interface EdubankapiAccountRepository extends JpaRepository<EducationalAc
      * -> 계좌가 존재하지 않을 수도 있기 때문에 예외처리를 위해서
      *
      * @Lock (비관적 락 적용)
-     *       - 동시에 같은 계좌를 수정하는 것을 방지
-     *       -> 동시 이체 요청 시 잔액 불일치 / 중복 이체 방지
+     *   - 동시에 같은 계좌를 수정하는 것을 방지
+     *   - 동시 이체 요청 시 잔액 불일치 / 중복 이체 방지
      * @Query
-     *        -> 명시적으로 JPQL 작성 ( 자동 메서드 네이밍보다 명확)
-     *        JPA 메서드 네이밍 규칙 기반 쿼리가 내부적으로 락 옵셥을 명확히 적용하지 못하거나, 상황에 따라 DB 벤더별 쿼리가 달라질
-     *        수 있기 때문에 사용
+     *   - 명시적으로 JPQL 작성 ( 자동 메서드 네이밍보다 명확)
+     *   - JPA 메서드 네이밍 규칙 기반 쿼리가 내부적으로 락 옵셥을 명확히 적용하지 못하거나, 상황에 따라 DB 벤더별 쿼리가 달라질
+     *     수 있기 때문에 사용
      *
-     *        JOIN FETCH e.user를 추가하여 N+1 문제 방지
-     *        - account.getUser().getUserId() 호출 시 추가 쿼리 발생 방지
-     *        - 비관적 락이 걸린 상태에서 불필요한 쿼리로 인한 트랜잭션 시간 증가 방지
+     * JOIN FETCH e.user를 추가하여 N+1 문제 방지
+     *   - account.getUser().getUserId() 호출 시 추가 쿼리 발생 방지
+     *   - 비관적 락이 걸린 상태에서 불필요한 쿼리로 인한 트랜잭션 시간 증가 방지
      *
-     *        => 잔액 차감/증가 등 '동시성 충돌 위험'이 있는 수정 트랜잭션에서만 사용
+     *   => 잔액 차감/증가 등 '동시성 충돌 위험'이 있는 수정 트랜잭션에서만 사용
      *
      * @param accountNumber 계좌번호
      * @return Optional<EducationalAccount> (User 정보 포함)
@@ -77,7 +77,7 @@ public interface EdubankapiAccountRepository extends JpaRepository<EducationalAc
      * 목록 조회 API에서 소유권만 확인할 때 사용
      * SELECT COUNT(*) 쿼리로 엔티티를 로드하지 않고 존재 여부만 확인
      *
-     * @param id     계좌 ID
+     * @param id 계좌 ID
      * @param userId 사용자 ID
      * @return 계좌가 존재하고 해당 사용자 소유인지 여부
      */
