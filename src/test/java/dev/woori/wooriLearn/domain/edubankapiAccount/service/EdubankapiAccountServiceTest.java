@@ -1,5 +1,6 @@
 package dev.woori.wooriLearn.domain.edubankapiAccount.service;
 
+import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiAccountDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransactionHistoryDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiAccountService;
@@ -7,6 +8,7 @@ import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.edubankapi.entity.TransactionHistory;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiAccountRepository;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiTransactionHistoryRepository;
+import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -28,6 +30,11 @@ class EdubankapiAccountServiceTest {
 
         @Mock
         private EdubankapiTransactionHistoryRepository historyRepository;
+
+        @Mock
+        private UserRepository userRepository;
+
+        private static final String TEST_USERNAME = "testuser";
 
         @BeforeEach
         void init() {
@@ -71,6 +78,10 @@ class EdubankapiAccountServiceTest {
          */
         @Test
         void testGetTransactions_Default1Month() {
+                // 소유권 검증 mock
+                when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
+                                .thenReturn(true);
+
                 TransactionHistory h1 = createHistory(1L, 1000); // 입금
                 TransactionHistory h2 = createHistory(1L, -2000); // 출금
 
@@ -78,6 +89,7 @@ class EdubankapiAccountServiceTest {
                                 .thenReturn(List.of(h1, h2));
 
                 List<EdubankapiTransactionHistoryDto> result = service.getTransactionList(
+                                TEST_USERNAME, // username
                                 1L, // accountId
                                 null, // period (null → default 1M)
                                 null, // startDate
@@ -85,6 +97,7 @@ class EdubankapiAccountServiceTest {
                                 "ALL");
 
                 assertEquals(2, result.size());
+                verify(accountRepository, times(1)).existsByIdAndUser_UserId(1L, TEST_USERNAME);
                 verify(historyRepository, times(1))
                                 .findTransactionsByAccountIdAndDateRange(any(), any(), any());
         }
@@ -96,13 +109,18 @@ class EdubankapiAccountServiceTest {
          */
         @Test
         void testGetTransactions_DateRangeDirect() {
+                // 소유권 검증 mock
+                when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
+                                .thenReturn(true);
+
                 LocalDate start = LocalDate.now().minusDays(5);
                 LocalDate end = LocalDate.now();
 
                 when(historyRepository.findTransactionsByAccountIdAndDateRange(any(), any(), any()))
                                 .thenReturn(List.of(createHistory(1L, 1000)));
 
-                List<EdubankapiTransactionHistoryDto> result = service.getTransactionList(1L, null, start, end, "ALL");
+                List<EdubankapiTransactionHistoryDto> result = service.getTransactionList(
+                                TEST_USERNAME, 1L, null, start, end, "ALL");
 
                 assertEquals(1, result.size());
 
@@ -126,10 +144,14 @@ class EdubankapiAccountServiceTest {
          */
         @Test
         void testGetTransactions_Period3M() {
+                // 소유권 검증 mock
+                when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
+                                .thenReturn(true);
+
                 when(historyRepository.findTransactionsByAccountIdAndDateRange(any(), any(), any()))
                                 .thenReturn(List.of(createHistory(1L, 500)));
 
-                service.getTransactionList(1L, "3M", null, null, "ALL");
+                service.getTransactionList(TEST_USERNAME, 1L, "3M", null, null, "ALL");
 
                 verify(historyRepository, times(1))
                                 .findTransactionsByAccountIdAndDateRange(any(), any(), any());
@@ -142,14 +164,18 @@ class EdubankapiAccountServiceTest {
          */
         @Test
         void testGetTransactions_FilterDeposit() {
+                // 소유권 검증 mock
+                when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
+                                .thenReturn(true);
+
                 TransactionHistory dep = createHistory(1L, 2000); // 입금
                 TransactionHistory wit = createHistory(1L, -2000); // 출금
 
                 when(historyRepository.findTransactionsByAccountIdAndDateRange(any(), any(), any()))
                                 .thenReturn(List.of(dep, wit));
 
-                List<EdubankapiTransactionHistoryDto> list = service.getTransactionList(1L, "1M", null, null,
-                                "DEPOSIT");
+                List<EdubankapiTransactionHistoryDto> list = service.getTransactionList(
+                                TEST_USERNAME, 1L, "1M", null, null, "DEPOSIT");
 
                 assertEquals(1, list.size());
                 assertTrue(list.get(0).amount() > 0);
@@ -162,14 +188,18 @@ class EdubankapiAccountServiceTest {
          */
         @Test
         void testGetTransactions_FilterWithdraw() {
+                // 소유권 검증 mock
+                when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
+                                .thenReturn(true);
+
                 TransactionHistory dep = createHistory(1L, 2000);
                 TransactionHistory wit = createHistory(1L, -2000);
 
                 when(historyRepository.findTransactionsByAccountIdAndDateRange(any(), any(), any()))
                                 .thenReturn(List.of(dep, wit));
 
-                List<EdubankapiTransactionHistoryDto> list = service.getTransactionList(1L, "1M", null, null,
-                                "WITHDRAW");
+                List<EdubankapiTransactionHistoryDto> list = service.getTransactionList(
+                                TEST_USERNAME, 1L, "1M", null, null, "WITHDRAW");
 
                 assertEquals(1, list.size());
                 assertTrue(list.get(0).amount() < 0);
@@ -182,8 +212,12 @@ class EdubankapiAccountServiceTest {
          */
         @Test
         void testGetTransactions_InvalidPeriod_Throws() {
+                // 소유권 검증 mock
+                when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
+                                .thenReturn(true);
+
                 assertThrows(IllegalArgumentException.class,
-                                () -> service.getTransactionList(1L, "ABC", null, null, "ALL"));
+                                () -> service.getTransactionList(TEST_USERNAME, 1L, "ABC", null, null, "ALL"));
         }
 
         /*
@@ -193,6 +227,10 @@ class EdubankapiAccountServiceTest {
          */
         @Test
         void testGetTransactions_Limit30() {
+                // 소유권 검증 mock
+                when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
+                                .thenReturn(true);
+
                 List<TransactionHistory> many = new ArrayList<>();
                 for (int i = 0; i < 50; i++) {
                         many.add(createHistory((long) i, i));
@@ -201,9 +239,44 @@ class EdubankapiAccountServiceTest {
                 when(historyRepository.findTransactionsByAccountIdAndDateRange(any(), any(), any()))
                                 .thenReturn(many);
 
-                List<EdubankapiTransactionHistoryDto> result = service.getTransactionList(1L, "1M", null, null, "ALL");
+                List<EdubankapiTransactionHistoryDto> result = service.getTransactionList(
+                                TEST_USERNAME, 1L, "1M", null, null, "ALL");
 
                 assertEquals(30, result.size());
+        }
+
+        /*
+         * ----------------------------------------------------------
+         * 9. 소유권 검증 실패 - 타인 계좌 접근 시도
+         * ----------------------------------------------------------
+         */
+        @Test
+        void testGetTransactions_Unauthorized_Forbidden() {
+                // 소유권 검증 실패 mock
+                when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
+                                .thenReturn(false);
+
+                CommonException exception = assertThrows(CommonException.class,
+                                () -> service.getTransactionList(TEST_USERNAME, 1L, "1M", null, null, "ALL"));
+
+                assertEquals("해당 계좌에 대한 접근 권한이 없습니다.", exception.getMessage());
+                verify(accountRepository, times(1)).existsByIdAndUser_UserId(1L, TEST_USERNAME);
+                verify(historyRepository, never()).findTransactionsByAccountIdAndDateRange(any(), any(), any());
+        }
+
+        /*
+         * ----------------------------------------------------------
+         * 10. accountId가 null인 경우 예외 발생
+         * ----------------------------------------------------------
+         */
+        @Test
+        void testGetTransactions_NullAccountId_Throws() {
+                CommonException exception = assertThrows(CommonException.class,
+                                () -> service.getTransactionList(TEST_USERNAME, null, "1M", null, null, "ALL"));
+
+                assertEquals("계좌 ID는 필수입니다.", exception.getMessage());
+                verify(accountRepository, never()).existsByIdAndUser_UserId(any(), any());
+                verify(historyRepository, never()).findTransactionsByAccountIdAndDateRange(any(), any(), any());
         }
 
         /*
