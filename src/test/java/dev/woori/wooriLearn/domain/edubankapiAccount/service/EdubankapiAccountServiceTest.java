@@ -49,8 +49,8 @@ class EdubankapiAccountServiceTest {
         @Test
         void testGetAccountByUsername_Success() {
                 // Mock User 객체 생성
-                dev.woori.wooriLearn.domain.user.entity.Users mockUser =
-                        dev.woori.wooriLearn.domain.user.entity.Users.builder()
+                dev.woori.wooriLearn.domain.user.entity.Users mockUser = dev.woori.wooriLearn.domain.user.entity.Users
+                                .builder()
                                 .id(1L)
                                 .userId(TEST_USERNAME)
                                 .nickname("테스트유저")
@@ -62,6 +62,7 @@ class EdubankapiAccountServiceTest {
                                 .accountNumber("1111")
                                 .balance(5000)
                                 .accountName("계좌1")
+                                .accountType(dev.woori.wooriLearn.domain.edubankapi.entity.AccountType.CHECKING)
                                 .user(mockUser)
                                 .build();
                 EducationalAccount acc2 = EducationalAccount.builder()
@@ -69,6 +70,7 @@ class EdubankapiAccountServiceTest {
                                 .accountNumber("2222")
                                 .balance(7000)
                                 .accountName("계좌2")
+                                .accountType(dev.woori.wooriLearn.domain.edubankapi.entity.AccountType.SAVINGS)
                                 .user(mockUser)
                                 .build();
 
@@ -85,6 +87,8 @@ class EdubankapiAccountServiceTest {
                 assertEquals(2, list.size());
                 assertEquals("1111", list.get(0).accountNumber());
                 assertEquals(TEST_USERNAME, list.get(0).userId());
+                assertEquals("CHECKING", list.get(0).accountType()); // 계좌 타입 검증
+                assertEquals("SAVINGS", list.get(1).accountType()); // 계좌 타입 검증
                 verify(userRepository, times(1)).findByUserId(TEST_USERNAME);
                 verify(accountRepository, times(1)).findByUser_Id(1L);
         }
