@@ -5,7 +5,7 @@ import dev.woori.wooriLearn.common.SortDirection;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.account.entity.HistoryFilter;
-import dev.woori.wooriLearn.domain.account.dto.PointsUnifiedHistoryRequestDto;
+import dev.woori.wooriLearn.domain.account.dto.request.PointsUnifiedHistoryRequestDto;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;

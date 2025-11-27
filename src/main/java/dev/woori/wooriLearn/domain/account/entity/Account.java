@@ -20,7 +20,7 @@ public class Account extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private Users user;
 
-    @Column(name = "account_number", nullable = false, length = 20)
+    @Column(name = "account_number", nullable = false, length = 20, unique = true)
     private String accountNumber;
 
     @Column(name = "bank_code", nullable = false, length = 10)
