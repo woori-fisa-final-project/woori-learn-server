@@ -22,7 +22,6 @@ public class TransactionHistory {
     @JoinColumn(name = "account_id", nullable = false)
     private EducationalAccount account;
 
-    @CreatedDate
     @Column(name = "transaction_date", updatable = false, nullable = false, columnDefinition = "DATETIME(6)")
     private LocalDateTime transactionDate;
 

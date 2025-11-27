@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 public record EdubankapiTransferResponseDto(
         String transactionId,          // 거래 고유 ID
         LocalDateTime transactionDate, // 거래 시각
-        String counterpartyName,       // 거래 상대방 이름
+        String counterpartyName,       // 거래 상대방 이름 (자동 조회)
         Integer amount,                // 이체 금액
         Integer balance,               // 거래 후 잔액
         String message,                // 처리 결과 메시지
