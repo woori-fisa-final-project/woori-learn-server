@@ -16,7 +16,8 @@ public record EdubankapiAccountDto(
         String accountName,
         String accountNumber,
         Integer balance,
-        String userId
+        String userId,
+        String accountType  // "CHECKING" | "SAVINGS" | "DEPOSIT"
 ) {
     /*
         정적 팩토리 메서드
@@ -29,7 +30,8 @@ public record EdubankapiAccountDto(
                 account.getAccountName(),
                 account.getAccountNumber(),
                 account.getBalance(),
-                account.getUser().getUserId()
+                account.getUser().getUserId(),
+                account.getAccountType().name()  // Enum을 String으로 변환
         );
     }
 
