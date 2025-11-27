@@ -53,14 +53,14 @@ public class EdubankapiAccountControllerTest {
     @Test
     @DisplayName("계좌이체 성공 테스트")
     void testTransferSuccess() throws Exception {
-        EdubankapiTransferRequestDto request = new EdubankapiTransferRequestDto(
-                "1122334455",
-                "5544332211",
-                1000,
-                "1111",
-                "생활비",
-                "홍길동"
-        );
+
+        EdubankapiTransferRequestDto request = EdubankapiTransferRequestDto.builder()
+                .fromAccountNumber("1122334455")
+                .toAccountNumber("5544332211")
+                .amount(1000)
+                .accountPassword("1111")
+                .displayName("생활비")
+                .build();
 
         mockMvc.perform(post("/education/accounts/transfer")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -74,14 +74,14 @@ public class EdubankapiAccountControllerTest {
     @Test
     @DisplayName("계좌이체 실패 테스트 (비밀번호 불일치)")
     void testTransferWrongPassword() throws Exception {
-        EdubankapiTransferRequestDto request = new EdubankapiTransferRequestDto(
-                "1122334455",
-                "5544332211",
-                1000,
-                "9999",
-                "생활비",
-                "홍길동"
-        );
+
+        EdubankapiTransferRequestDto request = EdubankapiTransferRequestDto.builder()
+                .fromAccountNumber("1122334455")
+                .toAccountNumber("5544332211")
+                .amount(1000)
+                .accountPassword("9999")  // 틀린 비번
+                .displayName("생활비")
+                .build();
 
         mockMvc.perform(post("/education/accounts/transfer")
                         .contentType(MediaType.APPLICATION_JSON)
