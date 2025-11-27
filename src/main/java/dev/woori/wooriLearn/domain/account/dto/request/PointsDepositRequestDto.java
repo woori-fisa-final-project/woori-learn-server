@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.account.dto;
+package dev.woori.wooriLearn.domain.account.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
