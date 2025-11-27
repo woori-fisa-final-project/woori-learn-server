@@ -28,13 +28,12 @@ spring:
   env:
     app-key: ${spring.env.app-key}
     secret-key: ${spring.env.secret-key}
-  
-  redis:
-    host: ${SPRING_REDIS_HOST}
-    port: ${SPRING_REDIS_PORT}
-    
 
-   data:
+  redis:
+    host: ${SPRING_DATA_REDIS_HOST}
+    port: ${SPRING_DATA_REDIS_PORT}
+
+  data:
     redis:
       ttl: 10m
 
@@ -55,3 +54,4 @@ api:
   client:
     connect-timeout: 5s
     read-timeout: 5s
+
