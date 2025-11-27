@@ -8,7 +8,6 @@ public record EdubankapiTransferRequestDto(
         String toAccountNumber,     // 입금계좌번호
         Integer amount,             // 이체금액
         String accountPassword,     // 4자리 비밀번호
-        String displayName,         // 받는사람표시명(선택)
-        String counterpartyName     // 받는 사람 이름
+        String displayName         // 받는사람표시명
 ) {
 }

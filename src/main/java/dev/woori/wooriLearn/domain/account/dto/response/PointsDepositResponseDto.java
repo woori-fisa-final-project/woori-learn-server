@@ -1,4 +1,4 @@
-package dev.woori.wooriLearn.domain.account.dto;
+package dev.woori.wooriLearn.domain.account.dto.response;
 
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
 import lombok.Builder;

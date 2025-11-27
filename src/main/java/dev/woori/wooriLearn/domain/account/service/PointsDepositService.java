@@ -2,8 +2,8 @@ package dev.woori.wooriLearn.domain.account.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.domain.account.dto.PointsDepositRequestDto;
-import dev.woori.wooriLearn.domain.account.dto.PointsDepositResponseDto;
+import dev.woori.wooriLearn.domain.account.dto.request.PointsDepositRequestDto;
+import dev.woori.wooriLearn.domain.account.dto.response.PointsDepositResponseDto;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
