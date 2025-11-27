@@ -54,25 +54,6 @@ public class EdubankapiAccountService {
     }
 
     /**
-     *      사용자 ID를 통해 계좌 목록 조회
-     *
-     *         - Repository를 통해 DB에서 특정 사용자{userId}의 계좌 데이터를 조회
-     *         - Entity를 DTO로 변환하여 Controller에 전달
-     *
-     *         @param userId : 사용자 ID (PK)
-     *         @return 계좌 목록 : <List<AccountDto>>
-     */
-    public List<EdubankapiAccountDto> getAccountByUserId(long userId) {
-
-        // Repository 호출을 통해 educationl_account 테이블에 user_id가 일치하는 계좌 엔티티 목록 조회
-        List<EducationalAccount> accounts = edubankapiAccountRepository.findByUser_Id(userId);
-
-        return accounts.stream()
-                .map(EdubankapiAccountDto::from)
-                .collect(Collectors.toList());
-    }
-
-    /**
      *   거래내역 목록 조회 (보안 강화: 계좌 소유권 검증 추가)
      *
      *   @param username JWT 토큰에서 추출한 사용자 ID
