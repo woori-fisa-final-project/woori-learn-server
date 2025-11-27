@@ -30,23 +30,24 @@ public class EdubankapiTransferService {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     *  계좌이체 (보안 강화: 출금 계좌 소유권 검증 추가)
+     * 계좌이체 (보안 강화: 출금 계좌 소유권 검증 추가)
+     * <p>
+     * - 트랜잭션 경계 내에서 실행 (@Transactional)
+     * - JWT 토큰 기반 출금 계좌 소유권 검증
+     * - 비관적 락으로 동시성 제어
+     * - 교착 방지를 위해 계좌번호 기준 정렬 후 락 획득
+     * - 비밀번호/잔액/자기계좌 검증 수행
+     * - 잔액 변경 및 거래내역 저장을 원자적으로 처리
      *
-     *  - 트랜잭션 경계 내에서 실행 (@Transactional)
-     *  - JWT 토큰 기반 출금 계좌 소유권 검증
-     *  - 비관적 락으로 동시성 제어
-     *  - 교착 방지를 위해 계좌번호 기준 정렬 후 락 획득
-     *  - 비밀번호/잔액/자기계좌 검증 수행
-     *  - 잔액 변경 및 거래내역 저장을 원자적으로 처리
-     *
-     *  @param username JWT 토큰에서 추출한 사용자 ID
-     *  @param request 계좌이체 요청 정보
+     * @param username JWT 토큰에서 추출한 사용자 ID
+     * @param request  계좌이체 요청 정보
      */
     @Transactional
     public EdubankapiTransferResponseDto transfer(String username, EdubankapiTransferRequestDto request) {
 
         log.info("[계좌이체 요청] username={} from={} to={} amount={} displayName={}",
-                username, request.fromAccountNumber(), request.toAccountNumber(), request.amount(), request.displayName());
+                username, request.fromAccountNumber(), request.toAccountNumber(), request.amount(),
+                request.displayName());
 
         // 0. 사용자 조회
         Users user = userRepository.findByUserId(username)
@@ -58,14 +59,18 @@ public class EdubankapiTransferService {
 
         if (request.fromAccountNumber().compareTo(request.toAccountNumber()) < 0) {
             fromAccount = accountRepository.findByAccountNumber(request.fromAccountNumber())
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 계좌를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                            "출금 계좌를 찾을 수 없습니다."));
             toAccount = accountRepository.findByAccountNumber(request.toAccountNumber())
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "입금 계좌를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                            "입금 계좌를 찾을 수 없습니다."));
         } else {
             toAccount = accountRepository.findByAccountNumber(request.toAccountNumber())
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "입금 계좌를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                            "입금 계좌를 찾을 수 없습니다."));
             fromAccount = accountRepository.findByAccountNumber(request.fromAccountNumber())
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 계좌를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                            "출금 계좌를 찾을 수 없습니다."));
         }
 
         // 2️. 검증 로직 (출금 계좌 소유권 검증 추가)
@@ -88,8 +93,7 @@ public class EdubankapiTransferService {
                 request.counterpartyName(),
                 request.displayName(),
                 "계좌이체(출금)",
-                now
-        );
+                now);
 
         TransactionHistory depositHistory = createHistory(
                 toAccount,
@@ -97,8 +101,7 @@ public class EdubankapiTransferService {
                 request.counterpartyName(),
                 request.displayName(),
                 "계좌이체(입금)",
-                now
-        );
+                now);
 
         transactionHistoryRepository.save(withdrawHistory);
         transactionHistoryRepository.save(depositHistory);
@@ -115,14 +118,15 @@ public class EdubankapiTransferService {
         );
 
         log.info("[계좌이체 완료] from={} to={} amount={} fromBalanceAfter={}",
-                fromAccount.getAccountNumber(), toAccount.getAccountNumber(), request.amount(), fromAccount.getBalance());
+                fromAccount.getAccountNumber(), toAccount.getAccountNumber(), request.amount(),
+                fromAccount.getBalance());
 
         return response;
 
     }
 
     /**
-     *  거래내역 생성 헬퍼 메서드
+     * 거래내역 생성 헬퍼 메서드
      */
     private TransactionHistory createHistory(
             EducationalAccount account,
@@ -130,8 +134,7 @@ public class EdubankapiTransferService {
             String counterparty,
             String display,
             String description,
-            LocalDateTime date
-    ) {
+            LocalDateTime date) {
         return TransactionHistory.builder()
                 .account(account)
                 .transactionDate(date)
@@ -143,7 +146,7 @@ public class EdubankapiTransferService {
     }
 
     /**
-     *  계좌이체 검증 로직 (보안 강화: 출금 계좌 소유권 검증 추가)
+     * 계좌이체 검증 로직 (보안 강화: 출금 계좌 소유권 검증 추가)
      */
     private void validateTransfer(Users user,
                                   EdubankapiTransferRequestDto request,
