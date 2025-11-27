@@ -1,9 +1,8 @@
 package dev.woori.wooriLearn.domain.point;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.woori.wooriLearn.domain.account.controller.PointController;
-import dev.woori.wooriLearn.domain.account.dto.PointsExchangeRequestDto;
-import dev.woori.wooriLearn.domain.account.dto.PointsExchangeResponseDto;
+import dev.woori.wooriLearn.domain.account.dto.request.PointsExchangeRequestDto;
+import dev.woori.wooriLearn.domain.account.dto.response.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
