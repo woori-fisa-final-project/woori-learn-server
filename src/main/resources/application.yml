@@ -28,6 +28,11 @@ spring:
   env:
     app-key: ${spring.env.app-key}
     secret-key: ${spring.env.secret-key}
+  
+  redis:
+    host: ${SPRING_REDIS_HOST}
+    port: ${SPRING_REDIS_PORT}
+    ttl: 10m
 
 client:
   base-url: ${CLIENT_BASE_URL}
