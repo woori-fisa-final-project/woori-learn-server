@@ -58,19 +58,11 @@ public class EdubankapiTransferService {
         EducationalAccount toAccount;
 
         if (request.fromAccountNumber().compareTo(request.toAccountNumber()) < 0) {
-            fromAccount = accountRepository.findByAccountNumber(request.fromAccountNumber())
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
-                            "출금 계좌를 찾을 수 없습니다."));
-            toAccount = accountRepository.findByAccountNumber(request.toAccountNumber())
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
-                            "입금 계좌를 찾을 수 없습니다."));
+            fromAccount = findAccountByNumberOrThrow(request.fromAccountNumber(), "출금 계좌를 찾을 수 없습니다.");
+            toAccount = findAccountByNumberOrThrow(request.toAccountNumber(), "입금 계좌를 찾을 수 없습니다.");
         } else {
-            toAccount = accountRepository.findByAccountNumber(request.toAccountNumber())
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
-                            "입금 계좌를 찾을 수 없습니다."));
-            fromAccount = accountRepository.findByAccountNumber(request.fromAccountNumber())
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
-                            "출금 계좌를 찾을 수 없습니다."));
+            toAccount = findAccountByNumberOrThrow(request.toAccountNumber(), "입금 계좌를 찾을 수 없습니다.");
+            fromAccount = findAccountByNumberOrThrow(request.fromAccountNumber(), "출금 계좌를 찾을 수 없습니다.");
         }
 
         // 2️. 검증 로직 (출금 계좌 소유권 검증 추가)
@@ -123,6 +115,18 @@ public class EdubankapiTransferService {
 
         return response;
 
+    }
+
+    /**
+     * 계좌번호로 계좌 조회 헬퍼 메서드
+     *
+     * @param accountNumber 계좌번호
+     * @param errorMessage 계좌를 찾을 수 없을 때 예외 메시지
+     * @return 조회된 계좌 (비관적 락 적용됨)
+     */
+    private EducationalAccount findAccountByNumberOrThrow(String accountNumber, String errorMessage) {
+        return accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, errorMessage));
     }
 
     /**
