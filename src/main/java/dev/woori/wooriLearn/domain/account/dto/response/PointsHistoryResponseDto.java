@@ -21,8 +21,8 @@ public class PointsHistoryResponseDto {
 
     public PointsHistoryResponseDto(PointsHistory entity) {
         this.id = entity.getId();
-        this.userId = entity.getUser() != null ? entity.getUser().getUserId() : null;
-        this.nickname = entity.getUser() != null ? entity.getUser().getNickname() : null;
+        this.userId = entity.getUser().getUserId();
+        this.nickname = entity.getUser().getNickname();
         this.type = entity.getType();
         this.status = entity.getStatus();
         this.amount = entity.getAmount();
