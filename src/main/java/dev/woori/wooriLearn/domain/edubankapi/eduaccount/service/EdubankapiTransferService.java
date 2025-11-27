@@ -76,13 +76,17 @@ public class EdubankapiTransferService {
         accountRepository.save(fromAccount);
         accountRepository.save(toAccount);
 
+        // 이름은 서버가 자동 조회
+        String toOwnerName = toAccount.getAccountName();     // 받는 사람
+        String fromOwnerName = fromAccount.getAccountName(); // 보내는 사람
+
         // 4️. 거래내역 생성
         LocalDateTime now = LocalDateTime.now();
 
         TransactionHistory withdrawHistory = createHistory(
                 fromAccount,
                 -request.amount(),
-                request.counterpartyName(),
+                toOwnerName,                 // 받는 사람 이름
                 request.displayName(),
                 "계좌이체(출금)",
                 now);
@@ -90,7 +94,7 @@ public class EdubankapiTransferService {
         TransactionHistory depositHistory = createHistory(
                 toAccount,
                 request.amount(),
-                request.counterpartyName(),
+                fromOwnerName,               // 보내는 사람 이름
                 request.displayName(),
                 "계좌이체(입금)",
                 now);
@@ -102,7 +106,7 @@ public class EdubankapiTransferService {
         EdubankapiTransferResponseDto response = EdubankapiTransferResponseDto.of(
                 "TX-" + UUID.randomUUID().toString().substring(0, 8),
                 now,
-                request.counterpartyName(),
+                toOwnerName,                  // 받는 사람 이름
                 request.amount(),
                 fromAccount.getBalance(),
                 "이체가 완료되었습니다.",
