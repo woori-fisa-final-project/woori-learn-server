@@ -11,16 +11,22 @@ import java.time.LocalDateTime;
 public class PointsHistoryResponseDto {
 
     private Long id;
+    private String userId;
+    private String nickname;
     private PointsHistoryType type;
     private PointsStatus status;
     private int amount;
     private LocalDateTime createdAt;
+    private LocalDateTime processedAt;
 
     public PointsHistoryResponseDto(PointsHistory entity) {
         this.id = entity.getId();
+        this.userId = entity.getUser() != null ? entity.getUser().getUserId() : null;
+        this.nickname = entity.getUser() != null ? entity.getUser().getNickname() : null;
         this.type = entity.getType();
         this.status = entity.getStatus();
         this.amount = entity.getAmount();
         this.createdAt = entity.getCreatedAt();
+        this.processedAt = entity.getProcessedAt();
     }
 }
