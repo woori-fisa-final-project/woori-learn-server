@@ -123,11 +123,6 @@ public class EdubankapiAccountService {
      * @throws CommonException 계좌가 존재하지 않거나 소유자가 아닌 경우
      */
     private void validateAccountOwnership(String username, Long accountId) {
-        // accountId null 체크
-        if (accountId == null) {
-            throw new CommonException(ErrorCode.INVALID_REQUEST, "계좌 ID는 필수입니다.");
-        }
-
         if (!edubankapiAccountRepository.existsByIdAndUser_UserId(accountId, username)) {
             throw new CommonException(ErrorCode.FORBIDDEN, "해당 계좌에 대한 접근 권한이 없습니다.");
         }

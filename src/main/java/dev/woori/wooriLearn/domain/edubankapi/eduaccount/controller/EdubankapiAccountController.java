@@ -9,6 +9,7 @@ import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransferR
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.TransactionListReqDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiAccountService;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiTransferService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -60,7 +61,7 @@ public class EdubankapiAccountController {
     @GetMapping("/transactions")
     public ResponseEntity<BaseResponse<?>> getTransactionList(
             @AuthenticationPrincipal String username,
-            TransactionListReqDto request) {
+            @Valid TransactionListReqDto request) {
 
         List<EdubankapiTransactionHistoryDto> transactions =
                 edubankapiAccountService.getTransactionList(
