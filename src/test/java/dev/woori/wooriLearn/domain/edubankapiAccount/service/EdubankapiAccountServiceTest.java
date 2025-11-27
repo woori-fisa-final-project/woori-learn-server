@@ -48,17 +48,28 @@ class EdubankapiAccountServiceTest {
          */
         @Test
         void testGetAccountByUserId() {
+                // Mock User 객체 생성 (NullPointerException 방지)
+                dev.woori.wooriLearn.domain.user.entity.Users mockUser =
+                        dev.woori.wooriLearn.domain.user.entity.Users.builder()
+                                .id(1L)
+                                .userId(TEST_USERNAME)
+                                .nickname("테스트유저")
+                                .points(0)
+                                .build();
+
                 EducationalAccount acc1 = EducationalAccount.builder()
                                 .id(1L)
                                 .accountNumber("1111")
                                 .balance(5000)
                                 .accountName("계좌1")
+                                .user(mockUser)  // user 추가
                                 .build();
                 EducationalAccount acc2 = EducationalAccount.builder()
                                 .id(2L)
                                 .accountNumber("2222")
                                 .balance(7000)
                                 .accountName("계좌2")
+                                .user(mockUser)  // user 추가
                                 .build();
 
                 when(accountRepository.findByUser_Id(1L))
@@ -68,6 +79,7 @@ class EdubankapiAccountServiceTest {
 
                 assertEquals(2, list.size());
                 assertEquals("1111", list.get(0).accountNumber());
+                assertEquals(TEST_USERNAME, list.get(0).userId());  // userId 검증 추가
                 verify(accountRepository, times(1)).findByUser_Id(1L);
         }
 
