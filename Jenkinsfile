@@ -89,8 +89,8 @@ docker run -d --name woori_backend -p 8080:8080 \
     -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
     -e JWT_SECRET="${JWT_SECRET}" \
     -e CLIENT_BASE_URL="http://${AWS_HOST}:3000" \
-    -e SPRING_REDIS_HOST="172.31.12.253" \
-    -e SPRING_REDIS_PORT="6379" \
+    -e SPRING_DATA_REDIS_HOST="172.31.12.253" \
+    -e SPRING_DATA_REDIS_PORT="6379" \
     -e ACCOUNT_EXTERNAL_AUTH_BASE_URL="http://localhost:8081" \
     -e ACCOUNT_EXTERNAL_AUTH_REQUEST_PATH="/otp" \
     -e external.bank.base-url="http://localhost:8081" \
