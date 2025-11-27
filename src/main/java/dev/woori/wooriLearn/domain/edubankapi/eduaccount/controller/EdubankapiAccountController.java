@@ -89,10 +89,6 @@ public class EdubankapiAccountController {
             @AuthenticationPrincipal String username,
             @RequestBody EdubankapiTransferRequestDto request) {
 
-        //디버깅 및 추적용
-        log.info("[계좌이체 요청] username={}, fromAccountNumber={}, toAccountNumber={}, amount=" +
-                "{}", username, request.fromAccountNumber(), request.toAccountNumber(), request.amount());
-
         /*
              Service 계층의 transfer() 메서드 호출
              → 출금 계좌 소유권 검증
