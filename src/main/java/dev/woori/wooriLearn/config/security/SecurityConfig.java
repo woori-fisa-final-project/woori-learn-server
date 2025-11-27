@@ -87,8 +87,17 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)// API 테스트용, 실제 서비스면 토큰 기반 CSRF 설정 필요
-                .cors(Customizer.withDefaults())  // 임시로 cors 허용
-                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))// 세션 사용 안함
+                .cors(cors -> cors.configurationSource(request -> {
+                    CorsConfiguration config = new CorsConfiguration();
+                    config.setAllowedOrigins(List.of(baseUrl));
+                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+                    config.setAllowedHeaders(List.of("*"));
+                    config.setAllowCredentials(true);
+                    config.setExposedHeaders(List.of("Authorization"));
+                    return config;
+                }))
+                .sessionManagement(s ->
+                        s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))// 세션 사용 안함
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(whiteList.toArray(new String[0])).permitAll()
