@@ -2,14 +2,16 @@ spring:
   application:
     name: wooriLearn
 
-  profiles:
-    active: dev
+#  profiles:
+#    active: dev
 
+  # mysql 데이터
   datasource:
+    url: jdbc:mysql://localhost:3306/wooriLearn?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    # url: jdbc:mysql://192.168.0.79:8506/wooriLearn?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: root
+    password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
 
   jpa:
     show-sql: true
@@ -21,26 +23,43 @@ spring:
         show_sql: true
 
   jwt:
-    secret: ${JWT_SECRET}
-    access-expiration: ${JWT_ACCESS_EXPIRATION:3600000}
-    refresh-expiration: ${JWT_REFRESH_EXPIRATION:31536000000}
+    secret: 1nGmLQMnCQri6kT7jCy0rSzzcAJNR8BoZzDYr/tcVTnwZ/173LuUX3gAwZlI6NRExH0CffzkizyE75VX1Mqw7w==
+    access-expiration: 3600000
+    refresh-expiration: 31536000000
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      ttl: 10m # 새로 추가
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 300000
 
   env:
-    app-key: ${spring.env.app-key}
-    secret-key: ${spring.env.secret-key}
+    app-key: "YOUR_APP_KEY_123"
+    secret-key: "MY_SECRET_ABC123"
+
+app:
+  rate-limit:
+    enabled: true
+    capacity: 60
+    refill-tokens: 60
+    refill-duration-minutes: 1
+
+  auto-payment:
+    max-amount: 5000000
+    amount-limit-enabled: true
 
 client:
-  base-url: ${CLIENT_BASE_URL}
-
-account:
-  external-auth:
-    base-url: ${ACCOUNT_EXTERNAL_AUTH_BASE_URL}
-    request-path: ${ACCOUNT_EXTERNAL_AUTH_REQUEST_PATH:/otp}
+  base-url: http://localhost:3001 # 프론트 서버 주소
 
 external:
   bank:
-    base-url: ${external.bank.base-url}
-    account-url: ${external.bank.account-url}
+    base-url: http://localhost:8081 # 은행 서버 주소
+    account-url: /account
 
 api:
   client:
