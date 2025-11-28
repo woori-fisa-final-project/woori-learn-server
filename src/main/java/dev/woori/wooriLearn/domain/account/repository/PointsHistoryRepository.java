@@ -24,6 +24,7 @@ public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Lo
     Optional<PointsHistory> findAndLockById(@Param("id") Long id);
 
     // 단순 타입 + 상태 조회 (프론트 사용자 내역용)
+    @EntityGraph(attributePaths = {"user"})
     Page<PointsHistory> findByTypeAndStatus(PointsHistoryType type, PointsStatus status, Pageable pageable);
 
     /**

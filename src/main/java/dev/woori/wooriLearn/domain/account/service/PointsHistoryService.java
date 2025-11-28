@@ -40,7 +40,9 @@ public class PointsHistoryService {
      */
     public Page<PointsHistory> getUnifiedHistory(String username, PointsUnifiedHistoryRequestDto request, boolean isAdmin) {
         // 1) 조회 대상 사용자 식별
-        Long userId = resolveUserId(username, request.userId(), isAdmin);
+        Long userId = (isAdmin && request.userId() == null)
+                ? null
+                : resolveUserId(username, request.userId(), isAdmin);
 
         // 2) 날짜 범위 해석
         DateRange range = resolveDateRange(request.startDate(), request.endDate(), request.period());
@@ -85,6 +87,7 @@ public class PointsHistoryService {
         if (filter == null || filter == HistoryFilter.ALL) return new TypeStatus(null, null);
         return switch (filter) {
             case DEPOSIT -> new TypeStatus(PointsHistoryType.DEPOSIT, null);
+            case WITHDRAW -> new TypeStatus(PointsHistoryType.WITHDRAW, null);
             case WITHDRAW_APPLY -> new TypeStatus(PointsHistoryType.WITHDRAW, PointsStatus.APPLY);
             case WITHDRAW_FAILED -> new TypeStatus(PointsHistoryType.WITHDRAW, PointsStatus.FAILED);
             case WITHDRAW_SUCCESS -> new TypeStatus(PointsHistoryType.WITHDRAW, PointsStatus.SUCCESS);
