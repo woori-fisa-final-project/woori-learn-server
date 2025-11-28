@@ -2,9 +2,11 @@ package dev.woori.wooriLearn.domain.user.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.account.entity.Account;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
+import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
@@ -41,14 +43,14 @@ public class UserService {
 
     private static final int NEW_MEMBER_REGISTRATION_POINTS = 1000;
     private static final int INITIAL_ACCOUNT_BALANCE = 5000000;
+    private final AccountRepository accountRepository;
 
     /**
      * id와 비밀번호, 사용자 이름을 입력받아 회원가입을 진행합니다.
-     *
      * @param signupReqDto id / pw / 이름
      */
     public void signup(SignupReqDto signupReqDto) {
-        if (authUserRepository.existsByUserId(signupReqDto.userId())) {
+        if(authUserRepository.existsByUserId(signupReqDto.userId())){
             throw new CommonException(ErrorCode.CONFLICT);
         }
 
@@ -75,7 +77,8 @@ public class UserService {
                         .amount(NEW_MEMBER_REGISTRATION_POINTS)
                         .type(PointsHistoryType.DEPOSIT)
                         .status(PointsStatus.SUCCESS)
-                        .build());
+                        .build()
+        );
 
         // 입출금계좌 생성
         eduAccountRepository.save(
@@ -85,7 +88,9 @@ public class UserService {
                         INITIAL_ACCOUNT_BALANCE,
                         passwordEncoder.encode("1234"),
                         user.getNickname(),
-                        user));
+                        user
+                )
+        );
 
         // 예금 계좌 생성
         eduAccountRepository.save(
@@ -95,27 +100,33 @@ public class UserService {
                         INITIAL_ACCOUNT_BALANCE,
                         passwordEncoder.encode("1234"),
                         user.getNickname(),
-                        user));
+                        user
+                )
+        );
     }
 
-    public UserInfoResDto getUserInfo(String userId) {
+    public UserInfoResDto getUserInfo(String userId){
         Users user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
-                        "사용자를 찾을 수 없습니다. userId=" + userId));
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
+
+        String accountNumber = accountRepository.findByUserId(user.getId())
+                .map(Account::getAccountNumber)
+                .orElse("");
+
         return UserInfoResDto.builder()
                 .nickname(user.getNickname())
                 .point(user.getPoints())
+                .account(accountNumber)
                 .build();
     }
 
-    public void changeNickname(String userId, ChangeNicknameReqDto request) {
+    public void changeNickname(String userId, ChangeNicknameReqDto request){
         Users user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
-                        "사용자를 찾을 수 없습니다. userId=" + userId));
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
         user.updateNickname(request.nickname());
-
+        
         // 계좌 이름 변경
-        List<EducationalAccount> accounts = eduAccountRepository.findByUser_Id(user.getId());
+        List<EducationalAccount> accounts = eduAccountRepository.findByUserId(user.getId());
         for (EducationalAccount account : accounts) {
             account.updateAccountName(request.nickname());
         }
@@ -124,7 +135,8 @@ public class UserService {
     public Users getByUserIdOrThrow(String userId) {
         return userRepository.findByUserId(userId)
                 .orElseThrow(() -> new CommonException(
-                        ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다: " + userId));
+                        ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다: " + userId
+                ));
     }
 
     // 13자리 계좌번호 생성
