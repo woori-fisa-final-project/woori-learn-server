@@ -58,11 +58,11 @@ public class EdubankapiTransferService {
         EducationalAccount toAccount;
 
         if (request.fromAccountNumber().compareTo(request.toAccountNumber()) < 0) {
-            fromAccount = findAccountByNumberOrThrow(request.fromAccountNumber(), "출금 계좌를 찾을 수 없습니다.");
-            toAccount = findAccountByNumberOrThrow(request.toAccountNumber(), "입금 계좌를 찾을 수 없습니다.");
+            fromAccount = findAccountByNumberOrThrow(request.fromAccountNumber(), "출금");
+            toAccount = findAccountByNumberOrThrow(request.toAccountNumber(), "입금");
         } else {
-            toAccount = findAccountByNumberOrThrow(request.toAccountNumber(), "입금 계좌를 찾을 수 없습니다.");
-            fromAccount = findAccountByNumberOrThrow(request.fromAccountNumber(), "출금 계좌를 찾을 수 없습니다.");
+            toAccount = findAccountByNumberOrThrow(request.toAccountNumber(), "입금");
+            fromAccount = findAccountByNumberOrThrow(request.fromAccountNumber(), "출금");
         }
 
         // 2️. 검증 로직 (출금 계좌 소유권 검증 추가)
@@ -124,13 +124,16 @@ public class EdubankapiTransferService {
     /**
      * 계좌번호로 계좌 조회 헬퍼 메서드
      *
+     * 계좌 종류에 따라 동적으로 오류 메시지를 생성하여 일관성을 유지
+     *
      * @param accountNumber 계좌번호
-     * @param errorMessage 계좌를 찾을 수 없을 때 예외 메시지
+     * @param accountType 계좌 종류 ("출금" 또는 "입금")
      * @return 조회된 계좌 (비관적 락 적용됨)
      */
-    private EducationalAccount findAccountByNumberOrThrow(String accountNumber, String errorMessage) {
+    private EducationalAccount findAccountByNumberOrThrow(String accountNumber, String accountType) {
         return accountRepository.findByAccountNumber(accountNumber)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, errorMessage));
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                        accountType + " 계좌를 찾을 수 없습니다."));
     }
 
     /**
