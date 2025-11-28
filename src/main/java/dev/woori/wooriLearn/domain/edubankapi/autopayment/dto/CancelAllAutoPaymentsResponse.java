@@ -15,13 +15,16 @@ public record CancelAllAutoPaymentsResponse(
     /**
      * 정적 팩토리 메서드 - 해지 건수로부터 응답 생성
      *
+     * 0건일 경우 사용자에게 더 명확한 메시지를 전달
+     *
      * @param count 해지된 자동이체 건수
      * @return CancelAllAutoPaymentsResponse
      */
     public static CancelAllAutoPaymentsResponse of(int count) {
-        return new CancelAllAutoPaymentsResponse(
-                count,
-                count + "건의 자동이체가 해지되었습니다."
-        );
+        String message = (count == 0)
+                ? "해지할 활성 자동이체가 없습니다."
+                : count + "건의 자동이체가 해지되었습니다.";
+
+        return new CancelAllAutoPaymentsResponse(count, message);
     }
 }

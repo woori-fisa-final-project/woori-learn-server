@@ -87,10 +87,9 @@ public class AutoPaymentCacheManager {
             String currentUserId,
             AutoPayment autoPayment) {
 
-        Long autoPaymentId = autoPayment.getId();
-        Long educationalAccountId = autoPayment.getEducationalAccount().getId();
+        log.info("자동이체 상세 조회 (캐시 미스) - ID: {}, 사용자: {}",
+                autoPayment.getId(), currentUserId);
 
-        log.info("자동이체 상세 조회 (캐시 미스) - ID: {}, 사용자: {}", autoPaymentId, currentUserId);
-        return AutoPaymentResponse.of(autoPayment, educationalAccountId);
+        return AutoPaymentResponse.of(autoPayment, autoPayment.getEducationalAccount().getId());
     }
 }
