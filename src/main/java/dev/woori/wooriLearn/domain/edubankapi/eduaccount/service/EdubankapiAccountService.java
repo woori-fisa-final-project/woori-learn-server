@@ -129,7 +129,7 @@ public class EdubankapiAccountService {
         }
 
         if (!edubankapiAccountRepository.existsByIdAndUser_UserId(accountId, username)) {
-            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "해당 계좌을 찾을 수 없습니다.");
+            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "해당 계좌를 찾을 수 없습니다.");
         }
     }
 
