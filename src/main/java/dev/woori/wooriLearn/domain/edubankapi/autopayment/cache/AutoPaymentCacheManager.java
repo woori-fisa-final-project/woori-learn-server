@@ -65,7 +65,7 @@ public class AutoPaymentCacheManager {
         }
 
         return autoPayments.stream()
-                .map(autoPayment -> AutoPaymentResponse.of(autoPayment, educationalAccountId))
+                .map(autoPayment -> AutoPaymentResponse.of(autoPayment, autoPayment.getEducationalAccount().getId()))
                 .toList();
     }
 
