@@ -2,6 +2,7 @@ package dev.woori.wooriLearn.domain.edubankapi.autopayment.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.cache.AutoPaymentCacheManager;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentCreateRequest;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentResponse;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
@@ -38,6 +39,7 @@ public class AutoPaymentService {
     private final EdubankapiAccountRepository edubankapiAccountRepository;
     private final PasswordEncoder passwordEncoder;
     private final CacheManager cacheManager;
+    private final AutoPaymentCacheManager autoPaymentCacheManager;
 
     @Value("${app.auto-payment.max-amount:5000000}")
     private int maxTransferAmount;
@@ -61,35 +63,12 @@ public class AutoPaymentService {
         // 2. 유효한 값이면 정규화하여 캐시 키 중복 방지 ('active', 'ACTIVE', '' 등을 통일)
         String normalizedStatus = normalizeStatusForCache(status);
 
-        return getAutoPaymentListCached(educationalAccountId, normalizedStatus, currentUserId);
-    }
-
-    /**
-     * 자동이체 목록 조회 (캐시 적용)
-     * 정규화된 status를 사용하여 캐시 키 중복 방지
-     *
-     * Note: 이 메소드는 이미 검증된 status를 받으므로 추가 검증 불필요
-     */
-    @Cacheable(value = "autoPaymentList", key = "#currentUserId + ':' + #educationalAccountId + ':' + #normalizedStatus")
-    private List<AutoPaymentResponse> getAutoPaymentListCached(Long educationalAccountId, String normalizedStatus, String currentUserId) {
-        log.info("자동이체 목록 조회 (캐시 미스) - 계좌ID: {}, 상태: {}", educationalAccountId, normalizedStatus);
-
-        // 권한 체크: 요청한 계좌가 현재 사용자의 것인지 확인
+        // 3. 권한 체크: 요청한 계좌가 현재 사용자의 것인지 확인
         validateAccountOwnership(educationalAccountId, currentUserId);
-        List<AutoPayment> autoPayments;
 
-        if (ALL_STATUS.equalsIgnoreCase(normalizedStatus)) {
-            autoPayments = autoPaymentRepository.findByEducationalAccountId(educationalAccountId);
-        } else {
-            // normalizedStatus는 이미 유효성 검증되어 "ACTIVE" 또는 "CANCELLED"만 들어옴
-            AutoPaymentStatus paymentStatus = AutoPaymentStatus.valueOf(normalizedStatus);
-            autoPayments = autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
-                    educationalAccountId, paymentStatus);
-        }
-
-        return autoPayments.stream()
-                .map(autoPayment -> AutoPaymentResponse.of(autoPayment, educationalAccountId))
-                .toList();
+        // 4. 캐시 매니저를 통해 조회 (Self-Invocation 문제 해결)
+        return autoPaymentCacheManager.getAutoPaymentListCached(
+                educationalAccountId, normalizedStatus, currentUserId);
     }
 
     /**
@@ -130,7 +109,12 @@ public class AutoPaymentService {
         return autoPayments.map(autoPayment -> AutoPaymentResponse.of(autoPayment, educationalAccountId));
     }
 
-    @Cacheable(value = "autoPaymentDetail", key = "#currentUserId + ':' + #autoPaymentId", unless = "#result == null")
+    /**
+     * 자동이체 상세 조회
+     *
+     * 캐싱은 AutoPaymentCacheManager에서 처리
+     * 이 메서드는 비즈니스 로직(검증, 조회)만 담당
+     */
     public AutoPaymentResponse getAutoPaymentDetail(Long autoPaymentId, String currentUserId) {
         // N+1 문제 방지: 교육용 계좌 및 사용자 정보를 한 번에 조회
         AutoPayment autoPayment = autoPaymentRepository.findByIdWithAccountAndUser(autoPaymentId)
@@ -153,8 +137,9 @@ public class AutoPaymentService {
             throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "자동이체 정보를 찾을 수 없습니다.");
         }
 
-        Long accountId = educationalAccount.getId();
-        return AutoPaymentResponse.of(autoPayment, accountId);
+        // 캐시 매니저를 통해 응답 생성 (캐싱 적용)
+        // AutoPayment 엔티티에서 필요한 정보를 직접 추출하여 사용
+        return autoPaymentCacheManager.getAutoPaymentDetailCached(currentUserId, autoPayment);
     }
 
     /**

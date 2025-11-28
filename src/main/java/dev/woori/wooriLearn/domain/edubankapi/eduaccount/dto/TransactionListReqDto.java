@@ -1,10 +1,12 @@
 package dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto;
 
+import jakarta.validation.constraints.NotNull;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 
 public record TransactionListReqDto(
+        @NotNull(message = "계좌 ID는 필수입니다.")
         Long accountId, // 계좌번호
         String period, // 조회기간 1M/3M/6M/1년, 없으면 1월
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)

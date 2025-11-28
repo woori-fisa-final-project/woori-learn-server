@@ -8,6 +8,8 @@ import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiAc
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiTransactionHistoryRepository;
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.edubankapi.entity.TransactionHistory;
+import dev.woori.wooriLearn.domain.user.entity.Users;
+import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,41 +26,47 @@ public class EdubankapiTransferService {
 
     private final EdubankapiAccountRepository accountRepository;
     private final EdubankapiTransactionHistoryRepository transactionHistoryRepository;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     /**
-     *  계좌이체
+     * 계좌이체 (보안 강화: 출금 계좌 소유권 검증 추가)
+     * <p>
+     * - 트랜잭션 경계 내에서 실행 (@Transactional)
+     * - JWT 토큰 기반 출금 계좌 소유권 검증
+     * - 비관적 락으로 동시성 제어
+     * - 교착 방지를 위해 계좌번호 기준 정렬 후 락 획득
+     * - 비밀번호/잔액/자기계좌 검증 수행
+     * - 잔액 변경 및 거래내역 저장을 원자적으로 처리
      *
-     *  - 트랜잭션 경계 내에서 실행 (@Transactional)
-     *  - 비관적 락으로 동시성 제어
-     *  - 교착 방지를 위해 계좌번호 기준 정렬 후 락 획득
-     *  - 비밀번호/잔액/자기계좌 검증 수행
-     *  - 잔액 변경 및 거래내역 저장을 원자적으로 처리
+     * @param username JWT 토큰에서 추출한 사용자 ID
+     * @param request  계좌이체 요청 정보
      */
     @Transactional
-    public EdubankapiTransferResponseDto transfer(EdubankapiTransferRequestDto request) {
+    public EdubankapiTransferResponseDto transfer(String username, EdubankapiTransferRequestDto request) {
 
-        log.info("[계좌이체 요청] from={} to={} amount={} displayName={}",
-                request.fromAccountNumber(), request.toAccountNumber(), request.amount(), request.displayName());
+        log.info("[계좌이체 요청] username={} from={} to={} amount={} displayName={}",
+                username, request.fromAccountNumber(), request.toAccountNumber(), request.amount(),
+                request.displayName());
+
+        // 0. 사용자 조회
+        Users user = userRepository.findByUserId(username)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
         // 1. 교착 방지 - 락 순서 고정
         EducationalAccount fromAccount;
         EducationalAccount toAccount;
 
         if (request.fromAccountNumber().compareTo(request.toAccountNumber()) < 0) {
-            fromAccount = accountRepository.findByAccountNumber(request.fromAccountNumber())
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 계좌를 찾을 수 없습니다."));
-            toAccount = accountRepository.findByAccountNumber(request.toAccountNumber())
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "입금 계좌를 찾을 수 없습니다."));
+            fromAccount = findAccountByNumberOrThrow(request.fromAccountNumber(), "출금");
+            toAccount = findAccountByNumberOrThrow(request.toAccountNumber(), "입금");
         } else {
-            toAccount = accountRepository.findByAccountNumber(request.toAccountNumber())
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "입금 계좌를 찾을 수 없습니다."));
-            fromAccount = accountRepository.findByAccountNumber(request.fromAccountNumber())
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 계좌를 찾을 수 없습니다."));
+            toAccount = findAccountByNumberOrThrow(request.toAccountNumber(), "입금");
+            fromAccount = findAccountByNumberOrThrow(request.fromAccountNumber(), "출금");
         }
 
-        // 2️. 검증 로직
-        validateTransfer(request, fromAccount, toAccount);
+        // 2️. 검증 로직 (출금 계좌 소유권 검증 추가)
+        validateTransfer(user, request, fromAccount, toAccount);
 
         // 3️. 잔액 변경 (도메인 메서드로 책임 위임)
         fromAccount.withdraw(request.amount());
@@ -81,8 +89,7 @@ public class EdubankapiTransferService {
                 toOwnerName,                 // 받는 사람 이름
                 request.displayName(),
                 "계좌이체(출금)",
-                now
-        );
+                now);
 
         TransactionHistory depositHistory = createHistory(
                 toAccount,
@@ -90,8 +97,7 @@ public class EdubankapiTransferService {
                 fromOwnerName,               // 보내는 사람 이름
                 request.displayName(),
                 "계좌이체(입금)",
-                now
-        );
+                now);
 
         transactionHistoryRepository.save(withdrawHistory);
         transactionHistoryRepository.save(depositHistory);
@@ -108,10 +114,26 @@ public class EdubankapiTransferService {
         );
 
         log.info("[계좌이체 완료] from={} to={} amount={} fromBalanceAfter={}",
-                fromAccount.getAccountNumber(), toAccount.getAccountNumber(), request.amount(), fromAccount.getBalance());
+                fromAccount.getAccountNumber(), toAccount.getAccountNumber(), request.amount(),
+                fromAccount.getBalance());
 
         return response;
 
+    }
+
+    /**
+     * 계좌번호로 계좌 조회 헬퍼 메서드
+     *
+     * 계좌 종류에 따라 동적으로 오류 메시지를 생성하여 일관성을 유지
+     *
+     * @param accountNumber 계좌번호
+     * @param accountType 계좌 종류 ("출금" 또는 "입금")
+     * @return 조회된 계좌 (비관적 락 적용됨)
+     */
+    private EducationalAccount findAccountByNumberOrThrow(String accountNumber, String accountType) {
+        return accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                        accountType + " 계좌를 찾을 수 없습니다."));
     }
 
     /**
@@ -123,8 +145,7 @@ public class EdubankapiTransferService {
             String counterparty,
             String display,
             String description,
-            LocalDateTime date
-    ) {
+            LocalDateTime date) {
         return TransactionHistory.builder()
                 .account(account)
                 .transactionDate(date)
@@ -136,11 +157,17 @@ public class EdubankapiTransferService {
     }
 
     /**
-     *  계좌이체 검증 로직
+     * 계좌이체 검증 로직 (보안 강화: 출금 계좌 소유권 검증 추가)
      */
-    private void validateTransfer(EdubankapiTransferRequestDto request,
+    private void validateTransfer(Users user,
+                                  EdubankapiTransferRequestDto request,
                                   EducationalAccount fromAccount,
                                   EducationalAccount toAccount) {
+
+        // 🔒 출금 계좌 소유권 검증 (가장 먼저!)
+        if (!fromAccount.getUser().getId().equals(user.getId())) {
+            throw new CommonException(ErrorCode.FORBIDDEN, "본인 소유의 계좌에서만 출금할 수 있습니다.");
+        }
 
         // 동일 계좌 송금 금지
         if (fromAccount.getAccountNumber().equals(toAccount.getAccountNumber())) {

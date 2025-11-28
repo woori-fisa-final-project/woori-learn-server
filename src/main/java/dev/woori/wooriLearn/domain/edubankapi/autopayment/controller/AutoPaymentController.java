@@ -7,6 +7,7 @@ import dev.woori.wooriLearn.config.response.SuccessCode;
 
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentCreateRequest;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentResponse;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.CancelAllAutoPaymentsResponse;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.service.AutoPaymentService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -113,6 +114,34 @@ public class AutoPaymentController {
 
         AutoPaymentResponse response = autoPaymentService.cancelAutoPayment(
                 autoPaymentId, educationalAccountId, currentUserId);
+
+        return ApiResponse.success(SuccessCode.OK, response);
+    }
+
+    /**
+     * 특정 계좌의 모든 활성 자동이체 일괄 해지
+     * 교육 초기화 또는 일괄 해지 기능에서 사용
+     *
+     * @param educationalAccountId 교육용 계좌 ID
+     * @param authentication 인증 정보 (JWT 토큰)
+     * @return 해지된 자동이체 건수 및 메시지
+     */
+    @PostMapping("/cancel-all")
+    public ResponseEntity<BaseResponse<?>> cancelAllActiveAutoPayments(
+            @RequestParam @Positive(message = "교육용 계좌 ID는 양수여야 합니다.") Long educationalAccountId,
+            Authentication authentication) {
+
+        String currentUserId = AuthenticationUtil.extractUserId(authentication);
+        log.info("자동이체 일괄 해지 요청 - 교육용계좌ID: {}, 사용자ID: {}",
+                educationalAccountId, currentUserId);
+
+        int cancelledCount = autoPaymentService.cancelAllActiveAutoPayments(
+                educationalAccountId, currentUserId);
+
+        log.info("자동이체 일괄 해지 완료 - 교육용계좌ID: {}, 해지건수: {}",
+                educationalAccountId, cancelledCount);
+
+        CancelAllAutoPaymentsResponse response = CancelAllAutoPaymentsResponse.of(cancelledCount);
 
         return ApiResponse.success(SuccessCode.OK, response);
     }
