@@ -10,12 +10,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -74,7 +74,7 @@ public class SecurityConfig {
                 .addFilterBefore((request, response, chain) -> {
                     // dev/test용 임시 인증 세팅
                     SecurityContextHolder.getContext().setAuthentication(
-                            new UsernamePasswordAuthenticationToken("testuser", null, List.of())
+                            new UsernamePasswordAuthenticationToken("admin1", null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")))
                     );
                     chain.doFilter(request, response);
                 }, UsernamePasswordAuthenticationFilter.class)
@@ -87,8 +87,17 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)// API 테스트용, 실제 서비스면 토큰 기반 CSRF 설정 필요
-                .cors(Customizer.withDefaults())  // 임시로 cors 허용
-                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))// 세션 사용 안함
+                .cors(cors -> cors.configurationSource(request -> {
+                    CorsConfiguration config = new CorsConfiguration();
+                    config.setAllowedOrigins(List.of(baseUrl));
+                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+                    config.setAllowedHeaders(List.of("*"));
+                    config.setAllowCredentials(true);
+                    config.setExposedHeaders(List.of("Authorization"));
+                    return config;
+                }))
+                .sessionManagement(s ->
+                        s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))// 세션 사용 안함
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(whiteList.toArray(new String[0])).permitAll()
