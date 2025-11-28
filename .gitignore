@@ -1,7 +1,7 @@
 HELP.md
 .gradle
 build/
-
+*.yml
 *.yaml
 
 !gradle/wrapper/gradle-wrapper.jar
@@ -9,7 +9,7 @@ build/
 !**/src/test/**/build/
 
 ### application.yml ###
-
+**/src/main/resources/application.yml
 **/src/main/resources/application.properties
 **/src/main/resources/application-prod.yml
 **/src/main/resources/application-dev.yml
