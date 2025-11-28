@@ -2,6 +2,7 @@ package dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository;
 
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -28,6 +29,7 @@ public interface EdubankapiAccountRepository extends JpaRepository<EducationalAc
 
     // findBy + [엔티티 필드명] => JPA가 user_Id 컬럼을 조건으로 자동 쿼리 생성 됨.
     // Users 엔티티의 PK인 id를 조회하기 위해 findByUser_Id로 변경 (userId는 String 로그인 ID 필드를 의미함)
+    @EntityGraph(attributePaths = {"user"})
     List<EducationalAccount> findByUser_Id(Long userId);
 
     boolean existsByAccountNumber(String accountNumber);
