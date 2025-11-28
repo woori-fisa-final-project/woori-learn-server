@@ -137,11 +137,9 @@ public class AutoPaymentService {
             throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "자동이체 정보를 찾을 수 없습니다.");
         }
 
-        Long accountId = educationalAccount.getId();
-
         // 캐시 매니저를 통해 응답 생성 (캐싱 적용)
-        return autoPaymentCacheManager.getAutoPaymentDetailCached(
-                autoPaymentId, currentUserId, accountId, autoPayment);
+        // AutoPayment 엔티티에서 필요한 정보를 직접 추출하여 사용
+        return autoPaymentCacheManager.getAutoPaymentDetailCached(currentUserId, autoPayment);
     }
 
     /**

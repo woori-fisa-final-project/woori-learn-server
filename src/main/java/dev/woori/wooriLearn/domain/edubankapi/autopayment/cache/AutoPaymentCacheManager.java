@@ -72,20 +72,23 @@ public class AutoPaymentCacheManager {
     /**
      * 자동이체 상세 조회 (캐시 적용)
      *
-     * @param autoPaymentId 자동이체 ID
-     * @param currentUserId 현재 사용자 ID
-     * @param educationalAccountId 교육용 계좌 ID
-     * @param autoPayment 자동이체 엔티티 (이미 조회된 상태)
+     * AutoPayment 엔티티에서 필요한 정보를 직접 추출하여 사용
+     * - autoPaymentId: autoPayment.getId()
+     * - educationalAccountId: autoPayment.getEducationalAccount().getId()
+     *
+     * @param currentUserId 현재 사용자 ID (캐시 키용)
+     * @param autoPayment 자동이체 엔티티 (이미 조회 및 권한 검증 완료)
      * @return 자동이체 응답 DTO
      */
     @Cacheable(value = "autoPaymentDetail",
-               key = "#currentUserId + ':' + #autoPaymentId",
+               key = "#currentUserId + ':' + #autoPayment.id",
                unless = "#result == null")
     public AutoPaymentResponse getAutoPaymentDetailCached(
-            Long autoPaymentId,
             String currentUserId,
-            Long educationalAccountId,
             AutoPayment autoPayment) {
+
+        Long autoPaymentId = autoPayment.getId();
+        Long educationalAccountId = autoPayment.getEducationalAccount().getId();
 
         log.info("자동이체 상세 조회 (캐시 미스) - ID: {}, 사용자: {}", autoPaymentId, currentUserId);
         return AutoPaymentResponse.of(autoPayment, educationalAccountId);
