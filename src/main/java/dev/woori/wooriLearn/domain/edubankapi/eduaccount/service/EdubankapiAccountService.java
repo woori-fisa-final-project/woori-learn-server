@@ -1,5 +1,7 @@
 package dev.woori.wooriLearn.domain.edubankapi.eduaccount.service;
 
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiAccountDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransactionHistoryDto;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.validation.PeriodType;
@@ -8,6 +10,8 @@ import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.edubankapi.entity.TransactionHistory;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiAccountRepository;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiTransactionHistoryRepository;
+import dev.woori.wooriLearn.domain.user.entity.Users;
+import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,20 +28,25 @@ public class EdubankapiAccountService {
     // 의존성 주입 대상
     private final EdubankapiAccountRepository edubankapiAccountRepository;
     private final EdubankapiTransactionHistoryRepository edubankapiTransactionHistoryRepository;
+    private final UserRepository userRepository;
 
     /**
-     *      사용자 ID를 통해 계좌 목록 조회
+     *      사용자 username을 통해 계좌 목록 조회 (JWT 인증용)
      *
-     *         - Repository를 통해 DB에서 특정 사용자{userId}의 계좌 데이터를 조회
+     *         - JWT 토큰에서 추출한 username으로 사용자를 조회
+     *         - 해당 사용자의 모든 교육용 계좌를 조회
      *         - Entity를 DTO로 변환하여 Controller에 전달
      *
-     *         @param userId : 사용자 ID
+     *         @param username : 사용자 ID (JWT 토큰에서 추출)
      *         @return 계좌 목록 : <List<AccountDto>>
      */
-    public List<EdubankapiAccountDto> getAccountByUserId(long userId) {
+    public List<EdubankapiAccountDto> getAccountByUsername(String username) {
+        // username으로 사용자 조회
+        Users user = userRepository.findByUserId(username)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
         // Repository 호출을 통해 educationl_account 테이블에 user_id가 일치하는 계좌 엔티티 목록 조회
-        List<EducationalAccount> accounts = edubankapiAccountRepository.findByUserId(userId);
+        List<EducationalAccount> accounts = edubankapiAccountRepository.findByUser_Id(user.getId());
 
         return accounts.stream()
                 .map(EdubankapiAccountDto::from)
@@ -45,15 +54,26 @@ public class EdubankapiAccountService {
     }
 
     /**
-     *   거래내역 목록 조회
+     *   거래내역 목록 조회 (보안 강화: 계좌 소유권 검증 추가)
+     *
+     *   @param username JWT 토큰에서 추출한 사용자 ID
+     *   @param accountId 조회할 계좌 ID
+     *   @param period 조회 기간
+     *   @param startDate 시작일
+     *   @param endDate 종료일
+     *   @param type 거래 구분
      */
     public List<EdubankapiTransactionHistoryDto> getTransactionList(
+            String username,
             Long accountId,
             String period,
             LocalDate startDate,
             LocalDate endDate,
             String type
     ) {
+        // 0. 계좌 소유권 검증
+        validateAccountOwnership(username, accountId);
+
         // 1. Enum 변환 시 유효성 검사
         PeriodType periodType = null;
         if (period != null && !period.isBlank()) {
@@ -93,6 +113,24 @@ public class EdubankapiAccountService {
                 .limit(30)
                 .map(EdubankapiTransactionHistoryDto::from)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 계좌 소유권 검증 헬퍼 메서드
+     *
+     * @param username 사용자 ID (JWT에서 추출)
+     * @param accountId 계좌 ID
+     * @throws CommonException 계좌가 존재하지 않거나 소유자가 아닌 경우
+     */
+    private void validateAccountOwnership(String username, Long accountId) {
+        // accountId null 체크 (방어적 프로그래밍)
+        if (accountId == null) {
+            throw new CommonException(ErrorCode.INVALID_REQUEST, "계좌 ID는 필수입니다.");
+        }
+
+        if (!edubankapiAccountRepository.existsByIdAndUser_UserId(accountId, username)) {
+            throw new CommonException(ErrorCode.ENTITY_NOT_FOUND, "해당 계좌를 찾을 수 없습니다.");
+        }
     }
 
 }
