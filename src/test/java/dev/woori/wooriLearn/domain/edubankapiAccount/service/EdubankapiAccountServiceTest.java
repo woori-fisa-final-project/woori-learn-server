@@ -301,7 +301,7 @@ class EdubankapiAccountServiceTest {
                 CommonException exception = assertThrows(CommonException.class,
                                 () -> service.getTransactionList(TEST_USERNAME, 1L, "1M", null, null, "ALL"));
 
-                assertEquals("해당 계좌에 대한 접근 권한이 없습니다.", exception.getMessage());
+                assertEquals("해당 계좌를 찾을 수 없습니다.", exception.getMessage());
                 verify(accountRepository, times(1)).existsByIdAndUser_UserId(1L, TEST_USERNAME);
                 verify(historyRepository, never()).findTransactionsByAccountIdAndDateRange(any(), any(), any());
         }
