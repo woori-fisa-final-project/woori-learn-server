@@ -126,7 +126,7 @@ public class UserService {
         user.updateNickname(request.nickname());
         
         // 계좌 이름 변경
-        List<EducationalAccount> accounts = eduAccountRepository.findByUserId(user.getId());
+        List<EducationalAccount> accounts = eduAccountRepository.findByUser_Id(user.getId());
         for (EducationalAccount account : accounts) {
             account.updateAccountName(request.nickname());
         }
