@@ -100,4 +100,20 @@ public class SignupTest {
         verify(authUserRepository, never()).save(any());
         verify(userRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("이미 존재하는 이메일로 회원가입 시 CommonException 발생")
+    void signup_fail_duplicate_email() {
+        // given
+        SignupReqDto req = new SignupReqDto("newUser", "password", "nickname", "duplicate@email.com");
+        when(authUserRepository.existsByUserId(req.userId())).thenReturn(false);
+        when(userRepository.existsByEmail(req.email())).thenReturn(true);
+
+        // when & then
+        assertThatThrownBy(() -> userService.signup(req))
+                .isInstanceOf(CommonException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CONFLICT);
+
+        verify(userRepository, never()).save(any());
+    }
 }
