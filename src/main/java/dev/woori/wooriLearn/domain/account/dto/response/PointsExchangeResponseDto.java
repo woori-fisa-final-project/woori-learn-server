@@ -11,6 +11,7 @@ public record PointsExchangeResponseDto(
         Long requestId,
         Long userId,
         Integer exchangeAmount,
+        Integer currentBalance,
         PointsStatus status,
         LocalDateTime  requestDate,
         String message,
@@ -21,10 +22,11 @@ public record PointsExchangeResponseDto(
                 .requestId(h.getId())
                 .userId(h.getUser().getId())
                 .exchangeAmount(h.getAmount())
+                .currentBalance(h.getUser().getPoints())
                 .status(h.getStatus())
                 .requestDate(h.getCreatedAt())
                 .processedDate(h.getProcessedAt())
                 .message(h.getStatus().message())
                 .build();
-    }
+}
 }
