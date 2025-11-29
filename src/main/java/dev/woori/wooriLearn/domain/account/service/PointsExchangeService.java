@@ -186,6 +186,7 @@ public class PointsExchangeService {
      */
     @Transactional(readOnly = true)
     public Page<PointsHistoryResponseDto> getPendingWithdrawals(Integer page, Integer size) {
+
         int pageNumber = (page == null || page < 1) ? 1 : page;
         int pageSize = (size == null || size < 1) ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
 
