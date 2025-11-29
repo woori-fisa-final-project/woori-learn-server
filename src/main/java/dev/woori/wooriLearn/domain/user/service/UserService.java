@@ -42,12 +42,12 @@ public class UserService {
     private final EdubankapiAccountRepository eduAccountRepository;
     private final AccountRepository accountRepository;
 
-    private static final int NEW_MEMBER_REGISTRATION_POINTS = 1000;
+    private static final int NEW_MEMBER_REGISTRATION_POINTS = 5000;
     private static final int INITIAL_ACCOUNT_BALANCE = 5000000;
 
     /**
-     * id와 비밀번호, 사용자 이름을 입력받아 회원가입을 진행합니다.
-     * @param signupReqDto id / pw / 이름
+     * id와 비밀번호, 사용자 이름, 이메일을 입력받아 회원가입을 진행합니다.
+     * @param signupReqDto id / pw / 이름 / 이메일
      */
     public void signup(SignupReqDto signupReqDto) {
         if (authUserRepository.existsByUserId(signupReqDto.userId())) {

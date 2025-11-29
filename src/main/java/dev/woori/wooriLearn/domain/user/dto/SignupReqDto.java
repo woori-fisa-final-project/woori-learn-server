@@ -15,7 +15,7 @@ public record SignupReqDto(
         @NotBlank
         String nickname,
 
-        @Email
+        @NotBlank @Email
         String email
 ) {
 }
