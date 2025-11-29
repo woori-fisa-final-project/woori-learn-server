@@ -12,6 +12,9 @@ public record SignupReqDto(
         String password,
 
         @NotBlank
-        String nickname
+        String nickname,
+
+        @NotBlank
+        String email
 ) {
 }

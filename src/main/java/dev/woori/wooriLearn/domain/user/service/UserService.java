@@ -40,17 +40,19 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final PointsHistoryRepository pointsHistoryRepository;
     private final EdubankapiAccountRepository eduAccountRepository;
+    private final AccountRepository accountRepository;
 
     private static final int NEW_MEMBER_REGISTRATION_POINTS = 1000;
     private static final int INITIAL_ACCOUNT_BALANCE = 5000000;
-    private final AccountRepository accountRepository;
+
 
     /**
      * id와 비밀번호, 사용자 이름을 입력받아 회원가입을 진행합니다.
      * @param signupReqDto id / pw / 이름
      */
     public void signup(SignupReqDto signupReqDto) {
-        if(authUserRepository.existsByUserId(signupReqDto.userId())){
+        if(authUserRepository.existsByUserId(signupReqDto.userId())
+            || userRepository.existsByEmail(signupReqDto.email())){
             throw new CommonException(ErrorCode.CONFLICT);
         }
 
@@ -64,6 +66,7 @@ public class UserService {
                 .authUser(authUser)
                 .userId(signupReqDto.userId())
                 .nickname(signupReqDto.nickname())
+                .email(signupReqDto.email())
                 .points(NEW_MEMBER_REGISTRATION_POINTS)
                 .build();
 
