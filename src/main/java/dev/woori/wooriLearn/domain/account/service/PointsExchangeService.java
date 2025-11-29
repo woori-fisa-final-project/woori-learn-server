@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class PointsExchangeService {
+
     private final Clock clock;
     private final PointsHistoryRepository pointsHistoryRepository;
     private final UserRepository userRepository;
@@ -38,8 +39,6 @@ public class PointsExchangeService {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 200;
-
-
 
     /**
      * 처리 순서
@@ -51,6 +50,7 @@ public class PointsExchangeService {
      */
     @Transactional
     public PointsExchangeResponseDto requestExchange(String username, PointsExchangeRequestDto dto) {
+
         // 1) 사용자 행 잠금 조회
         Users user = userRepository.findByUserIdForUpdate(username)
                 .orElseThrow(() -> new CommonException(
@@ -68,7 +68,11 @@ public class PointsExchangeService {
 
         // 3) 출금 계좌 소유자 검증
         Account account = accountRepository.findByAccountNumber(dto.accountNum())
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "계좌를 찾을 수 없습니다. accountNum=" + dto.accountNum()));
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "계좌를 찾을 수 없습니다. accountNum=" + dto.accountNum()
+                ));
+
         if (!account.getUser().getId().equals(user.getId())) {
             throw new CommonException(ErrorCode.FORBIDDEN, "해당 계좌의 소유자가 아닙니다.");
         }
@@ -77,11 +81,13 @@ public class PointsExchangeService {
         PointsHistory history = pointsHistoryRepository.save(
                 PointsHistory.builder()
                         .user(user)
+                        .amount(dto.exchangeAmount())
+                        .type(PointsHistoryType.WITHDRAW)
+                        .status(PointsStatus.APPLY)
                         .build()
         );
 
         // 5) 응답 DTO 구성
-
         return PointsExchangeResponseDto.builder()
                 .requestId(history.getId())
                 .userId(user.getId())
@@ -102,29 +108,42 @@ public class PointsExchangeService {
      */
     @Transactional
     public PointsExchangeResponseDto approveExchange(Long requestId) {
+
         // 1) 출금 이력 조회 및 상태 확인
         PointsHistory history = pointsHistoryRepository.findById(requestId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 요청을 찾을 수 없습니다. requestId=" + requestId));
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "출금 요청을 찾을 수 없습니다. requestId=" + requestId
+                ));
 
         if (history.getStatus() != PointsStatus.APPLY) {
             throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다.");
         }
-        // 2) 사용자/이력 잠금 조회
+
         try {
+            // 2) 사용자/이력 잠금 조회
             Long userId = history.getUser().getId();
             Users user = userRepository.findByIdForUpdate(userId)
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. Id=" + userId));
+                    .orElseThrow(() -> new CommonException(
+                            ErrorCode.ENTITY_NOT_FOUND,
+                            "사용자를 찾을 수 없습니다. Id=" + userId
+                    ));
 
             history = pointsHistoryRepository.findAndLockById(requestId)
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 요청을 찾을 수 없습니다. requestId=" + requestId));
+                    .orElseThrow(() -> new CommonException(
+                            ErrorCode.ENTITY_NOT_FOUND,
+                            "출금 요청을 찾을 수 없습니다. requestId=" + requestId
+                    ));
 
             if (history.getStatus() != PointsStatus.APPLY) {
                 throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다.");
             }
+
             // 3) 포인트 차감 시도 및 상태 기록
             int amount = history.getAmount();
             String message;
             LocalDateTime processedAt = LocalDateTime.now(clock);
+
             try {
                 user.subtractPoints(amount);
                 history.markSuccess(processedAt);
@@ -138,6 +157,7 @@ public class PointsExchangeService {
                     message = "요청 처리 중 오류가 발생하여 실패했습니다.";
                 }
             }
+
             // 4) 응답 DTO 구성
             return PointsExchangeResponseDto.builder()
                     .requestId(requestId)
@@ -148,10 +168,12 @@ public class PointsExchangeService {
                     .message(message)
                     .processedDate(history.getProcessedAt())
                     .build();
+
         } catch (LockTimeoutException
                  | PessimisticLockException
                  | QueryTimeoutException
                  | PessimisticLockingFailureException e) {
+
             throw new CommonException(
                     ErrorCode.SERVICE_UNAVAILABLE,
                     "처리가 지연되었습니다. 잠시 후 시도해 주세요."
@@ -167,7 +189,11 @@ public class PointsExchangeService {
         int pageNumber = (page == null || page < 1) ? 1 : page;
         int pageSize = (size == null || size < 1) ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
 
-        PageRequest pageRequest = PageRequest.of(pageNumber - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        PageRequest pageRequest = PageRequest.of(
+                pageNumber - 1,
+                pageSize,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
 
         return pointsHistoryRepository.findByTypeAndStatus(
                         PointsHistoryType.WITHDRAW,

@@ -13,10 +13,11 @@ public record PointsExchangeResponseDto(
         Integer exchangeAmount,
         Integer currentBalance,
         PointsStatus status,
-        LocalDateTime  requestDate,
+        LocalDateTime requestDate,
         String message,
         LocalDateTime processedDate
 ) {
+
     public static PointsExchangeResponseDto from(PointsHistory h) {
         return PointsExchangeResponseDto.builder()
                 .requestId(h.getId())
@@ -28,5 +29,5 @@ public record PointsExchangeResponseDto(
                 .processedDate(h.getProcessedAt())
                 .message(h.getStatus().message())
                 .build();
-}
+    }
 }
