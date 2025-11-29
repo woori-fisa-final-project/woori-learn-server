@@ -27,7 +27,7 @@ public class Users extends BaseEntity {
     @Column(nullable = false)
     private String nickname;
 
-    @Column // 기존 데이터와의 충돌을 피하기 위해 임시로 nullable = true 설정
+    @Column(unique = true) // 기존 데이터와의 충돌을 피하기 위해 임시로 nullable = true 설정
     private String email;
 
     @Column(nullable = false)
