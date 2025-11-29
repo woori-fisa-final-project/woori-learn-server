@@ -54,4 +54,3 @@ api:
   client:
     connect-timeout: 5s
     read-timeout: 5s
-
