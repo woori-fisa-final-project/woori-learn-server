@@ -2,6 +2,8 @@ package dev.woori.wooriLearn.domain.account.service;
 
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
+import dev.woori.wooriLearn.domain.account.dto.external.request.BankTransferReqDto;
+import dev.woori.wooriLearn.domain.account.dto.external.response.BankTransferResDto;
 import dev.woori.wooriLearn.domain.account.dto.request.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.response.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.dto.response.PointsHistoryResponseDto;
@@ -18,6 +20,7 @@ import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import jakarta.persistence.QueryTimeoutException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PointsExchangeService {
@@ -35,6 +39,7 @@ public class PointsExchangeService {
     private final PointsHistoryRepository pointsHistoryRepository;
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
+    private final AccountClient accountClient;
 
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 200;
@@ -122,14 +127,35 @@ public class PointsExchangeService {
                 throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다");
             }
 
+            Account account = accountRepository.findByUserId(userId)
+                    .orElseThrow(() -> new CommonException(
+                            ErrorCode.ENTITY_NOT_FOUND,
+                            "사용자 계좌를 찾을 수 없습니다. userId=" + userId
+                    ));
+
             // 3) 포인트 차감 시도 및 상태 기록
             int amount = history.getAmount();
             String message;
             LocalDateTime processedAt = LocalDateTime.now(clock);
             try {
-                user.subtractPoints(amount);
-                history.markSuccess(processedAt);
-                message = "정상적으로 처리되었습니다.";
+                BankTransferReqDto bankReq = new BankTransferReqDto(
+                        "999900000001",                 // 관리자 계좌 번호
+                        account.getAccountNumber(),      // 사용자 계좌 번호 ← 여기!
+                        (long) amount
+                );
+
+                BankTransferResDto bankRes = accountClient.transfer(bankReq);
+                log.info("은행 서버 응답 = {}", bankRes);
+
+                if (bankRes.success()) {
+                    user.subtractPoints(amount);
+                    history.markSuccess(processedAt);
+                    message = "정상적으로 처리되었습니다.";
+                } else {
+                    history.markFailed(PointsFailReason.PROCESSING_ERROR, processedAt);
+                    message = "은행 서버에서 이체 실패가 발생했습니다.";
+                }
+
             } catch (CommonException e) {
                 if (e.getErrorCode() == ErrorCode.CONFLICT) {
                     history.markFailed(PointsFailReason.INSUFFICIENT_POINTS, processedAt);
