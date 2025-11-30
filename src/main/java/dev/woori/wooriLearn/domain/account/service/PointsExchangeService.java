@@ -21,6 +21,7 @@ import jakarta.persistence.PessimisticLockException;
 import jakarta.persistence.QueryTimeoutException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -44,6 +45,8 @@ public class PointsExchangeService {
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 200;
 
+    @Value("${app.admin.account-number}")
+    private String adminAccountNumber;
     /**
      * 처리 순서
      * 1) 사용자 행 잠금 조회 (for update)
@@ -139,7 +142,7 @@ public class PointsExchangeService {
             LocalDateTime processedAt = LocalDateTime.now(clock);
             try {
                 BankTransferReqDto bankReq = new BankTransferReqDto(
-                        "999900000001",                 // 관리자 계좌 번호
+                        adminAccountNumber,                 // 관리자 계좌 번호
                         account.getAccountNumber(),      // 사용자 계좌 번호 ← 여기!
                         (long) amount
                 );
@@ -158,6 +161,7 @@ public class PointsExchangeService {
 
             } catch (CommonException e) {
                 if (e.getErrorCode() == ErrorCode.CONFLICT) {
+                    log.error("은행 서버 호출 실패. requestId={} → 포인트 환불 처리", requestId, e);
                     history.markFailed(PointsFailReason.INSUFFICIENT_POINTS, processedAt);
                     message = "포인트가 부족하여 실패했습니다.";
                 } else {
