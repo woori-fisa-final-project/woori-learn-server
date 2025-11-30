@@ -6,7 +6,6 @@ import dev.woori.wooriLearn.domain.account.dto.request.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.response.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.dto.response.PointsHistoryResponseDto;
 import dev.woori.wooriLearn.domain.account.entity.Account;
-import dev.woori.wooriLearn.domain.account.entity.PointsFailReason;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
@@ -65,6 +64,7 @@ public class PointsExchangeService {
         if (user.getPoints() < dto.exchangeAmount()) {
             throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족하여 출금 요청을 처리할 수 없습니다.");
         }
+        user.subtractPoints(dto.exchangeAmount());
 
         // 3) 출금 계좌 소유자 검증
         Account account = accountRepository.findByAccountNumber(dto.accountNum())
@@ -144,19 +144,8 @@ public class PointsExchangeService {
             String message;
             LocalDateTime processedAt = LocalDateTime.now(clock);
 
-            try {
-                user.subtractPoints(amount);
-                history.markSuccess(processedAt);
-                message = "정상적으로 처리되었습니다.";
-            } catch (CommonException e) {
-                if (e.getErrorCode() == ErrorCode.CONFLICT) {
-                    history.markFailed(PointsFailReason.INSUFFICIENT_POINTS, processedAt);
-                    message = "포인트가 부족하여 실패했습니다.";
-                } else {
-                    history.markFailed(PointsFailReason.PROCESSING_ERROR, processedAt);
-                    message = "요청 처리 중 오류가 발생하여 실패했습니다.";
-                }
-            }
+            history.markSuccess(processedAt);
+            message = "정상적으로 처리되었습니다.";
 
             // 4) 응답 DTO 구성
             return PointsExchangeResponseDto.builder()
