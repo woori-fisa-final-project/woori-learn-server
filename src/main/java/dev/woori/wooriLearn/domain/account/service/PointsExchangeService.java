@@ -7,10 +7,7 @@ import dev.woori.wooriLearn.domain.account.dto.external.response.BankTransferRes
 import dev.woori.wooriLearn.domain.account.dto.request.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.response.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.dto.response.PointsHistoryResponseDto;
-import dev.woori.wooriLearn.domain.account.entity.Account;
-import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
-import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
-import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
+import dev.woori.wooriLearn.domain.account.entity.*;
 import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
@@ -165,7 +162,6 @@ public class PointsExchangeService {
                 );
 
                 BankTransferResDto bankRes = accountClient.transfer(bankReq);
-                log.info("은행 서버 응답 = {}", bankRes);
 
                 if (bankRes.success()) {
                     user.subtractPoints(amount);
@@ -178,7 +174,6 @@ public class PointsExchangeService {
 
             } catch (CommonException e) {
                 if (e.getErrorCode() == ErrorCode.CONFLICT) {
-                    log.error("은행 서버 호출 실패. requestId={} → 포인트 환불 처리", requestId, e);
                     history.markFailed(PointsFailReason.INSUFFICIENT_POINTS, processedAt);
                     message = "포인트가 부족하여 실패했습니다.";
                 } else {
