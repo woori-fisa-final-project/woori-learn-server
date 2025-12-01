@@ -46,8 +46,6 @@ public class PointsExchangeService {
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 200;
 
-    private PointsExchangeService self;
-
     @Autowired
     private ApplicationContext applicationContext;
 
