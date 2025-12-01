@@ -3,7 +3,6 @@ package dev.woori.wooriLearn.domain.edubankapi.eduaccount.controller;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
-import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.*;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiAccountService;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiTransferService;
 import jakarta.validation.Valid;
@@ -12,6 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiAccountDto;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransactionHistoryDto;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransferRequestDto;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.PasswordCheckRequest;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.TransactionListReqDto;
 
 import java.util.List;
 
