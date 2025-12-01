@@ -110,7 +110,7 @@ public class EdubankapiAccountController {
     @PostMapping("/transactions-password")
     public ResponseEntity<BaseResponse<?>> checkAccountPassword(
             @AuthenticationPrincipal String username,
-            @RequestBody PasswordCheckRequest request) {
+            @Valid @RequestBody PasswordCheckRequest request) {
 
         // 서비스 검증 로직 호출
         boolean isValid = edubankapiAccountService.checkPassword(username, request);

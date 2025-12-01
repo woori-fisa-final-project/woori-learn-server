@@ -16,7 +16,7 @@ import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // 트랜잭션
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -153,7 +153,6 @@ public class EdubankapiAccountService {
 
         // 3. 비밀번호 매칭
         return passwordEncoder.matches(request.password(), account.getAccountPassword());
-
 
     }
 }
