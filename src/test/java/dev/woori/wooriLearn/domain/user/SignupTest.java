@@ -41,14 +41,16 @@ public class SignupTest {
         passwordEncoder = mock(PasswordEncoder.class);
         pointsHistoryRepository = mock(PointsHistoryRepository.class);
         eduAccountRepository = mock(EdubankapiAccountRepository.class);
-        userService = new UserService(userRepository, authUserRepository, passwordEncoder, pointsHistoryRepository, eduAccountRepository, accountRepository);
+        accountRepository = mock(AccountRepository.class);
+        userService = new UserService(userRepository, authUserRepository, passwordEncoder,
+                pointsHistoryRepository, eduAccountRepository, accountRepository);
     }
 
     @Test
     @DisplayName("회원가입 성공 시 AuthUsers와 Users가 각각 저장된다")
     void signup_success() {
         // given
-        SignupReqDto req = new SignupReqDto("user1", "rawPassword", "nickname");
+        SignupReqDto req = new SignupReqDto("user1", "rawPassword", "nickname", "aaa@aaaa.com");
         when(authUserRepository.existsByUserId("user1")).thenReturn(false);
         when(passwordEncoder.encode("rawPassword")).thenReturn("encodedPassword");
 
@@ -75,10 +77,10 @@ public class SignupTest {
         assertThat(savedUser.getAuthUser()).isEqualTo(savedAuth);
         assertThat(savedUser.getUserId()).isEqualTo("user1");
         assertThat(savedUser.getNickname()).isEqualTo("nickname");
-        assertThat(savedUser.getPoints()).isEqualTo(1000);
+        assertThat(savedUser.getPoints()).isEqualTo(5000);
 
         assertThat(savedHistory.getUser()).isEqualTo(savedUser);
-        assertThat(savedHistory.getAmount()).isEqualTo(1000);
+        assertThat(savedHistory.getAmount()).isEqualTo(5000);
         assertThat(savedHistory.getType()).isEqualTo(PointsHistoryType.DEPOSIT);
         assertThat(savedHistory.getStatus()).isEqualTo(PointsStatus.SUCCESS);
     }
@@ -87,7 +89,7 @@ public class SignupTest {
     @DisplayName("이미 존재하는 아이디로 회원가입 시 CommonException 발생")
     void signup_conflict() {
         // given
-        SignupReqDto req = new SignupReqDto("duplicate", "pw", "nick");
+        SignupReqDto req = new SignupReqDto("duplicate", "pw", "nick", "aaa@aaaa.com");
         when(authUserRepository.existsByUserId("duplicate")).thenReturn(true);
 
         // expect
@@ -96,6 +98,22 @@ public class SignupTest {
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CONFLICT);
 
         verify(authUserRepository, never()).save(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("이미 존재하는 이메일로 회원가입 시 CommonException 발생")
+    void signup_fail_duplicate_email() {
+        // given
+        SignupReqDto req = new SignupReqDto("newUser", "password", "nickname", "duplicate@email.com");
+        when(authUserRepository.existsByUserId(req.userId())).thenReturn(false);
+        when(userRepository.existsByEmail(req.email())).thenReturn(true);
+
+        // when & then
+        assertThatThrownBy(() -> userService.signup(req))
+                .isInstanceOf(CommonException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CONFLICT);
+
         verify(userRepository, never()).save(any());
     }
 }

@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser(username = "testuser")
+@WithMockUser(username = "admin1")
 class AutoPaymentControllerTest {
 
     @Autowired
@@ -69,7 +69,7 @@ class AutoPaymentControllerTest {
                 )
         );
 
-        given(autoPaymentService.getAutoPaymentList(eq(educationalAccountId), eq(status), anyString()))
+        given(autoPaymentService.getAutoPaymentList(eq(educationalAccountId), eq(status), eq("admin1")))
                 .willReturn(responses);
 
         // when & then
@@ -108,7 +108,7 @@ class AutoPaymentControllerTest {
         );
 
         // status 파라미터가 없으면 기본값 "ACTIVE"가 사용됨
-        given(autoPaymentService.getAutoPaymentList(eq(educationalAccountId), eq("ACTIVE"), anyString()))
+        given(autoPaymentService.getAutoPaymentList(eq(educationalAccountId), eq("ACTIVE"), eq("admin1")))
                 .willReturn(responses);
 
         // when & then

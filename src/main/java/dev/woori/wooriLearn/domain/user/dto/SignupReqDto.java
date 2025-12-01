@@ -2,6 +2,7 @@ package dev.woori.wooriLearn.domain.user.dto;
 
 import dev.woori.wooriLearn.domain.auth.dto.util.ValidPassword;
 import dev.woori.wooriLearn.domain.auth.dto.util.ValidUserId;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 public record SignupReqDto(
@@ -12,6 +13,9 @@ public record SignupReqDto(
         String password,
 
         @NotBlank
-        String nickname
+        String nickname,
+
+        @NotBlank @Email
+        String email
 ) {
 }

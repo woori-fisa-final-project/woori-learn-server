@@ -22,6 +22,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -53,6 +54,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
  */
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
+@ActiveProfiles("test")
 class AdminPointControllerTest {
 
     @Autowired
