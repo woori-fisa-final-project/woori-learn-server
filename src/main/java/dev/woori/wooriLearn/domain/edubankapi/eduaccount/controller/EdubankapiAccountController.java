@@ -3,10 +3,7 @@ package dev.woori.wooriLearn.domain.edubankapi.eduaccount.controller;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
-import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiAccountDto;
-import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransactionHistoryDto;
-import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.EdubankapiTransferRequestDto;
-import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.TransactionListReqDto;
+import dev.woori.wooriLearn.domain.edubankapi.eduaccount.dto.*;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiAccountService;
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiTransferService;
 import jakarta.validation.Valid;
@@ -98,5 +95,24 @@ public class EdubankapiAccountController {
         return ApiResponse.success(SuccessCode.OK, transferService.transfer(username, request));
     }
 
+    /**
+     * 계좌 비밀번호 검증 (프론트엔드 Scenario5 요청 대응)
+     * [POST] /education/accounts/transactions-password
+     *
+     * @param username : JWT 토큰 사용자 (본인 계좌인지 확인용)
+     * @param request : { accountNumber, password }
+     * @return : 비밀번호 일치 여부 (Boolean)
+     */
+    @PostMapping("/transactions-password")
+    public ResponseEntity<BaseResponse<?>> checkAccountPassword(
+            @AuthenticationPrincipal String username,
+            @RequestBody PasswordCheckRequest request) {
+
+        // 서비스 검증 로직 호출
+        boolean isValid = edubankapiAccountService.checkPassword(username, request);
+
+        // 결과 반환 (true 또는 false)
+        return ApiResponse.success(SuccessCode.OK, isValid);
+    }
 
 }
