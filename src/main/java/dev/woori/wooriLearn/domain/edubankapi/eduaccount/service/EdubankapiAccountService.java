@@ -139,24 +139,22 @@ public class EdubankapiAccountService {
 
     /**
      * 계좌 비밀번호 일치 여부 확인 (Scenario 5)
-     * @param username : JWT 토큰 사용자 (본인 계좌인지 확인용)
-     * @param request : { accountNumber, password }
-     * @return : 비밀번호 일치 여부 (true/false)
      */
-    @Transactional
+    @Transactional(readOnly = true) // 락을 안 쓰므로 readOnly = true 권장 (실패 카운트 업데이트 로직이 없다면)
     public boolean checkPassword(String username, PasswordCheckRequest request) {
 
-        // 1. 계좌 조회 (없으면 예외 발생)
-        EducationalAccount account = edubankapiAccountRepository.findByAccountNumber(request.accountNumber())
+        EducationalAccount account = edubankapiAccountRepository.findByAccountNumberForRead(request.accountNumber())
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "계좌를 찾을 수 없습니다."));
 
-        // 2. 소유주 검증 (내 계좌가 맞는지 보안 체크 - User Entity 비교)
+        // 2. 소유주 검증
         if (!account.getUser().getUserId().equals(username)) {
             throw new CommonException(ErrorCode.FORBIDDEN, "본인 계좌의 비밀번호만 확인할 수 있습니다.");
         }
 
-        // 3. 비밀번호 매칭 (DB의 암호화된 비밀번호 vs 입력받은 비밀번호)
+        // 3. 비밀번호 매칭
         return passwordEncoder.matches(request.password(), account.getAccountPassword());
+
+
     }
 }
 
