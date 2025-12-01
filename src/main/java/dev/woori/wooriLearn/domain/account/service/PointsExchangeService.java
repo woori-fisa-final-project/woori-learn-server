@@ -23,7 +23,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -80,7 +82,7 @@ public class PointsExchangeService {
         if (!account.getUser().getId().equals(user.getId())) {
             throw new CommonException(ErrorCode.FORBIDDEN, "해당 계좌의 소유자가 아닙니다.");
         }
-
+        // 선차감
         user.subtractPoints(dto.exchangeAmount());
 
         // 4) 출금 APPLY 이력 저장
@@ -112,11 +114,26 @@ public class PointsExchangeService {
      * 3) 포인트 차감 시도 및 성공/실패 기록
      * 4) 응답 DTO 구성
      */
+    /**
+     * 출금 승인 (PROCESSING → SUCCESS/FAILED/PROCESSING 유지)
+     */
     @Transactional
     public PointsExchangeResponseDto approveExchange(Long requestId) {
 
-        // 1) 출금 이력 조회 및 상태 확인
-        PointsHistory history = pointsHistoryRepository.findById(requestId)
+        // 1) 상태를 PROCESSING으로 먼저 변경 (즉시 커밋)
+        markAsProcessing(requestId);
+
+        // 2) 실제 이체 수행 (예외 발생해도 PROCESSING 그대로 유지 가능)
+        return executeTransfer(requestId);
+    }
+
+    /**
+     * STEP 1: PROCESSING 상태로 변경 (즉시 커밋)
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markAsProcessing(Long requestId) {
+
+        PointsHistory history = pointsHistoryRepository.findAndLockById(requestId)
                 .orElseThrow(() -> new CommonException(
                         ErrorCode.ENTITY_NOT_FOUND,
                         "출금 요청을 찾을 수 없습니다. requestId=" + requestId
@@ -126,82 +143,74 @@ public class PointsExchangeService {
             throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다.");
         }
 
+        history.markProcessing();
+    }
+
+    /**
+     * STEP 2: 은행 이체 + 상태 반영
+     */
+    @Transactional
+    public PointsExchangeResponseDto executeTransfer(Long requestId) {
+
+        PointsHistory history = pointsHistoryRepository.findAndLockById(requestId)
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "출금 요청을 찾을 수 없습니다. requestId=" + requestId
+                ));
+
+        Users user = history.getUser();
+
+        Account account = accountRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "사용자 계좌를 찾을 수 없습니다. userId=" + user.getId()
+                ));
+
+        int amount = history.getAmount();
+        LocalDateTime now = LocalDateTime.now(clock);
+
         try {
-            // 2) 사용자/이력 잠금 조회
-            Long userId = history.getUser().getId();
-            Users user = userRepository.findByIdForUpdate(userId)
-                    .orElseThrow(() -> new CommonException(
-                            ErrorCode.ENTITY_NOT_FOUND,
-                            "사용자를 찾을 수 없습니다. Id=" + userId
-                    ));
-
-            history = pointsHistoryRepository.findAndLockById(requestId)
-                    .orElseThrow(() -> new CommonException(
-                            ErrorCode.ENTITY_NOT_FOUND,
-                            "출금 요청을 찾을 수 없습니다. requestId=" + requestId
-                    ));
-
-            if (history.getStatus() != PointsStatus.APPLY) {
-                throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다.");
-            }
-
-            Account account = accountRepository.findByUserId(userId)
-                    .orElseThrow(() -> new CommonException(
-                            ErrorCode.ENTITY_NOT_FOUND,
-                            "사용자 계좌를 찾을 수 없습니다. userId=" + userId
-                    ));
-
-            // 3) 포인트 차감 시도 및 상태 기록
-            int amount = history.getAmount();
-            String message;
-            LocalDateTime processedAt = LocalDateTime.now(clock);
-            try {
-                BankTransferReqDto bankReq = new BankTransferReqDto(
-                        adminAccountNumber,                 // 관리자 계좌 번호
-                        account.getAccountNumber(),      // 사용자 계좌 번호 ← 여기!
-                        (long) amount
-                );
-
-                BankTransferResDto bankRes = accountClient.transfer(bankReq);
-
-                if (bankRes != null && bankRes.success()) {
-                    history.markSuccess(processedAt);
-                    message = "정상적으로 처리되었습니다.";
-                } else {
-                    user.addPoints(amount);
-                    history.markFailed(PointsFailReason.PROCESSING_ERROR, processedAt);
-                    message = "은행 서버에서 이체 실패가 발생했습니다. 포인트가 환불되었습니다.";
-                }
-
-            } catch (Exception e) {
-                log.error("은행 서버 호출 실패. requestId={} → 포인트 환불 처리", requestId, e);
-
-                user.addPoints(amount);
-                history.markFailed(PointsFailReason.PROCESSING_ERROR, processedAt);
-                message = "요청 처리 중 오류가 발생하여 실패했습니다. 포인트가 환불되었습니다.";
-            }
-
-            // 4) 응답 DTO 구성
-            return PointsExchangeResponseDto.builder()
-                    .requestId(requestId)
-                    .userId(user.getId())
-                    .exchangeAmount(amount)
-                    .currentBalance(user.getPoints())
-                    .status(history.getStatus())
-                    .message(message)
-                    .processedDate(history.getProcessedAt())
-                    .build();
-
-        } catch (LockTimeoutException
-                 | PessimisticLockException
-                 | QueryTimeoutException
-                 | PessimisticLockingFailureException e) {
-
-            throw new CommonException(
-                    ErrorCode.SERVICE_UNAVAILABLE,
-                    "처리가 지연되었습니다. 잠시 후 시도해 주세요."
+            BankTransferReqDto bankReq = new BankTransferReqDto(
+                    adminAccountNumber,
+                    account.getAccountNumber(),
+                    (long) amount
             );
+
+            BankTransferResDto bankRes = accountClient.transfer(bankReq);
+
+            if (bankRes != null && bankRes.success()) {
+                history.markSuccess(now);
+                return buildResponse(history, user, "정상적으로 처리되었습니다.");
+            }
+
+            // 은행에서 실패 응답 → 환불 후 FAILED
+            user.addPoints(amount);
+            history.markFailed(PointsFailReason.PROCESSING_ERROR, now);
+
+            return buildResponse(history, user, "은행 서버에서 이체 실패가 발생했습니다. 포인트가 환불되었습니다.");
+
+        } catch (Exception e) {
+            log.error("[PROCESSING 유지] 은행 서버 통신 오류. requestId={}", requestId, e);
+
+            /**
+             * ⚠️ 통신 오류 시에는 SUCCESS/FAILED 둘 중 어떤 걸 확정할 수 없음
+             *    → 상태를 PROCESSING 그대로 유지
+             *    → 관리자 확인 or 배치 작업 필요
+             */
+            return buildResponse(history, user, "은행 서버 확인 중입니다. 잠시 후 다시 확인해주세요.");
         }
+    }
+
+    private PointsExchangeResponseDto buildResponse(PointsHistory history, Users user, String message) {
+        return PointsExchangeResponseDto.builder()
+                .requestId(history.getId())
+                .userId(user.getId())
+                .exchangeAmount(history.getAmount())
+                .currentBalance(user.getPoints())
+                .status(history.getStatus())
+                .message(message)
+                .processedDate(history.getProcessedAt())
+                .build();
     }
 
     /**
