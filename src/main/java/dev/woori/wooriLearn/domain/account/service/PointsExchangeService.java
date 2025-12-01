@@ -6,7 +6,6 @@ import dev.woori.wooriLearn.domain.account.dto.request.PointsExchangeRequestDto;
 import dev.woori.wooriLearn.domain.account.dto.response.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.dto.response.PointsHistoryResponseDto;
 import dev.woori.wooriLearn.domain.account.entity.Account;
-import dev.woori.wooriLearn.domain.account.entity.PointsFailReason;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
@@ -31,6 +30,7 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class PointsExchangeService {
+
     private final Clock clock;
     private final PointsHistoryRepository pointsHistoryRepository;
     private final UserRepository userRepository;
@@ -49,6 +49,7 @@ public class PointsExchangeService {
      */
     @Transactional
     public PointsExchangeResponseDto requestExchange(String username, PointsExchangeRequestDto dto) {
+
         // 1) 사용자 행 잠금 조회
         Users user = userRepository.findByUserIdForUpdate(username)
                 .orElseThrow(() -> new CommonException(
@@ -63,10 +64,15 @@ public class PointsExchangeService {
         if (user.getPoints() < dto.exchangeAmount()) {
             throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족하여 출금 요청을 처리할 수 없습니다.");
         }
+        user.subtractPoints(dto.exchangeAmount());
 
         // 3) 출금 계좌 소유자 검증
         Account account = accountRepository.findByAccountNumber(dto.accountNum())
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "계좌를 찾을 수 없습니다. accountNum=" + dto.accountNum()));
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "계좌를 찾을 수 없습니다. accountNum=" + dto.accountNum()
+                ));
+
         if (!account.getUser().getId().equals(user.getId())) {
             throw new CommonException(ErrorCode.FORBIDDEN, "해당 계좌의 소유자가 아닙니다.");
         }
@@ -86,76 +92,81 @@ public class PointsExchangeService {
                 .requestId(history.getId())
                 .userId(user.getId())
                 .exchangeAmount(history.getAmount())
+                .currentBalance(user.getPoints())
                 .status(history.getStatus())
                 .requestDate(history.getCreatedAt())
-                .message("출금 요청이 정상적으로 접수되었습니다")
+                .message("출금 요청이 정상적으로 접수되었습니다.")
                 .build();
     }
 
     /**
-     * 처리 순서
-     * 1) 출금 이력 조회 및 상태 확인(APPLY)
-     * 2) 사용자/이력 잠금 조회로 동시성 제어
-     * 3) 포인트 차감 시도 후 성공/실패 기록
+     * 처리 프로세스
+     * 1) 출금 히스토리 조회 및 상태 확인(APPLY)
+     * 2) 사용자/히스토리 재잠금 후 검증
+     * 3) 포인트 차감 시도 및 성공/실패 기록
      * 4) 응답 DTO 구성
      */
     @Transactional
     public PointsExchangeResponseDto approveExchange(Long requestId) {
+
         // 1) 출금 이력 조회 및 상태 확인
         PointsHistory history = pointsHistoryRepository.findById(requestId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 요청을 찾을 수 없습니다. requestId=" + requestId));
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "출금 요청을 찾을 수 없습니다. requestId=" + requestId
+                ));
 
         if (history.getStatus() != PointsStatus.APPLY) {
-            throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다");
+            throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다.");
         }
 
         try {
             // 2) 사용자/이력 잠금 조회
             Long userId = history.getUser().getId();
             Users user = userRepository.findByIdForUpdate(userId)
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. Id=" + userId));
+                    .orElseThrow(() -> new CommonException(
+                            ErrorCode.ENTITY_NOT_FOUND,
+                            "사용자를 찾을 수 없습니다. Id=" + userId
+                    ));
 
             history = pointsHistoryRepository.findAndLockById(requestId)
-                    .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "출금 요청을 찾을 수 없습니다. requestId=" + requestId));
+                    .orElseThrow(() -> new CommonException(
+                            ErrorCode.ENTITY_NOT_FOUND,
+                            "출금 요청을 찾을 수 없습니다. requestId=" + requestId
+                    ));
 
             if (history.getStatus() != PointsStatus.APPLY) {
-                throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다");
+                throw new CommonException(ErrorCode.CONFLICT, "이미 처리된 요청입니다.");
             }
 
             // 3) 포인트 차감 시도 및 상태 기록
             int amount = history.getAmount();
             String message;
             LocalDateTime processedAt = LocalDateTime.now(clock);
-            try {
-                user.subtractPoints(amount);
-                history.markSuccess(processedAt);
-                message = "정상적으로 처리되었습니다.";
-            } catch (CommonException e) {
-                if (e.getErrorCode() == ErrorCode.CONFLICT) {
-                    history.markFailed(PointsFailReason.INSUFFICIENT_POINTS, processedAt);
-                    message = "포인트가 부족하여 실패했습니다.";
-                } else {
-                    history.markFailed(PointsFailReason.PROCESSING_ERROR, processedAt);
-                    message = "요청 처리 중 오류가 발생하여 실패했습니다.";
-                }
-            }
+
+            history.markSuccess(processedAt);
+            message = "정상적으로 처리되었습니다.";
 
             // 4) 응답 DTO 구성
             return PointsExchangeResponseDto.builder()
                     .requestId(requestId)
                     .userId(user.getId())
                     .exchangeAmount(amount)
+                    .currentBalance(user.getPoints())
                     .status(history.getStatus())
                     .message(message)
                     .processedDate(history.getProcessedAt())
                     .build();
+
         } catch (LockTimeoutException
                  | PessimisticLockException
                  | QueryTimeoutException
                  | PessimisticLockingFailureException e) {
+
             throw new CommonException(
                     ErrorCode.SERVICE_UNAVAILABLE,
-                    "처리가 지연되었습니다. 잠시 후 다시 시도해 주세요");
+                    "처리가 지연되었습니다. 잠시 후 시도해 주세요."
+            );
         }
     }
 
@@ -164,10 +175,15 @@ public class PointsExchangeService {
      */
     @Transactional(readOnly = true)
     public Page<PointsHistoryResponseDto> getPendingWithdrawals(Integer page, Integer size) {
+
         int pageNumber = (page == null || page < 1) ? 1 : page;
         int pageSize = (size == null || size < 1) ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
 
-        PageRequest pageRequest = PageRequest.of(pageNumber - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        PageRequest pageRequest = PageRequest.of(
+                pageNumber - 1,
+                pageSize,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
 
         return pointsHistoryRepository.findByTypeAndStatus(
                         PointsHistoryType.WITHDRAW,
