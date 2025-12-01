@@ -107,7 +107,7 @@ public class EdubankapiAccountController {
      * @param request : { accountNumber, password }
      * @return : 비밀번호 일치 여부 (Boolean)
      */
-    @PostMapping("/transactions-password")
+    @PostMapping("/transactions-password-verification")
     public ResponseEntity<BaseResponse<?>> checkAccountPassword(
             @AuthenticationPrincipal String username,
             @Valid @RequestBody PasswordCheckRequest request) {
