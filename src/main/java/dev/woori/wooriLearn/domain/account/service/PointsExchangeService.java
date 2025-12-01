@@ -189,7 +189,7 @@ public class PointsExchangeService {
 
             return buildResponse(history, user, "은행 서버에서 이체 실패가 발생했습니다. 포인트가 환불되었습니다.");
 
-        } catch (Exception e) {
+        } catch (RestClientException  e) {
             log.error("[PROCESSING 유지] 은행 서버 통신 오류. requestId={}", requestId, e);
 
             /**
