@@ -4,6 +4,7 @@ import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.account.dto.request.PointsDepositRequestDto;
+import dev.woori.wooriLearn.domain.account.dto.response.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.dto.response.PointsHistoryResponseDto;
 import dev.woori.wooriLearn.domain.account.dto.request.PointsUnifiedHistoryRequestDto;
 import dev.woori.wooriLearn.domain.account.service.PointsDepositService;
@@ -38,7 +39,12 @@ public class AdminPointController {
     @PutMapping("/admin/points/exchange/approve/{requestId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BaseResponse<?>> approve(@PathVariable Long requestId) {
-        return ApiResponse.success(SuccessCode.OK, pointsExchangeService.approveExchange(requestId));
+
+        pointsExchangeService.markAsProcessing(requestId);
+
+        PointsExchangeResponseDto response = pointsExchangeService.executeTransfer(requestId);
+
+        return ApiResponse.success(SuccessCode.OK, response);
     }
 
     // 관리자 환전 대기 목록 (기존 경로 유지)

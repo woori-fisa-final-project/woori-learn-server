@@ -12,15 +12,9 @@ import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
-import jakarta.persistence.LockTimeoutException;
-import jakarta.persistence.PessimisticLockException;
-import jakarta.persistence.QueryTimeoutException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationContext;
-import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -45,10 +39,6 @@ public class PointsExchangeService {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 200;
-
-    @Autowired
-    private ApplicationContext applicationContext;
-
 
     @Value("${app.admin.account-number}")
     private String adminAccountNumber;
@@ -120,21 +110,6 @@ public class PointsExchangeService {
      * 3) 포인트 차감 시도 및 성공/실패 기록
      * 4) 응답 DTO 구성
      */
-    /**
-     * 출금 승인 (PROCESSING → SUCCESS/FAILED/PROCESSING 유지)
-     */
-    @Transactional
-    public PointsExchangeResponseDto approveExchange(Long requestId) {
-
-        PointsExchangeService proxy = applicationContext.getBean(PointsExchangeService.class);
-
-        // 1) 상태를 PROCESSING으로 먼저 변경 (즉시 커밋)
-        proxy.markAsProcessing(requestId);
-
-        // 2) 실제 이체 수행 (예외 발생해도 PROCESSING 그대로 유지 가능)
-        return proxy.executeTransfer(requestId);
-
-    }
 
     /**
      * STEP 1: PROCESSING 상태로 변경 (즉시 커밋)
@@ -200,14 +175,15 @@ public class PointsExchangeService {
             return buildResponse(history, user, "은행 서버에서 이체 실패가 발생했습니다. 포인트가 환불되었습니다.");
 
         } catch (RestClientException  e) {
+            /**
+             *  네트워크 오류 → 은행이 돈을 보냈는지 알 수 없음
+             *   → FAILED 또는 SUCCESS로 단정할 수 없음
+             *   → PROCESSING 유지가 가장 안전
+             */
             log.error("[PROCESSING 유지] 은행 서버 통신 오류. requestId={}", requestId, e);
 
-            /**
-             * ⚠️ 통신 오류 시에는 SUCCESS/FAILED 둘 중 어떤 걸 확정할 수 없음
-             *    → 상태를 PROCESSING 그대로 유지
-             *    → 관리자 확인 or 배치 작업 필요
-             */
-            return buildResponse(history, user, "은행 서버 확인 중입니다. 잠시 후 다시 확인해주세요.");
+            return buildResponse(history, user,
+                    "은행 서버 확인 중입니다. 잠시 후 다시 확인해주세요.");
         }
     }
 
