@@ -43,7 +43,7 @@ public class AuthServiceTest {
 
         AuthUsers user = AuthUsers.builder()
                 .userId(testUserId)
-                .password(passwordEncoder.encode(testPassword))
+                .password("hashedPassword1234")  // 미리 인코딩된 값으로 가정
                 .role(Role.ROLE_USER)
                 .build();
         authUserPort.save(user);

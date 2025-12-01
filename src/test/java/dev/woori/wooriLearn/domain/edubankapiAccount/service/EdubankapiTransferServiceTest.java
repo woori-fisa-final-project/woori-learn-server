@@ -7,6 +7,8 @@ import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiTr
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiTransferService;
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.edubankapi.entity.TransactionHistory;
+import dev.woori.wooriLearn.domain.user.entity.Users;
+import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -29,15 +31,28 @@ class EdubankapiTransferServiceTest {
     @Mock
     private EdubankapiTransactionHistoryRepository historyRepository;
 
+    @Mock
+    private UserRepository userRepository;
+
     @Spy
     private PasswordEncoder encoder = new BCryptPasswordEncoder();
 
     private EducationalAccount from;
     private EducationalAccount to;
+    private Users testUser;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+
+        testUser = Users.builder()
+                .id(1L)
+                .userId("testUser")
+                .nickname("테스트유저")
+                .points(1000)
+                .build();
+
+        when(userRepository.findByUserId(anyString())).thenReturn(Optional.of(testUser));
 
         from = EducationalAccount.builder()
                 .id(1L)
@@ -45,6 +60,7 @@ class EdubankapiTransferServiceTest {
                 .balance(5000)
                 .accountPassword(encoder.encode("1111"))
                 .accountName("출금계좌")
+                .user(testUser)
                 .build();
 
         to = EducationalAccount.builder()
@@ -53,6 +69,7 @@ class EdubankapiTransferServiceTest {
                 .balance(2000)
                 .accountPassword(encoder.encode("1111"))
                 .accountName("입금계좌")
+                .user(testUser)
                 .build();
     }
 
@@ -62,10 +79,10 @@ class EdubankapiTransferServiceTest {
         when(accountRepository.findByAccountNumber("5544332211")).thenReturn(Optional.of(to));
 
         EdubankapiTransferRequestDto req = new EdubankapiTransferRequestDto(
-                "1122334455","5544332211",1000,"1111","생활비","홍길동"
+                "1122334455","5544332211",1000,"1111","생활비"
         );
 
-        service.transfer(req);
+        service.transfer("testUser", req);
 
         assertEquals(4000, from.getBalance());
         assertEquals(3000, to.getBalance());
@@ -77,10 +94,10 @@ class EdubankapiTransferServiceTest {
         when(accountRepository.findByAccountNumber(any())).thenReturn(Optional.of(from));
 
         EdubankapiTransferRequestDto req = new EdubankapiTransferRequestDto(
-                "1122334455","5544332211",1000,"9999","생활비","홍길동"
+                "1122334455","5544332211",1000,"9999","생활비"
         );
 
-        assertThrows(CommonException.class, () -> service.transfer(req));
+        assertThrows(CommonException.class, () -> service.transfer("testUser", req));
     }
 
     @Test
@@ -89,39 +106,40 @@ class EdubankapiTransferServiceTest {
                 .accountNumber("1122334455")
                 .balance(500)
                 .accountPassword(encoder.encode("1111"))
+                .user(testUser)
                 .build();
 
         when(accountRepository.findByAccountNumber("1122334455")).thenReturn(Optional.of(from));
         when(accountRepository.findByAccountNumber("5544332211")).thenReturn(Optional.of(to));
 
         EdubankapiTransferRequestDto req = new EdubankapiTransferRequestDto(
-                "1122334455","5544332211",1000,"1111","생활비","홍길동"
+                "1122334455","5544332211",1000,"1111","홍길동"
         );
 
-        assertThrows(CommonException.class, () -> service.transfer(req));
+        assertThrows(CommonException.class, () -> service.transfer("testUser", req));
     }
 
     @Test
     void 금액_0원또는_음수() {
         EdubankapiTransferRequestDto req = new EdubankapiTransferRequestDto(
-                "1122334455","5544332211",0,"1111","생활비","홍길동"
+                "1122334455","5544332211",0,"1111","홍길동"
         );
 
         when(accountRepository.findByAccountNumber("1122334455")).thenReturn(Optional.of(from));
         when(accountRepository.findByAccountNumber("5544332211")).thenReturn(Optional.of(to));
 
-        assertThrows(CommonException.class, () -> service.transfer(req));
+        assertThrows(CommonException.class, () -> service.transfer("testUser", req));
     }
 
     @Test
     void 동일계좌() {
         EdubankapiTransferRequestDto req = new EdubankapiTransferRequestDto(
-                "1122334455","1122334455",1000,"1111","생활비","홍길동"
+                "1122334455","1122334455",1000,"1111","홍길동"
         );
 
         when(accountRepository.findByAccountNumber("1122334455")).thenReturn(Optional.of(from));
 
-        assertThrows(CommonException.class, () -> service.transfer(req));
+        assertThrows(CommonException.class, () -> service.transfer("testUser", req));
     }
 
     @Test
@@ -132,6 +150,7 @@ class EdubankapiTransferServiceTest {
                 .balance(5000)
                 .accountPassword(encoder.encode("1111"))
                 .accountName("출금계좌")
+                .user(testUser)
                 .build();
 
         to = EducationalAccount.builder()
@@ -140,16 +159,17 @@ class EdubankapiTransferServiceTest {
                 .balance(2000)
                 .accountPassword(encoder.encode("1111"))
                 .accountName("입금계좌")
+                .user(testUser)
                 .build();
 
         when(accountRepository.findByAccountNumber("9999999999")).thenReturn(Optional.of(from));
         when(accountRepository.findByAccountNumber("1111111111")).thenReturn(Optional.of(to));
 
         EdubankapiTransferRequestDto req = new EdubankapiTransferRequestDto(
-                "9999999999","1111111111",500,"1111","메모","홍길동"
+                "9999999999","1111111111",500,"1111","홍길동"
         );
 
-        service.transfer(req);
+        service.transfer("testUser", req);
 
         assertEquals(4500, from.getBalance());
         assertEquals(2500, to.getBalance());

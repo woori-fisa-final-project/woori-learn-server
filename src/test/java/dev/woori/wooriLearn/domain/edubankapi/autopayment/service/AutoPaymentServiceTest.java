@@ -3,6 +3,7 @@ package dev.woori.wooriLearn.domain.edubankapi.autopayment.service;
 import dev.woori.wooriLearn.config.exception.CommonException;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
+import dev.woori.wooriLearn.domain.edubankapi.autopayment.cache.AutoPaymentCacheManager;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentCreateRequest;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.dto.AutoPaymentResponse;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -48,6 +50,12 @@ class AutoPaymentServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private CacheManager cacheManager;
+
+    @Mock
+    private AutoPaymentCacheManager autoPaymentCacheManager;
 
     @InjectMocks
     private AutoPaymentService autoPaymentService;
@@ -225,8 +233,11 @@ class AutoPaymentServiceTest {
         // given
         given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
                 .willReturn(true);
-        given(autoPaymentRepository.findByEducationalAccountId(anyLong()))
-                .willReturn(List.of(mockAutoPayment));
+        List<AutoPaymentResponse> expectedResponses = List.of(
+                AutoPaymentResponse.of(mockAutoPayment, 1L)
+        );
+        given(autoPaymentCacheManager.getAutoPaymentListCached(anyLong(), anyString(), anyString()))
+                .willReturn(expectedResponses);
         // when
         List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "ALL","testuser");
         // then
@@ -234,7 +245,7 @@ class AutoPaymentServiceTest {
         assertThat(responses.get(0).id()).isEqualTo(1L);
         assertThat(responses.get(0).processingStatus()).isEqualTo("ACTIVE");
         verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
-        verify(autoPaymentRepository).findByEducationalAccountId(1L);
+        verify(autoPaymentCacheManager).getAutoPaymentListCached(1L, "ALL", "testuser");
     }
 
     @Test
@@ -243,9 +254,11 @@ class AutoPaymentServiceTest {
         // given
         given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
                 .willReturn(true);
-        given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
-                anyLong(), any(AutoPaymentStatus.class)))
-                .willReturn(List.of(mockAutoPayment));
+        List<AutoPaymentResponse> expectedResponses = List.of(
+                AutoPaymentResponse.of(mockAutoPayment, 1L)
+        );
+        given(autoPaymentCacheManager.getAutoPaymentListCached(anyLong(), anyString(), anyString()))
+                .willReturn(expectedResponses);
 
         // when
         List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "ACTIVE","testuser");
@@ -255,8 +268,7 @@ class AutoPaymentServiceTest {
         assertThat(responses.get(0).processingStatus()).isEqualTo("ACTIVE");
 
         verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
-        verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
-                1L, AutoPaymentStatus.ACTIVE);
+        verify(autoPaymentCacheManager).getAutoPaymentListCached(1L, "ACTIVE", "testuser");
     }
 
     @Test
@@ -265,6 +277,9 @@ class AutoPaymentServiceTest {
         // given
         given(autoPaymentRepository.findByIdWithAccountAndUser(anyLong()))
                 .willReturn(Optional.of(mockAutoPayment));
+        AutoPaymentResponse expectedResponse = AutoPaymentResponse.of(mockAutoPayment, 1L);
+        given(autoPaymentCacheManager.getAutoPaymentDetailCached(anyString(), any(AutoPayment.class)))
+                .willReturn(expectedResponse);
 
         // when
         AutoPaymentResponse response = autoPaymentService.getAutoPaymentDetail(1L,"testuser");
@@ -276,6 +291,7 @@ class AutoPaymentServiceTest {
         assertThat(response.processingStatus()).isEqualTo("ACTIVE");
 
         verify(autoPaymentRepository).findByIdWithAccountAndUser(1L);
+        verify(autoPaymentCacheManager).getAutoPaymentDetailCached("testuser", mockAutoPayment);
     }
 
     @Test
@@ -303,8 +319,8 @@ class AutoPaymentServiceTest {
     @DisplayName("상태 변환 실패 - 잘못된 상태값 (INVALID_REQUEST)")
     void resolveStatus_Invalid() {
         // given
-        given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
-                .willReturn(true);
+        // 잘못된 status는 validateAndResolveStatus()에서 바로 예외가 발생하므로
+        // 권한 체크까지 도달하지 않음 (stubbing 불필요)
 
         // when
         CommonException exception = catchThrowableOfType(
@@ -817,7 +833,7 @@ class AutoPaymentServiceTest {
         // given
         given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
                 .willReturn(true);
-        given(autoPaymentRepository.findByEducationalAccountId(anyLong()))
+        given(autoPaymentCacheManager.getAutoPaymentListCached(anyLong(), anyString(), anyString()))
                 .willReturn(List.of());  // 빈 리스트
 
         // when
@@ -826,7 +842,7 @@ class AutoPaymentServiceTest {
         // then
         assertThat(responses).isEmpty();
         verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
-        verify(autoPaymentRepository).findByEducationalAccountId(1L);
+        verify(autoPaymentCacheManager).getAutoPaymentListCached(1L, "ALL", "testuser");
     }
 
     @Test
@@ -850,9 +866,11 @@ class AutoPaymentServiceTest {
 
         given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
                 .willReturn(true);
-        given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
-                anyLong(), any(AutoPaymentStatus.class)))
-                .willReturn(List.of(cancelledAutoPayment));
+        List<AutoPaymentResponse> expectedResponses = List.of(
+                AutoPaymentResponse.of(cancelledAutoPayment, 1L)
+        );
+        given(autoPaymentCacheManager.getAutoPaymentListCached(anyLong(), anyString(), anyString()))
+                .willReturn(expectedResponses);
 
         // when
         List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "CANCELLED","testuser");
@@ -861,8 +879,7 @@ class AutoPaymentServiceTest {
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).processingStatus()).isEqualTo("CANCELLED");
         verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
-        verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
-                1L, AutoPaymentStatus.CANCELLED);
+        verify(autoPaymentCacheManager).getAutoPaymentListCached(1L, "CANCELLED", "testuser");
     }
 
     @Test
@@ -901,8 +918,12 @@ class AutoPaymentServiceTest {
 
         given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
                 .willReturn(true);
-        given(autoPaymentRepository.findByEducationalAccountId(anyLong()))
-                .willReturn(List.of(autoPayment1, autoPayment2));
+        List<AutoPaymentResponse> expectedResponses = List.of(
+                AutoPaymentResponse.of(autoPayment1, 1L),
+                AutoPaymentResponse.of(autoPayment2, 1L)
+        );
+        given(autoPaymentCacheManager.getAutoPaymentListCached(anyLong(), anyString(), anyString()))
+                .willReturn(expectedResponses);
 
         // when
         List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "ALL","testuser");
@@ -912,6 +933,7 @@ class AutoPaymentServiceTest {
         assertThat(responses).extracting(AutoPaymentResponse::displayName)
                 .containsExactly("월세", "관리비");
         verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
+        verify(autoPaymentCacheManager).getAutoPaymentListCached(1L, "ALL", "testuser");
     }
 
     @Test
@@ -920,9 +942,11 @@ class AutoPaymentServiceTest {
         // given
         given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
                 .willReturn(true);
-        given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
-                anyLong(), any(AutoPaymentStatus.class)))
-                .willReturn(List.of(mockAutoPayment));
+        List<AutoPaymentResponse> expectedResponses = List.of(
+                AutoPaymentResponse.of(mockAutoPayment, 1L)
+        );
+        given(autoPaymentCacheManager.getAutoPaymentListCached(anyLong(), anyString(), anyString()))
+                .willReturn(expectedResponses);
 
         // when
         List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "active","testuser");
@@ -930,8 +954,7 @@ class AutoPaymentServiceTest {
         // then
         assertThat(responses).hasSize(1);
         verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
-        verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
-                1L, AutoPaymentStatus.ACTIVE);
+        verify(autoPaymentCacheManager).getAutoPaymentListCached(1L, "ACTIVE", "testuser");
     }
 
     @Test
@@ -940,9 +963,11 @@ class AutoPaymentServiceTest {
         // given
         given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
                 .willReturn(true);
-        given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
-                anyLong(), any(AutoPaymentStatus.class)))
-                .willReturn(List.of(mockAutoPayment));
+        List<AutoPaymentResponse> expectedResponses = List.of(
+                AutoPaymentResponse.of(mockAutoPayment, 1L)
+        );
+        given(autoPaymentCacheManager.getAutoPaymentListCached(anyLong(), anyString(), anyString()))
+                .willReturn(expectedResponses);
 
         // when
         List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "AcTiVe","testuser");
@@ -950,8 +975,7 @@ class AutoPaymentServiceTest {
         // then
         assertThat(responses).hasSize(1);
         verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
-        verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
-                1L, AutoPaymentStatus.ACTIVE);
+        verify(autoPaymentCacheManager).getAutoPaymentListCached(1L, "ACTIVE", "testuser");
     }
 
     @Test
@@ -960,9 +984,11 @@ class AutoPaymentServiceTest {
         // given
         given(edubankapiAccountRepository.existsByIdAndUser_UserId(anyLong(), anyString()))
                 .willReturn(true);
-        given(autoPaymentRepository.findByEducationalAccountIdAndProcessingStatus(
-                anyLong(), any(AutoPaymentStatus.class)))
-                .willReturn(List.of(mockAutoPayment));
+        List<AutoPaymentResponse> expectedResponses = List.of(
+                AutoPaymentResponse.of(mockAutoPayment, 1L)
+        );
+        given(autoPaymentCacheManager.getAutoPaymentListCached(anyLong(), anyString(), anyString()))
+                .willReturn(expectedResponses);
 
         // when
         List<AutoPaymentResponse> responses = autoPaymentService.getAutoPaymentList(1L, "","testuser");
@@ -970,8 +996,7 @@ class AutoPaymentServiceTest {
         // then
         assertThat(responses).hasSize(1);
         verify(edubankapiAccountRepository).existsByIdAndUser_UserId(1L, "testuser");
-        verify(autoPaymentRepository).findByEducationalAccountIdAndProcessingStatus(
-                1L, AutoPaymentStatus.ACTIVE);
+        verify(autoPaymentCacheManager).getAutoPaymentListCached(1L, "ACTIVE", "testuser");
     }
 
     @Test

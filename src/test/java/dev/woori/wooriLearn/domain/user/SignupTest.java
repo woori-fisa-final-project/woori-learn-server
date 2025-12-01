@@ -5,6 +5,7 @@ import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
+import dev.woori.wooriLearn.domain.account.repository.AccountRepository;
 import dev.woori.wooriLearn.domain.account.repository.PointsHistoryRepository;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
@@ -31,6 +32,7 @@ public class SignupTest {
     private UserService userService;
     private PointsHistoryRepository pointsHistoryRepository;
     private EdubankapiAccountRepository eduAccountRepository;
+    private AccountRepository accountRepository;
 
     @BeforeEach
     void setUp() {
@@ -39,7 +41,7 @@ public class SignupTest {
         passwordEncoder = mock(PasswordEncoder.class);
         pointsHistoryRepository = mock(PointsHistoryRepository.class);
         eduAccountRepository = mock(EdubankapiAccountRepository.class);
-        userService = new UserService(userRepository, authUserRepository, passwordEncoder, pointsHistoryRepository, eduAccountRepository);
+        userService = new UserService(userRepository, authUserRepository, passwordEncoder, pointsHistoryRepository, eduAccountRepository, accountRepository);
     }
 
     @Test
