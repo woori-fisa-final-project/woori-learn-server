@@ -36,6 +36,9 @@ spring:
   data:
     redis:
       ttl: 10m
+app:
+  admin:
+    account-number: "999900000001"
 
 client:
   base-url: ${CLIENT_BASE_URL}

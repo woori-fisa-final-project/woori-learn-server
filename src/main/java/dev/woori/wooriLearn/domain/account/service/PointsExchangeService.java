@@ -69,7 +69,6 @@ public class PointsExchangeService {
         if (user.getPoints() < dto.exchangeAmount()) {
             throw new CommonException(ErrorCode.CONFLICT, "포인트가 부족하여 출금 요청을 처리할 수 없습니다.");
         }
-        user.subtractPoints(dto.exchangeAmount());
 
         // 3) 출금 계좌 소유자 검증
         Account account = accountRepository.findByAccountNumber(dto.accountNum())
@@ -81,6 +80,8 @@ public class PointsExchangeService {
         if (!account.getUser().getId().equals(user.getId())) {
             throw new CommonException(ErrorCode.FORBIDDEN, "해당 계좌의 소유자가 아닙니다.");
         }
+
+        user.subtractPoints(dto.exchangeAmount());
 
         // 4) 출금 APPLY 이력 저장
         PointsHistory history = pointsHistoryRepository.save(
@@ -163,23 +164,21 @@ public class PointsExchangeService {
 
                 BankTransferResDto bankRes = accountClient.transfer(bankReq);
 
-                if (bankRes.success()) {
-                    user.subtractPoints(amount);
+                if (bankRes != null && bankRes.success()) {
                     history.markSuccess(processedAt);
                     message = "정상적으로 처리되었습니다.";
                 } else {
+                    user.addPoints(amount);
                     history.markFailed(PointsFailReason.PROCESSING_ERROR, processedAt);
-                    message = "은행 서버에서 이체 실패가 발생했습니다.";
+                    message = "은행 서버에서 이체 실패가 발생했습니다. 포인트가 환불되었습니다.";
                 }
 
             } catch (CommonException e) {
-                if (e.getErrorCode() == ErrorCode.CONFLICT) {
-                    history.markFailed(PointsFailReason.INSUFFICIENT_POINTS, processedAt);
-                    message = "포인트가 부족하여 실패했습니다.";
-                } else {
-                    history.markFailed(PointsFailReason.PROCESSING_ERROR, processedAt);
-                    message = "요청 처리 중 오류가 발생하여 실패했습니다.";
-                }
+                log.error("은행 서버 호출 실패. requestId={} → 포인트 환불 처리", requestId, e);
+
+                user.addPoints(amount);
+                history.markFailed(PointsFailReason.PROCESSING_ERROR, processedAt);
+                message = "요청 처리 중 오류가 발생하여 실패했습니다. 포인트가 환불되었습니다.";
             }
 
             // 4) 응답 DTO 구성
