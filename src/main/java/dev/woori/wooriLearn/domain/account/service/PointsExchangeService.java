@@ -173,7 +173,7 @@ public class PointsExchangeService {
                     message = "은행 서버에서 이체 실패가 발생했습니다. 포인트가 환불되었습니다.";
                 }
 
-            } catch (CommonException e) {
+            } catch (Exception e) {
                 log.error("은행 서버 호출 실패. requestId={} → 포인트 환불 처리", requestId, e);
 
                 user.addPoints(amount);
