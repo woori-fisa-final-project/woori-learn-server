@@ -43,6 +43,10 @@ public class PointsHistory extends BaseEntity {
     @Column(name = "fail_reason")
     private PointsFailReason failReason;
 
+    public void markProcessing() {
+        this.status = PointsStatus.PROCESSING;
+    }
+
     public void markSuccess(LocalDateTime processedAt) {
         this.status = PointsStatus.SUCCESS;
         this.processedAt = processedAt;
