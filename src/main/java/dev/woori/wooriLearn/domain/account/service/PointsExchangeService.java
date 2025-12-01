@@ -17,7 +17,9 @@ import jakarta.persistence.PessimisticLockException;
 import jakarta.persistence.QueryTimeoutException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -43,6 +45,12 @@ public class PointsExchangeService {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 200;
+
+    private PointsExchangeService self;
+
+    @Autowired
+    private ApplicationContext applicationContext;
+
 
     @Value("${app.admin.account-number}")
     private String adminAccountNumber;
@@ -120,11 +128,14 @@ public class PointsExchangeService {
     @Transactional
     public PointsExchangeResponseDto approveExchange(Long requestId) {
 
+        PointsExchangeService proxy = applicationContext.getBean(PointsExchangeService.class);
+
         // 1) 상태를 PROCESSING으로 먼저 변경 (즉시 커밋)
-        markAsProcessing(requestId);
+        proxy.markAsProcessing(requestId);
 
         // 2) 실제 이체 수행 (예외 발생해도 PROCESSING 그대로 유지 가능)
-        return executeTransfer(requestId);
+        return proxy.executeTransfer(requestId);
+
     }
 
     /**
@@ -158,7 +169,8 @@ public class PointsExchangeService {
                         "출금 요청을 찾을 수 없습니다. requestId=" + requestId
                 ));
 
-        Users user = history.getUser();
+        Users user = userRepository.findByIdForUpdate(history.getUser().getId())
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. Id=" + history.getUser().getId()));
 
         Account account = accountRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new CommonException(
@@ -178,7 +190,7 @@ public class PointsExchangeService {
 
             BankTransferResDto bankRes = accountClient.transfer(bankReq);
 
-            if (bankRes != null && bankRes.success()) {
+            if (bankRes != null && bankRes.code() == 200) {
                 history.markSuccess(now);
                 return buildResponse(history, user, "정상적으로 처리되었습니다.");
             }

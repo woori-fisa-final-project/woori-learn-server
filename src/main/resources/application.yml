@@ -39,7 +39,6 @@ spring:
 app:
   admin:
     account-number: ${APP_ADMIN_ACCOUNT_NUMBER:"999900000001"}
-
 client:
   base-url: ${CLIENT_BASE_URL}
 
