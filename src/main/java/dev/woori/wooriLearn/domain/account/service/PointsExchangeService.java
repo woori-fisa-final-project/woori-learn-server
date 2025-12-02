@@ -130,10 +130,11 @@ public class PointsExchangeService {
     // 이체 응답이 왔을 경우
     @Transactional
     public PointsExchangeResponseDto processResult(Long requestId, BankTransferResDto bankRes){
-        PointsHistory history = pointsHistoryRepository.findById(requestId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
+        PointsHistory history = pointsHistoryRepository.findAndLockById(requestId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND,
+                        "출금 요청을 찾을 수 없습니다. requestId=" + requestId));
         Users user = userRepository.findByUserIdForUpdate(history.getUser().getUserId())
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
         LocalDateTime now = LocalDateTime.now(clock);
 
@@ -150,10 +151,11 @@ public class PointsExchangeService {
     // 통신 실패 시
     @Transactional
     public PointsExchangeResponseDto processFailure(Long requestId){
-        PointsHistory history = pointsHistoryRepository.findById(requestId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
+        PointsHistory history = pointsHistoryRepository.findAndLockById(requestId)
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND
+                        , "출금 요청을 찾을 수 없습니다. requestId=" + requestId));
         Users user = userRepository.findByUserIdForUpdate(history.getUser().getUserId())
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
+                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
         LocalDateTime now = LocalDateTime.now(clock);
         user.addPoints(history.getAmount());
