@@ -70,7 +70,8 @@ pipeline {
                             passwordVariable: 'DB_PASS'
                         ),
                         string(credentialsId: 'db-url', variable: 'DB_URL'),
-                        string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
+                        string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET'),
+			string(credentialsId: 'admin-account-number', variable: 'APP_ADMIN_ACCOUNT_NUMBER')
                     ]) {
 
                         sh '''
@@ -97,6 +98,7 @@ docker run -d --name woori_backend -p 8080:8080 \
     -e EXTERNAL_BANK_ACCOUNT_URL="/account" \
     -e spring.env.app-key="YOUR_APP_KEY_123" \
     -e spring.env.secret-key="MY_SECRET_ABC123" \
+    -e APP_ADMIN_ACCOUNT_NUMBER="${APP_ADMIN_ACCOUNT_NUMBER}" \
     ${DOCKER_IMAGE}
 
 # dangling image cleanup
