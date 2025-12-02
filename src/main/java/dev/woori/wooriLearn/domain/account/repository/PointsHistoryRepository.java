@@ -27,24 +27,5 @@ public interface PointsHistoryRepository extends JpaRepository<PointsHistory, Lo
     @EntityGraph(attributePaths = {"user"})
     Page<PointsHistory> findByTypeAndStatus(PointsHistoryType type, PointsStatus status, Pageable pageable);
 
-    /**
-     * 관리자 전체 조회(필터링 지원, 페이징)
-     */
-    @EntityGraph(attributePaths = {"user"})
-    @Query("SELECT p FROM PointsHistory p WHERE "
-            + "p.type = :type "
-            + "AND (:userId IS NULL OR p.user.id = :userId) "
-            + "AND (:status IS NULL OR p.status = :status) "
-            + "AND (:start IS NULL OR p.createdAt >= :start) "
-            + "AND (:end IS NULL OR p.createdAt <= :end)")
-    Page<PointsHistory> findAllByFilters(
-            @Param("userId") Long userId,
-            @Param("type") PointsHistoryType type,
-            @Param("status") PointsStatus status,
-            @Param("start") LocalDateTime start,
-            @Param("end") LocalDateTime end,
-            Pageable pageable
-    );
-
     List<PointsHistory> findByUserId(Long userId);
 }
