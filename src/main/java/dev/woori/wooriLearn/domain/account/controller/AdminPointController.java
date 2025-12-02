@@ -8,6 +8,7 @@ import dev.woori.wooriLearn.domain.account.dto.response.PointsExchangeResponseDt
 import dev.woori.wooriLearn.domain.account.dto.response.PointsHistoryResponseDto;
 import dev.woori.wooriLearn.domain.account.dto.request.PointsUnifiedHistoryRequestDto;
 import dev.woori.wooriLearn.domain.account.service.PointsDepositService;
+import dev.woori.wooriLearn.domain.account.service.PointsExchangeFacade;
 import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
 import dev.woori.wooriLearn.domain.account.service.PointsHistoryService;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,9 @@ public class AdminPointController {
 
     private final PointsDepositService pointsDepositService;
     private final PointsExchangeService pointsExchangeService;
+    private final PointsExchangeFacade pointsExchangeFacade;
     private final PointsHistoryService pointsHistoryService;
+
 
     // 관리자 포인트 적립 (기존 경로 유지)
     @PostMapping({"/points/deposit", "/api/points/deposit"})
@@ -39,12 +42,7 @@ public class AdminPointController {
     @PutMapping("/admin/points/exchange/approve/{requestId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BaseResponse<?>> approve(@PathVariable Long requestId) {
-
-        pointsExchangeService.markAsProcessing(requestId);
-
-        PointsExchangeResponseDto response = pointsExchangeService.executeTransfer(requestId);
-
-        return ApiResponse.success(SuccessCode.OK, response);
+        return ApiResponse.success(SuccessCode.OK, pointsExchangeFacade.executeTransfer(requestId));
     }
 
     // 관리자 환전 대기 목록 (기존 경로 유지)
