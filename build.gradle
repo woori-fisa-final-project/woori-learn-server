@@ -3,8 +3,55 @@ plugins {
     id 'org.springframework.boot' version '3.5.7'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'jacoco'
+    id 'info.solidsoft.pitest' version '1.15.0'
 }
+pitest {
+    pitestVersion = '1.16.0'
+    junit5PluginVersion = '1.2.0'
 
+    // 🔥 실제 테스트 대상 (서비스/도메인/비즈니스 로직)
+    targetClasses = [
+            'dev.woori.wooriLearn.domain.*.*',
+            'dev.woori.wooriLearn.config.jwt.*',
+            'dev.woori.wooriLearn.config.filter.*'
+    ]
+
+    // 🔥 돌연변이 제외 (Controller/Config/Entity 등 의미 없는 대상들)
+    excludedClasses = [
+            '*Application',
+            '*Config',
+            '*Controller',
+            '*Dto',
+            '*Request',
+            '*Response',
+            '*Exception',
+            '*ExceptionHandler',
+            '*Entity',
+            '*Repository',
+            '*Interceptor',
+            '*Adapter'
+    ]
+
+    mutators = ['STRONG']   // 가장 공격적인 돌연변이 생성 → 테스트 품질↑
+
+    threads = 4
+    timestampedReports = false
+    outputFormats = ['HTML']
+
+    // 외부 호출로 테스트 터지는 문제 방지
+    avoidCallsTo = [
+            'java.util.logging',
+            'org.slf4j',
+            'org.apache.logging',
+            'javax.net',
+            'org.springframework.web.client.RestTemplate',
+            'reactor.core.publisher',
+            'org.springframework.data.redis'
+    ]
+
+    // Jacoco와 충돌 방지 → 여기 중요!
+    useClasspathFile = true
+}
 group = 'dev.woori'
 version = '0.0.1-SNAPSHOT'
 description = 'wooriLearn'
