@@ -69,15 +69,8 @@ public class PointsExchangeService {
         }
 
         // 3) 출금 계좌 소유자 검증
-        Account account = accountRepository.findByAccountNumber(dto.accountNum())
-                .orElseThrow(() -> new CommonException(
-                        ErrorCode.ENTITY_NOT_FOUND,
-                        "계좌를 찾을 수 없습니다. accountNum=" + dto.accountNum()
-                ));
+        Account account = getValidateAccount(dto.accountNum(), user.getId());
 
-        if (!account.getUser().getId().equals(user.getId())) {
-            throw new CommonException(ErrorCode.FORBIDDEN, "해당 계좌의 소유자가 아닙니다.");
-        }
         // 선차감
         user.subtractPoints(dto.exchangeAmount());
 
@@ -88,6 +81,7 @@ public class PointsExchangeService {
                         .amount(dto.exchangeAmount())
                         .type(PointsHistoryType.WITHDRAW)
                         .status(PointsStatus.APPLY)
+                        .accountNumber(account.getAccountNumber())
                         .build()
         );
 
@@ -142,14 +136,12 @@ public class PointsExchangeService {
                         "출금 요청을 찾을 수 없습니다. requestId=" + requestId
                 ));
 
+        // 사용자 유효성 검사
         Users user = userRepository.findByIdForUpdate(history.getUser().getId())
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. Id=" + history.getUser().getId()));
 
-        Account account = accountRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new CommonException(
-                        ErrorCode.ENTITY_NOT_FOUND,
-                        "사용자 계좌를 찾을 수 없습니다. userId=" + user.getId()
-                ));
+        // 계좌번호 유효성 검사
+        Account account = getValidateAccount(history.getAccountNumber(), user.getId());
 
         int amount = history.getAmount();
         LocalDateTime now = LocalDateTime.now(clock);
@@ -220,5 +212,21 @@ public class PointsExchangeService {
                         pageRequest
                 )
                 .map(PointsHistoryResponseDto::new);
+    }
+
+    private Account getValidateAccount(String accountNumber, Long userId){
+        // 1. 계좌 조회
+        Account account = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new CommonException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "계좌를 찾을 수 없습니다. accountNum=" + accountNumber
+                ));
+
+        // 2. 소유주 검증
+        if (!account.getUser().getId().equals(userId)) {
+            throw new CommonException(ErrorCode.FORBIDDEN, "해당 계좌의 소유자가 아닙니다.");
+        }
+
+        return account;
     }
 }
