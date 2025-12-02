@@ -102,7 +102,7 @@ public class EdubankapiAccountControllerTest {
     @Test
     @DisplayName("계좌 목록 조회 테스트")
     void testGetAccountList() throws Exception {
-        mockMvc.perform(get("/education/accounts/list", 1L)
+        mockMvc.perform(get("/education/accounts/list")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))

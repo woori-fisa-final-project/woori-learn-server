@@ -30,9 +30,7 @@ spring:
       ttl: ${TEST_REDIS_TTL:10m}
 
   cache:
-    type: redis
-    redis:
-      time-to-live: ${TEST_CACHE_TTL:300000}
+    type: none
 
   env:
     app-key: ${TEST_APP_KEY:test-app-key}
@@ -57,6 +55,9 @@ api:
     read-timeout: ${TEST_API_READ_TIMEOUT:5s}
 
 app:
+  admin:
+    account-number: ${TEST_ADMIN_ACCOUNT_NUMBER:1002889596111}
+
   rate-limit:
     enabled: ${TEST_RATE_LIMIT_ENABLED:false}
     capacity: ${TEST_RATE_LIMIT_CAPACITY:60}
