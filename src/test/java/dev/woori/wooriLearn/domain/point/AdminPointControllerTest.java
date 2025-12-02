@@ -8,6 +8,7 @@ import dev.woori.wooriLearn.domain.account.dto.response.PointsExchangeResponseDt
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
+import dev.woori.wooriLearn.domain.account.service.PointsExchangeFacade;
 import dev.woori.wooriLearn.domain.account.service.PointsDepositService;
 import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
 import dev.woori.wooriLearn.domain.account.service.PointsHistoryService;
@@ -69,6 +70,9 @@ class AdminPointControllerTest {
 
     @MockBean
     PointsHistoryService pointsHistoryService;
+
+    @MockBean
+    PointsExchangeFacade pointsExchangeFacade;
 
     @BeforeEach
     void setUpSecurityContext() {
@@ -132,7 +136,7 @@ class AdminPointControllerTest {
                 .build();
 
         // 2) Mock 동작 설정: 환전 승인 서비스 호출 시 준비한 응답 반환
-        given(pointsExchangeService.approveExchange(eq(1L))).willReturn(resp);
+        given(pointsExchangeFacade.executeTransfer(eq(1L))).willReturn(resp);
 
         // 3) API 호출 및 응답 검증
         mockMvc.perform(put("/admin/points/exchange/approve/{id}", 1L)

@@ -41,9 +41,10 @@ public class AuthServiceTest {
 
         authService = new AuthService(authUserPort, passwordEncoder, encoder, jwtIssuer, jwtValidator, refreshTokenPort);
 
+        // 실패 케이스의 never() 검증과 충돌하지 않도록 암호화 호출 없이 더미 사용자만 저장
         AuthUsers user = AuthUsers.builder()
                 .userId(testUserId)
-                .password(passwordEncoder.encode(testPassword))
+                .password("encodedPw")
                 .role(Role.ROLE_USER)
                 .build();
         authUserPort.save(user);
@@ -51,6 +52,7 @@ public class AuthServiceTest {
 
     @Test
     void testChangePassword() {
+        // 정상 흐름: 현재 비밀번호 일치 → 새 비밀번호로 업데이트
         AuthUsers auth = AuthUsers.builder()
                 .userId("testUser")
                 .password("oldHashedPw")
@@ -78,6 +80,7 @@ public class AuthServiceTest {
 
     @Test
     void testChangePassword_WrongCurrentPassword() {
+        // 실패 흐름: 현재 비밀번호 불일치 → 예외, encode 호출 없음
         AuthUsers auth = AuthUsers.builder()
                 .userId("testUser")
                 .password("oldHashedPw")
@@ -100,6 +103,7 @@ public class AuthServiceTest {
 
     @Test
     void testChangePassword_UserNotFound() {
+        // 실패 흐름: 사용자 미존재 → 예외, matches/encode 호출 없음
         ChangePasswdReqDto req = new ChangePasswdReqDto("currentPw", "newPw");
 
         when(authUserPort.findByUserId("nonExistUser"))

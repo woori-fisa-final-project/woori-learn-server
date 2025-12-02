@@ -7,6 +7,8 @@ import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiTr
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.service.EdubankapiTransferService;
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.edubankapi.entity.TransactionHistory;
+import dev.woori.wooriLearn.domain.user.entity.Users;
+import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -29,15 +31,28 @@ class EdubankapiTransferServiceTest {
     @Mock
     private EdubankapiTransactionHistoryRepository historyRepository;
 
+    @Mock
+    private UserRepository userRepository;
+
     @Spy
     private PasswordEncoder encoder = new BCryptPasswordEncoder();
 
     private EducationalAccount from;
     private EducationalAccount to;
+    private Users user;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+
+        user = Users.builder()
+                .id(1L)
+                .userId("user1")
+                .nickname("u")
+                .points(0)
+                .build();
+
+        when(userRepository.findByUserId("user1")).thenReturn(Optional.of(user));
 
         from = EducationalAccount.builder()
                 .id(1L)
@@ -45,6 +60,7 @@ class EdubankapiTransferServiceTest {
                 .balance(5000)
                 .accountPassword(encoder.encode("1111"))
                 .accountName("출금계좌")
+                .user(user)
                 .build();
 
         to = EducationalAccount.builder()
@@ -53,6 +69,7 @@ class EdubankapiTransferServiceTest {
                 .balance(2000)
                 .accountPassword(encoder.encode("1111"))
                 .accountName("입금계좌")
+                .user(user)
                 .build();
     }
 
@@ -61,11 +78,15 @@ class EdubankapiTransferServiceTest {
         when(accountRepository.findByAccountNumber("1122334455")).thenReturn(Optional.of(from));
         when(accountRepository.findByAccountNumber("5544332211")).thenReturn(Optional.of(to));
 
-        EdubankapiTransferRequestDto req = new EdubankapiTransferRequestDto(
-                "1122334455","5544332211",1000,"1111","생활비","홍길동"
-        );
+        EdubankapiTransferRequestDto req = EdubankapiTransferRequestDto.builder()
+                .fromAccountNumber("1122334455")
+                .toAccountNumber("5544332211")
+                .amount(1000)
+                .accountPassword("1111")
+                .displayName("메모")
+                .build();
 
-        service.transfer(req);
+        service.transfer("user1", req);
 
         assertEquals(4000, from.getBalance());
         assertEquals(3000, to.getBalance());
@@ -76,11 +97,15 @@ class EdubankapiTransferServiceTest {
     void 비밀번호_불일치() {
         when(accountRepository.findByAccountNumber(any())).thenReturn(Optional.of(from));
 
-        EdubankapiTransferRequestDto req = new EdubankapiTransferRequestDto(
-                "1122334455","5544332211",1000,"9999","생활비","홍길동"
-        );
+        EdubankapiTransferRequestDto req = EdubankapiTransferRequestDto.builder()
+                .fromAccountNumber("1122334455")
+                .toAccountNumber("5544332211")
+                .amount(1000)
+                .accountPassword("9999")
+                .displayName("메모")
+                .build();
 
-        assertThrows(CommonException.class, () -> service.transfer(req));
+        assertThrows(CommonException.class, () -> service.transfer("user1", req));
     }
 
     @Test
@@ -89,49 +114,64 @@ class EdubankapiTransferServiceTest {
                 .accountNumber("1122334455")
                 .balance(500)
                 .accountPassword(encoder.encode("1111"))
+                .accountName("출금계좌")
+                .user(user)
                 .build();
 
         when(accountRepository.findByAccountNumber("1122334455")).thenReturn(Optional.of(from));
         when(accountRepository.findByAccountNumber("5544332211")).thenReturn(Optional.of(to));
 
-        EdubankapiTransferRequestDto req = new EdubankapiTransferRequestDto(
-                "1122334455","5544332211",1000,"1111","생활비","홍길동"
-        );
+        EdubankapiTransferRequestDto req = EdubankapiTransferRequestDto.builder()
+                .fromAccountNumber("1122334455")
+                .toAccountNumber("5544332211")
+                .amount(1000)
+                .accountPassword("1111")
+                .displayName("메모")
+                .build();
 
-        assertThrows(CommonException.class, () -> service.transfer(req));
+        assertThrows(CommonException.class, () -> service.transfer("user1", req));
     }
 
     @Test
-    void 금액_0원또는_음수() {
-        EdubankapiTransferRequestDto req = new EdubankapiTransferRequestDto(
-                "1122334455","5544332211",0,"1111","생활비","홍길동"
-        );
+    void 금액_0이하일수() {
+        EdubankapiTransferRequestDto req = EdubankapiTransferRequestDto.builder()
+                .fromAccountNumber("1122334455")
+                .toAccountNumber("5544332211")
+                .amount(0)
+                .accountPassword("1111")
+                .displayName("메모")
+                .build();
 
         when(accountRepository.findByAccountNumber("1122334455")).thenReturn(Optional.of(from));
         when(accountRepository.findByAccountNumber("5544332211")).thenReturn(Optional.of(to));
 
-        assertThrows(CommonException.class, () -> service.transfer(req));
+        assertThrows(CommonException.class, () -> service.transfer("user1", req));
     }
 
     @Test
     void 동일계좌() {
-        EdubankapiTransferRequestDto req = new EdubankapiTransferRequestDto(
-                "1122334455","1122334455",1000,"1111","생활비","홍길동"
-        );
+        EdubankapiTransferRequestDto req = EdubankapiTransferRequestDto.builder()
+                .fromAccountNumber("1122334455")
+                .toAccountNumber("1122334455")
+                .amount(1000)
+                .accountPassword("1111")
+                .displayName("메모")
+                .build();
 
         when(accountRepository.findByAccountNumber("1122334455")).thenReturn(Optional.of(from));
 
-        assertThrows(CommonException.class, () -> service.transfer(req));
+        assertThrows(CommonException.class, () -> service.transfer("user1", req));
     }
 
     @Test
     void reverse_locking_order_case() {
         from = EducationalAccount.builder()
                 .id(1L)
-                .accountNumber("9999999999")   // 여기서 변경
+                .accountNumber("9999999999")   // 락기준변경
                 .balance(5000)
                 .accountPassword(encoder.encode("1111"))
                 .accountName("출금계좌")
+                .user(user)
                 .build();
 
         to = EducationalAccount.builder()
@@ -140,16 +180,21 @@ class EdubankapiTransferServiceTest {
                 .balance(2000)
                 .accountPassword(encoder.encode("1111"))
                 .accountName("입금계좌")
+                .user(user)
                 .build();
 
         when(accountRepository.findByAccountNumber("9999999999")).thenReturn(Optional.of(from));
         when(accountRepository.findByAccountNumber("1111111111")).thenReturn(Optional.of(to));
 
-        EdubankapiTransferRequestDto req = new EdubankapiTransferRequestDto(
-                "9999999999","1111111111",500,"1111","메모","홍길동"
-        );
+        EdubankapiTransferRequestDto req = EdubankapiTransferRequestDto.builder()
+                .fromAccountNumber("9999999999")
+                .toAccountNumber("1111111111")
+                .amount(500)
+                .accountPassword("1111")
+                .displayName("메모")
+                .build();
 
-        service.transfer(req);
+        service.transfer("user1", req);
 
         assertEquals(4500, from.getBalance());
         assertEquals(2500, to.getBalance());

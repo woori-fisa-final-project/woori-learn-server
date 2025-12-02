@@ -32,7 +32,8 @@ pitest {
             '*Adapter'
     ]
 
-    mutators = ['STRONG']   // 가장 공격적인 돌연변이 생성 → 테스트 품질↑
+    // PIT 1.16에서는 'STRONG' 그룹이 제거되어 'STRONGER' 등 지원 그룹으로 지정해야 함
+    mutators = ['STRONGER']   // 가장 공격적인 돌연변이 생성 → 테스트 품질↑
 
     threads = 4
     timestampedReports = false

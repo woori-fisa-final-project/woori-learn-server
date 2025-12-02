@@ -46,8 +46,8 @@ public class LoginTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    private String testUserId = "test";
-    private String testPassword = "1234";
+    private String testUserId = "test1234";
+    private String testPassword = "!qwe1234";
 
     @BeforeEach
     void setup() {
@@ -79,7 +79,7 @@ public class LoginTest {
 
     @Test
     void login_fail_wrongPassword() throws Exception {
-        LoginReqDto loginReqDto = new LoginReqDto(testUserId, "wrongpw");
+        LoginReqDto loginReqDto = new LoginReqDto(testUserId, "wrongpw123!");
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
