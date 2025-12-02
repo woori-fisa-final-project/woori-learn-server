@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        AWS_HOST      = "52.79.70.229"
+        AWS_HOST      = "54.116.2.46"
         DOCKER_IMAGE  = "bae1234/woori-learn-server:latest"
     }
 
@@ -92,9 +92,9 @@ docker run -d --name woori_backend -p 8080:8080 \
     -e CLIENT_BASE_URL="http://${AWS_HOST}:3000" \
     -e SPRING_DATA_REDIS_HOST="172.31.12.253" \
     -e SPRING_DATA_REDIS_PORT="6379" \
-    -e ACCOUNT_EXTERNAL_AUTH_BASE_URL="http://localhost:8081" \
+    -e ACCOUNT_EXTERNAL_AUTH_BASE_URL="http://43.201.222.157:8081" \
     -e ACCOUNT_EXTERNAL_AUTH_REQUEST_PATH="/otp" \
-    -e EXTERNAL_BANK_BASE_URL="http://172.31.12.253:8081" \
+    -e EXTERNAL_BANK_BASE_URL="http://43.201.222.157:8081" \
     -e EXTERNAL_BANK_ACCOUNT_URL="/account" \
     -e spring.env.app-key="YOUR_APP_KEY_123" \
     -e spring.env.secret-key="MY_SECRET_ABC123" \
