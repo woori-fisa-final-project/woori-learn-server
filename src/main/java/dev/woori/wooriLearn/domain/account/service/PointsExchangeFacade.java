@@ -34,7 +34,6 @@ public class PointsExchangeFacade {
             );
            bankRes = accountClient.transfer(bankReq);
         } catch (RestClientException e) {
-            // Processing 상태 유지
             log.error("은행 서버 통신 오류. requestId={}", requestId, e);
             return pointsExchangeService.processFailure(requestId);
         }
