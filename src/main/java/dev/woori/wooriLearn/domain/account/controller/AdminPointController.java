@@ -4,7 +4,6 @@ import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import dev.woori.wooriLearn.config.response.SuccessCode;
 import dev.woori.wooriLearn.domain.account.dto.request.PointsDepositRequestDto;
-import dev.woori.wooriLearn.domain.account.dto.response.PointsExchangeResponseDto;
 import dev.woori.wooriLearn.domain.account.dto.response.PointsHistoryResponseDto;
 import dev.woori.wooriLearn.domain.account.dto.request.PointsUnifiedHistoryRequestDto;
 import dev.woori.wooriLearn.domain.account.service.PointsDepositService;
