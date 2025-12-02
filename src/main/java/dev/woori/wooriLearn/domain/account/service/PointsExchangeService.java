@@ -132,7 +132,7 @@ public class PointsExchangeService {
     public PointsExchangeResponseDto processResult(Long requestId, BankTransferResDto bankRes){
         PointsHistory history = pointsHistoryRepository.findById(requestId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
-        Users user = userRepository.findByUserId(history.getUser().getUserId())
+        Users user = userRepository.findByUserIdForUpdate(history.getUser().getUserId())
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
 
         LocalDateTime now = LocalDateTime.now(clock);
@@ -141,7 +141,7 @@ public class PointsExchangeService {
             history.markSuccess(now);
             return buildResponse(history, user, "정상적으로 처리되었습니다.");
         }  else { // 에러 메시지 return
-            // TODO: 에러 메시지 보고 잔액 부족일 경우에만 자동 환불 처리하기
+            user.addPoints(history.getAmount());
             history.markFailed(PointsFailReason.PROCESSING_ERROR, now);
             return buildResponse(history, user, "처리 중 오류가 발생했습니다.");
         }
@@ -152,10 +152,11 @@ public class PointsExchangeService {
     public PointsExchangeResponseDto processFailure(Long requestId){
         PointsHistory history = pointsHistoryRepository.findById(requestId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
-        Users user = userRepository.findByUserId(history.getUser().getUserId())
+        Users user = userRepository.findByUserIdForUpdate(history.getUser().getUserId())
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND));
 
         LocalDateTime now = LocalDateTime.now(clock);
+        user.addPoints(history.getAmount());
         history.markFailed(PointsFailReason.PROCESSING_ERROR, now);
         return buildResponse(history, user, "은행 서버에서 이체 실패가 발생했습니다.");
     }
