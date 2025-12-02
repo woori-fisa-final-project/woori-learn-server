@@ -16,6 +16,8 @@ import java.util.Optional;
  */
 public interface EdubankapiAccountRepository extends JpaRepository<EducationalAccount, Long> {
 
+    String FIND_BY_ACCOUNT_NUMBER_QUERY = "SELECT e FROM EducationalAccount e JOIN FETCH e.user WHERE e.accountNumber = :accountNumber";
+
     /**
      * 특정 사용자 Id로 계좌 목록 조회
      *
@@ -43,7 +45,7 @@ public interface EdubankapiAccountRepository extends JpaRepository<EducationalAc
      * @return Optional<EducationalAccount> (User 정보 포함)
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT e FROM EducationalAccount e JOIN FETCH e.user WHERE e.accountNumber = :accountNumber")
+    @Query(FIND_BY_ACCOUNT_NUMBER_QUERY)
     Optional<EducationalAccount> findByAccountNumber(@Param("accountNumber") String accountNumber);
 
     /**
@@ -56,7 +58,7 @@ public interface EdubankapiAccountRepository extends JpaRepository<EducationalAc
      * @param accountNumber 계좌번호
      * @return Optional<EducationalAccount> (User 정보 포함)
      */
-    @Query("SELECT e FROM EducationalAccount e JOIN FETCH e.user WHERE e.accountNumber = :accountNumber")
+    @Query(FIND_BY_ACCOUNT_NUMBER_QUERY)
     Optional<EducationalAccount> findByAccountNumberForRead(@Param("accountNumber") String accountNumber);
 
     /**

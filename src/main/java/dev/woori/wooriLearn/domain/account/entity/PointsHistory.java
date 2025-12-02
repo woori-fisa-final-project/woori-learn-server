@@ -25,6 +25,9 @@ public class PointsHistory extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private Users user;
 
+    @Column(name = "account_num")
+    private String accountNumber;
+
     @Column(name = "amount", nullable = false)
     private Integer amount;
 
@@ -42,6 +45,10 @@ public class PointsHistory extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "fail_reason")
     private PointsFailReason failReason;
+
+    public void markProcessing() {
+        this.status = PointsStatus.PROCESSING;
+    }
 
     public void markSuccess(LocalDateTime processedAt) {
         this.status = PointsStatus.SUCCESS;

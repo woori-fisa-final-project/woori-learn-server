@@ -77,10 +77,10 @@ public class SignupTest {
         assertThat(savedUser.getAuthUser()).isEqualTo(savedAuth);
         assertThat(savedUser.getUserId()).isEqualTo("user1");
         assertThat(savedUser.getNickname()).isEqualTo("nickname");
-        assertThat(savedUser.getPoints()).isEqualTo(1000);
+        assertThat(savedUser.getPoints()).isEqualTo(5000);
 
         assertThat(savedHistory.getUser()).isEqualTo(savedUser);
-        assertThat(savedHistory.getAmount()).isEqualTo(1000);
+        assertThat(savedHistory.getAmount()).isEqualTo(5000);
         assertThat(savedHistory.getType()).isEqualTo(PointsHistoryType.DEPOSIT);
         assertThat(savedHistory.getStatus()).isEqualTo(PointsStatus.SUCCESS);
     }
