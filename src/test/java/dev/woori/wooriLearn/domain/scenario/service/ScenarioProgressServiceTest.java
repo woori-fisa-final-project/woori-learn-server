@@ -179,14 +179,15 @@ class ScenarioProgressServiceTest {
         when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of(lastAndStart));
         when(stepRepository.findStartStepOrFail(1L)).thenReturn(lastAndStart);
         when(progressRepository.findByUserAndScenario(user, scenario)).thenReturn(Optional.empty());
-        when(completedRepository.existsByUserAndScenario(user, scenario)).thenReturn(false);
+        when(userRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(user));
+        when(completedRepository.insertIgnore(10L, 1L)).thenReturn(1);
 
         AdvanceResDto res = service.advance(user, 1L, 199L, null);
 
         assertEquals(AdvanceStatus.COMPLETED, res.status());
         // 저장은 됨, 삭제는 안 됨
         verify(progressRepository, atLeastOnce()).save(any(ScenarioProgress.class));
-        verify(completedRepository).save(any());
+        verify(completedRepository).insertIgnore(10L, 1L);
     }
 
     // ---- 진행률/분기 추가 테스트 ----

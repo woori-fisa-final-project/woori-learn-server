@@ -44,10 +44,11 @@ public class AuthServiceTest {
         // 실패 케이스의 never() 검증과 충돌하지 않도록 암호화 호출 없이 더미 사용자만 저장
         AuthUsers user = AuthUsers.builder()
                 .userId(testUserId)
-                .password("encodedPw")
+                .password("hashedPassword1234")  // 미리 인코딩된 값으로 가정
                 .role(Role.ROLE_USER)
                 .build();
         authUserPort.save(user);
+
     }
 
     @Test

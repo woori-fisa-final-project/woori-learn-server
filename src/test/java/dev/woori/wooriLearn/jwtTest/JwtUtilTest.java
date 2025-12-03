@@ -1,14 +1,13 @@
 package dev.woori.wooriLearn.jwtTest;
 
+import dev.woori.wooriLearn.config.exception.CommonException;
+import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.auth.jwt.JwtIssuer;
 import dev.woori.wooriLearn.config.jwt.JwtValidator;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.CredentialsExpiredException;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -60,24 +59,30 @@ public class JwtUtilTest {
     }
 
     @Test
-    @DisplayName("만료된 토큰을 파싱하면 CredentialsExpiredException이 발생한다")
+    @DisplayName("만료된 토큰을 파싱하면 CommonException(TOKEN_EXPIRED)이 발생한다")
     void getUsername_ShouldThrowExpiredJwtException_WhenTokenExpired() {
         // given
         var tokenInfo = jwtIssuer.generateToken("expiredUser", Role.ROLE_USER, -1000L);
 
         // then
         assertThatThrownBy(() -> jwtValidator.parseToken(tokenInfo.token()))
-                .isInstanceOf(CredentialsExpiredException.class);
+                .isInstanceOf(CommonException.class)
+                .hasMessageContaining("토큰이 만료되었습니다")
+                .extracting(ex -> ((CommonException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.TOKEN_EXPIRED);
     }
 
     @Test
-    @DisplayName("잘못된 형식의 토큰을 파싱하면 BadCredentialsException이 발생한다")
+    @DisplayName("잘못된 형식의 토큰을 파싱하면 CommonException(TOKEN_UNAUTHORIZED)이 발생한다")
     void malformedTokenShouldFailValidation() {
         // given
         String malformedToken = "not.a.valid.token";
 
         // when
         assertThatThrownBy(() -> jwtValidator.parseToken(malformedToken))
-                .isInstanceOf(BadCredentialsException.class);
+                .isInstanceOf(CommonException.class)
+                .hasMessageContaining("유효하지 않은 토큰입니다")
+                .extracting(ex -> ((CommonException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.TOKEN_UNAUTHORIZED);
     }
 }
