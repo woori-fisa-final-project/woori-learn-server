@@ -15,6 +15,7 @@ import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -69,6 +70,7 @@ class PointsHistoryServiceTest {
     }
 
     @Test
+    @DisplayName("비관리자 요청은 userId로 사용자 조회 후 필터링하여 조회한다")
     void getUnifiedHistory_userLookupForNonAdmin() {
         when(userRepository.findByUserId("user")).thenReturn(Optional.of(user));
         when(queryRepository.findAllByFilters(any(), any(), any(), any(), any(), any(PageRequest.class)))
@@ -90,6 +92,7 @@ class PointsHistoryServiceTest {
     }
 
     @Test
+    @DisplayName("관리자 요청은 사용자 필터 없이 전체 조회한다")
     void getUnifiedHistory_adminCanSkipUserFilter() {
         when(queryRepository.findAllByFilters(any(), any(), any(), any(), any(), any(PageRequest.class)))
                 .thenReturn(Page.empty());
@@ -110,6 +113,7 @@ class PointsHistoryServiceTest {
     }
 
     @Test
+    @DisplayName("다른 사용자의 기록을 비관리자가 요청하면 FORBIDDEN 예외를 던진다")
     void getUnifiedHistory_nonAdminRequestingOtherUser_forbidden() {
         PointsUnifiedHistoryRequestDto req = new PointsUnifiedHistoryRequestDto(
                 null, null, SearchPeriod.ALL, SortDirection.DESC, HistoryFilter.ALL, 1, 20, 99L);
@@ -119,6 +123,7 @@ class PointsHistoryServiceTest {
     }
 
     @Test
+    @DisplayName("startDate 파싱 실패 시 INVALID_REQUEST 예외를 던진다")
     void getUnifiedHistory_invalidStartDate_throws() {
         PointsUnifiedHistoryRequestDto req = new PointsUnifiedHistoryRequestDto(
                 "invalid-date", null, SearchPeriod.ALL, SortDirection.DESC, HistoryFilter.ALL, 1, 20, null);
@@ -128,6 +133,7 @@ class PointsHistoryServiceTest {
     }
 
     @Test
+    @DisplayName("endDate만 주어지면 한 달 이전을 start로 간주해 조회한다")
     void getUnifiedHistory_onlyEndDate_setsStartFromEndMinusMonth() {
         when(queryRepository.findAllByFilters(any(), any(), any(), any(), any(), any(PageRequest.class)))
                 .thenReturn(Page.empty());

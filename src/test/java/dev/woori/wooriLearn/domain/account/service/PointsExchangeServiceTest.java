@@ -18,6 +18,7 @@ import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -84,6 +85,7 @@ class PointsExchangeServiceTest {
     }
 
     @Test
+    @DisplayName("포인트 출금 신청 성공 시 요청 ID와 잔액을 반환한다")
     void requestExchange_success() {
         PointsExchangeRequestDto dto = new PointsExchangeRequestDto(500, account.getAccountNumber(), "020");
         when(userRepository.findByUserIdForUpdate("user")).thenReturn(Optional.of(user));
@@ -109,6 +111,7 @@ class PointsExchangeServiceTest {
     }
 
     @Test
+    @DisplayName("출금 금액이 0 이하이면 INVALID_REQUEST 예외를 던진다")
     void requestExchange_invalidAmount() {
         PointsExchangeRequestDto dto = new PointsExchangeRequestDto(0, account.getAccountNumber(), "020");
         when(userRepository.findByUserIdForUpdate("user")).thenReturn(Optional.of(user));
@@ -118,6 +121,7 @@ class PointsExchangeServiceTest {
     }
 
     @Test
+    @DisplayName("보유 포인트보다 큰 금액을 출금하면 CONFLICT 예외를 던진다")
     void requestExchange_insufficientPoints() {
         user = Users.builder()
                 .id(1L)
@@ -134,6 +138,7 @@ class PointsExchangeServiceTest {
     }
 
     @Test
+    @DisplayName("계좌를 찾지 못하면 ENTITY_NOT_FOUND 예외를 던진다")
     void requestExchange_accountNotFound() {
         PointsExchangeRequestDto dto = new PointsExchangeRequestDto(100, account.getAccountNumber(), "020");
         when(userRepository.findByUserIdForUpdate("user")).thenReturn(Optional.of(user));
@@ -144,6 +149,7 @@ class PointsExchangeServiceTest {
     }
 
     @Test
+    @DisplayName("다른 사용자의 계좌로 출금 요청 시 FORBIDDEN 예외를 던진다")
     void requestExchange_accountOwnedByOther_throwsForbidden() {
         PointsExchangeRequestDto dto = new PointsExchangeRequestDto(100, account.getAccountNumber(), "020");
         Users another = Users.builder()
@@ -168,6 +174,7 @@ class PointsExchangeServiceTest {
     }
 
     @Test
+    @DisplayName("상태가 APPLY가 아니면 이체 준비에서 CONFLICT 예외를 던진다")
     void prepareTransfer_statusNotApply_throwsConflict() {
         PointsHistory history = PointsHistory.builder()
                 .id(1L)
@@ -183,6 +190,7 @@ class PointsExchangeServiceTest {
     }
 
     @Test
+    @DisplayName("이체 준비 성공 시 상태를 PROCESSING으로 바꾸고 컨텍스트를 반환한다")
     void prepareTransfer_success_marksProcessing() {
         PointsHistory history = PointsHistory.builder()
                 .id(1L)
@@ -203,6 +211,7 @@ class PointsExchangeServiceTest {
     }
 
     @Test
+    @DisplayName("계좌 이체 성공 응답을 받으면 상태를 SUCCESS로 변경한다")
     void processResult_successResponse_marksSuccess() {
         PointsHistory history = PointsHistory.builder()
                 .id(1L)
@@ -224,6 +233,7 @@ class PointsExchangeServiceTest {
     }
 
     @Test
+    @DisplayName("이체 실패 시 상태를 FAILED로 두고 포인트를 환불한다")
     void processResult_failure_refundsPoints() {
         user = Users.builder()
                 .id(1L)
@@ -251,6 +261,7 @@ class PointsExchangeServiceTest {
     }
 
     @Test
+    @DisplayName("processFailure 호출 시 실패 상태로 전환하고 환불한다")
     void processFailure_marksFailedAndRefunds() {
         user = Users.builder()
                 .id(1L)
@@ -278,6 +289,7 @@ class PointsExchangeServiceTest {
     }
 
     @Test
+    @DisplayName("대기 중인 출금 목록 조회는 기본 페이지 정보로 조회한다")
     void getPendingWithdrawals_usesDefaultPaging() {
         when(pointsHistoryRepository.findByTypeAndStatus(eq(PointsHistoryType.WITHDRAW), eq(PointsStatus.APPLY), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of()));
@@ -291,6 +303,7 @@ class PointsExchangeServiceTest {
     }
 
     @Test
+    @DisplayName("대기 중 출금 목록 조회 시 전달한 페이지 번호/크기를 사용한다")
     void getPendingWithdrawals_customPaging() {
         when(pointsHistoryRepository.findByTypeAndStatus(eq(PointsHistoryType.WITHDRAW), eq(PointsStatus.APPLY), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of()));

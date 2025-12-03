@@ -17,6 +17,7 @@ import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -68,6 +69,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("계좌 등록 URL을 받아 세션을 저장하고 응답을 반환한다")
     void getAccountUrl_success_savesSessionAndReturnsUrl() {
         ExternalAccountUrlResDto response = ExternalAccountUrlResDto.builder()
                 .code("200")
@@ -87,6 +89,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("TID가 비어 있으면 EXTERNAL_API_FAIL 예외를 던진다")
     void getAccountUrl_tidNull_throwsExternalApiFail() {
         ExternalAccountUrlResDto response = ExternalAccountUrlResDto.builder()
                 .code("200")
@@ -101,6 +104,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("계좌 URL 요청이 401이면 UNAUTHORIZED 예외를 던진다")
     void getAccountUrl_http401_throwsUnauthorized() {
         HttpClientErrorException exception = HttpClientErrorException.create(
                 HttpStatus.UNAUTHORIZED, "unauth", HttpHeaders.EMPTY, new byte[0], StandardCharsets.UTF_8);
@@ -111,6 +115,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("기타 4xx 응답이면 EXTERNAL_API_FAIL 예외를 던진다")
     void getAccountUrl_other4xx_throwsExternalApiFail() {
         HttpClientErrorException exception = HttpClientErrorException.create(
                 HttpStatus.BAD_REQUEST, "bad", HttpHeaders.EMPTY, new byte[0], StandardCharsets.UTF_8);
@@ -121,6 +126,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("RestClientException 발생 시 EXTERNAL_API_FAIL 예외를 던진다")
     void getAccountUrl_restClientException_throwsExternalApiFail() {
         when(accountClient.getAccountUrl()).thenThrow(new RestClientException("fail"));
 
@@ -129,6 +135,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("계좌 등록 성공 시 계좌를 저장하고 세션을 삭제한다")
     void registerAccount_success_savesAccountAndDeletesSession() {
         AccountSession session = AccountSession.builder().userId(USER_ID).build();
         when(redis.get(TID)).thenReturn(session);
@@ -163,6 +170,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("등록 세션이 없으면 FORBIDDEN 예외를 던진다")
     void registerAccount_noSession_throwsForbidden() {
         when(redis.get(TID)).thenReturn(null);
 
@@ -173,6 +181,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("세션의 userId가 다르면 FORBIDDEN 예외를 던진다")
     void registerAccount_userMismatch_throwsForbidden() {
         when(redis.get(TID)).thenReturn(AccountSession.builder().userId("another").build());
 
@@ -183,6 +192,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("사용자를 찾지 못하면 ENTITY_NOT_FOUND 예외를 던진다")
     void registerAccount_userNotFound_throwsEntityNotFound() {
         when(redis.get(TID)).thenReturn(AccountSession.builder().userId(USER_ID).build());
         when(userRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
@@ -193,6 +203,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("은행 API 응답 data가 없으면 EXTERNAL_API_FAIL 예외를 던진다")
     void registerAccount_nullData_throwsExternalApiFail() {
         when(redis.get(TID)).thenReturn(AccountSession.builder().userId(USER_ID).build());
         when(userRepository.findByUserId(USER_ID)).thenReturn(Optional.of(dummyUser()));
@@ -206,6 +217,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("계좌 저장 중 무결성 예외가 나면 CONFLICT 예외를 던진다")
     void registerAccount_dataIntegrityViolation_throwsConflict() {
         when(redis.get(TID)).thenReturn(AccountSession.builder().userId(USER_ID).build());
         when(userRepository.findByUserId(USER_ID)).thenReturn(Optional.of(dummyUser()));
@@ -219,6 +231,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("계좌 등록 시 401 응답이면 UNAUTHORIZED 예외를 던진다")
     void registerAccount_http401_throwsUnauthorized() {
         when(redis.get(TID)).thenReturn(AccountSession.builder().userId(USER_ID).build());
         when(userRepository.findByUserId(USER_ID)).thenReturn(Optional.of(dummyUser()));
@@ -232,6 +245,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("계좌 등록 시 404 응답이면 ENTITY_NOT_FOUND 예외를 던진다")
     void registerAccount_http404_throwsEntityNotFound() {
         when(redis.get(TID)).thenReturn(AccountSession.builder().userId(USER_ID).build());
         when(userRepository.findByUserId(USER_ID)).thenReturn(Optional.of(dummyUser()));
@@ -245,6 +259,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("계좌 등록 시 400 응답이면 INVALID_REQUEST 예외를 던진다")
     void registerAccount_http400_throwsInvalidRequest() {
         when(redis.get(TID)).thenReturn(AccountSession.builder().userId(USER_ID).build());
         when(userRepository.findByUserId(USER_ID)).thenReturn(Optional.of(dummyUser()));
@@ -258,6 +273,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("기타 4xx 응답이면 EXTERNAL_API_FAIL 예외를 던진다")
     void registerAccount_other4xx_throwsExternalApiFail() {
         when(redis.get(TID)).thenReturn(AccountSession.builder().userId(USER_ID).build());
         when(userRepository.findByUserId(USER_ID)).thenReturn(Optional.of(dummyUser()));
@@ -271,6 +287,7 @@ class AccountServiceTest {
     }
 
     @Test
+    @DisplayName("계좌 조회 RestClientException 발생 시 EXTERNAL_API_FAIL 예외를 던진다")
     void registerAccount_restClientException_throwsExternalApiFail() {
         when(redis.get(TID)).thenReturn(AccountSession.builder().userId(USER_ID).build());
         when(userRepository.findByUserId(USER_ID)).thenReturn(Optional.of(dummyUser()));

@@ -11,6 +11,7 @@ import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
 import dev.woori.wooriLearn.domain.auth.port.RefreshTokenPort;
 import dev.woori.wooriLearn.domain.auth.service.AuthService;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.DisplayName;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
@@ -52,6 +53,7 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("현재 비밀번호가 일치하면 새 비밀번호로 변경한다")
     void testChangePassword() {
         // 정상 흐름: 현재 비밀번호 일치 → 새 비밀번호로 업데이트
         AuthUsers auth = AuthUsers.builder()
@@ -80,6 +82,7 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("현재 비밀번호가 틀리면 CommonException을 던진다")
     void testChangePassword_WrongCurrentPassword() {
         // 실패 흐름: 현재 비밀번호 불일치 → 예외, encode 호출 없음
         AuthUsers auth = AuthUsers.builder()
@@ -103,6 +106,7 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("사용자를 찾지 못하면 CommonException을 던진다")
     void testChangePassword_UserNotFound() {
         // 실패 흐름: 사용자 미존재 → 예외, matches/encode 호출 없음
         ChangePasswdReqDto req = new ChangePasswdReqDto("currentPw", "newPw");

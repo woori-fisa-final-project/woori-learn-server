@@ -36,6 +36,8 @@ import static org.mockito.Mockito.*;
 
 class UserServiceTest {
 
+    // ASCII-only comment to avoid any encoding surprises in tests.
+
     @InjectMocks
     private UserService userService;
 

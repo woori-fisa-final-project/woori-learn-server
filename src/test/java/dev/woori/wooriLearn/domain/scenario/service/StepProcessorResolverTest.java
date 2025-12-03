@@ -6,6 +6,7 @@ import dev.woori.wooriLearn.domain.scenario.entity.ScenarioStep;
 import dev.woori.wooriLearn.domain.scenario.model.StepType;
 import dev.woori.wooriLearn.domain.scenario.service.processor.*;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -48,24 +49,28 @@ class StepProcessorResolverTest {
     }
 
     @Test
+    @DisplayName("선택지가 있으면 ChoiceStepProcessor를 우선 선택한다")
     void resolve_choiceHasPriority() {
         StepProcessor result = resolver.resolve(ctx(true, false, false, false));
         assertEquals(choiceStepProcessor, result);
     }
 
     @Test
+    @DisplayName("배드 브랜치 플래그가 있으면 BadBranchStepProcessor를 반환한다")
     void resolve_badBranchSecond() {
         StepProcessor result = resolver.resolve(ctx(false, true, false, false));
         assertEquals(badBranchStepProcessor, result);
     }
 
     @Test
+    @DisplayName("퀴즈가 있으면 QuizGateStepProcessor를 반환한다")
     void resolve_quizThird() {
         StepProcessor result = resolver.resolve(ctx(false, false, false, true));
         assertEquals(quizGateStepProcessor, result);
     }
 
     @Test
+    @DisplayName("기본적으로 NormalStepProcessor를 반환한다")
     void resolve_defaultNormal() {
         StepProcessor result = resolver.resolve(ctx(false, false, false, false));
         assertEquals(normalStepProcessor, result);

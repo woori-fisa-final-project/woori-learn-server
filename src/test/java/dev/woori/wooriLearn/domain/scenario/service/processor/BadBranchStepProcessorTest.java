@@ -10,6 +10,7 @@ import dev.woori.wooriLearn.domain.scenario.model.AdvanceStatus;
 import dev.woori.wooriLearn.domain.scenario.service.ScenarioProgressService;
 import dev.woori.wooriLearn.domain.scenario.service.StepContext;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -60,6 +61,7 @@ class BadBranchStepProcessorTest {
     }
 
     @Test
+    @DisplayName("배드 엔딩이면 앵커 스텝으로 이동하고 진행률을 동결한다")
     void badEndingUsesAnchorAndFreezes() {
         ScenarioStep anchor = ScenarioStep.builder().id(20L).scenario(scenario).content("{}").build();
         current = ScenarioStep.builder()
@@ -76,6 +78,7 @@ class BadBranchStepProcessorTest {
     }
 
     @Test
+    @DisplayName("앵커가 없으면 시작 스텝으로 이동하여 BAD_ENDING을 반환한다")
     void badEndingWithoutAnchor_usesStartOrThrows() {
         StepContext context = ctx(true, null);
         AdvanceResDto res = processor.process(context, service);
@@ -84,6 +87,7 @@ class BadBranchStepProcessorTest {
     }
 
     @Test
+    @DisplayName("배드 브랜치에서 다음 스텝이 없으면 BAD_ENDING을 반환한다")
     void badBranchWithoutNext_returnsBadEnding() {
         StepContext context = ctx(false, null);
         AdvanceResDto res = processor.process(context, service);
@@ -92,6 +96,7 @@ class BadBranchStepProcessorTest {
     }
 
     @Test
+    @DisplayName("배드 브랜치에서 다음 스텝이 있으면 ADVANCED_FROZEN을 반환한다")
     void badBranchWithNext_advancesFrozen() {
         ScenarioStep next = ScenarioStep.builder().id(30L).scenario(scenario).content("{}").build();
         current = ScenarioStep.builder()
@@ -107,6 +112,7 @@ class BadBranchStepProcessorTest {
     }
 
     @Test
+    @DisplayName("앵커 ID를 찾을 수 없으면 INTERNAL_SERVER_ERROR 예외를 던진다")
     void missingAnchorThrows() {
         StepContext context = new StepContext(null, scenario, current, null, Map.of(current.getId(), current), progress, true, true, 0L, false);
         CommonException ex = assertThrows(CommonException.class, () -> processor.process(context, service));

@@ -15,6 +15,7 @@ import dev.woori.wooriLearn.domain.scenario.service.processor.StepProcessorResol
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -70,6 +71,7 @@ class ScenarioProgressServiceHelpersTest {
     }
 
     @Test
+    @DisplayName("정상 경로가 아니거나 인덱스가 없으면 진행률을 계산하지 않는다")
     void computeProgressRateOnNormalPath_returnsNullWhenInvalid() {
         assertNull(service.computeProgressRateOnNormalPath(null, step));
         assertNull(service.computeProgressRateOnNormalPath(scenario, null));
@@ -86,12 +88,14 @@ class ScenarioProgressServiceHelpersTest {
     }
 
     @Test
+    @DisplayName("정상 경로 스텝이면 전체 스텝 수 대비 진행률을 계산한다")
     void computeProgressRateOnNormalPath_calculatesAndNormalizes() {
         Double pct = service.computeProgressRateOnNormalPath(scenario, step);
         assertEquals(50.0, pct);
     }
 
     @Test
+    @DisplayName("monotonicRate는 진행률이 감소하지 않도록 보정한다")
     void monotonicRate_neverDecreases() {
         double higher = service.monotonicRate(progress, 30.0);
         assertEquals(30.0, higher);
@@ -100,6 +104,7 @@ class ScenarioProgressServiceHelpersTest {
     }
 
     @Test
+    @DisplayName("스텝이 비어 있으면 INTERNAL_SERVER_ERROR 예외를 던진다")
     void preloadStepsAsMap_throwsWhenEmpty() {
         when(stepRepository.findByScenarioIdWithNextStep(1L)).thenReturn(List.of());
         CommonException ex = assertThrows(CommonException.class, () -> service.preloadStepsAsMap(1L));
@@ -107,6 +112,7 @@ class ScenarioProgressServiceHelpersTest {
     }
 
     @Test
+    @DisplayName("강제 동결 옵션이면 기존 진행률을 유지한다")
     void updateProgressAndSave_forceFreezeKeepsExistingRate() {
         when(progressRepository.save(any())).thenReturn(progress);
         double rate = service.updateProgressAndSave(progress, step, scenario, true);
@@ -115,6 +121,7 @@ class ScenarioProgressServiceHelpersTest {
     }
 
     @Test
+    @DisplayName("정상 경로 진행 시 진행률을 재계산하고 저장한다")
     void updateProgressAndSave_normalPathComputesRate() {
         ScenarioStep s = ScenarioStep.builder()
                 .id(step.getId())
@@ -139,18 +146,21 @@ class ScenarioProgressServiceHelpersTest {
     }
 
     @Test
+    @DisplayName("완료 이력을 처음 저장하면 true를 반환한다")
     void ensureCompletedOnce_returnsTrueOnFirstInsert() {
         when(completedRepository.saveAndFlush(any())).thenReturn(ScenarioCompleted.builder().build());
         assertTrue(service.ensureCompletedOnce(user, scenario));
     }
 
     @Test
+    @DisplayName("완료 이력이 중복되면 false를 반환한다")
     void ensureCompletedOnce_returnsFalseOnDuplicate() {
         when(completedRepository.saveAndFlush(any())).thenThrow(new org.springframework.dao.DataIntegrityViolationException("dup"));
         assertFalse(service.ensureCompletedOnce(user, scenario));
     }
 
     @Test
+    @DisplayName("insertIgnore 결과에 따라 중복 여부를 판단한다")
     void ensureCompletedOnceInsertIgnore_usesRepositoryInsertIgnore() {
         when(completedRepository.insertIgnore(7L, 1L)).thenReturn(1);
         assertTrue(service.ensureCompletedOnceInsertIgnore(user, scenario));
@@ -159,6 +169,7 @@ class ScenarioProgressServiceHelpersTest {
     }
 
     @Test
+    @DisplayName("퀴즈와 선택지가 동시에 있으면 CONFLICT 예외를 던진다")
     void loadStepRuntime_conflictWhenQuizAndChoices() {
         ScenarioStep start = ScenarioStep.builder()
                 .id(9L)
@@ -186,6 +197,7 @@ class ScenarioProgressServiceHelpersTest {
     }
 
     @Test
+    @DisplayName("시나리오 완료 시 보상을 1회만 지급하고 진행률을 리셋한다")
     void handleScenarioCompletion_rewardsOnceAndResetsProgress() {
         ScenarioStep start = ScenarioStep.builder()
                 .id(9L)

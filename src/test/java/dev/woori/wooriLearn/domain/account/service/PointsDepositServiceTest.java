@@ -12,6 +12,7 @@ import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -58,6 +59,7 @@ class PointsDepositServiceTest {
     }
 
     @Test
+    @DisplayName("포인트 충전 성공 시 히스토리를 저장하고 잔액을 반환한다")
     void depositPoints_success() {
         PointsDepositRequestDto dto = new PointsDepositRequestDto(100, "reason");
         when(userRepository.findByUserIdForUpdate("user")).thenReturn(Optional.of(user));
@@ -86,6 +88,7 @@ class PointsDepositServiceTest {
     }
 
     @Test
+    @DisplayName("사용자를 찾지 못하면 ENTITY_NOT_FOUND 예외를 던진다")
     void depositPoints_userNotFound() {
         when(userRepository.findByUserIdForUpdate("missing")).thenReturn(Optional.empty());
 
@@ -95,6 +98,7 @@ class PointsDepositServiceTest {
     }
 
     @Test
+    @DisplayName("충전 금액이 0 이하이면 INVALID_REQUEST 예외를 던진다")
     void depositPoints_invalidAmount_throwsCommonException() {
         when(userRepository.findByUserIdForUpdate("user")).thenReturn(Optional.of(user));
 

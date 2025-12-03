@@ -11,6 +11,7 @@ import dev.woori.wooriLearn.domain.user.dto.UserInfoResDto;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import dev.woori.wooriLearn.domain.user.service.UserService;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -53,6 +54,7 @@ class UserServiceTest {
 
 
     @Test
+    @DisplayName("userId로 사용자와 계좌를 조회해 사용자 정보를 반환한다")
     void testGetUserInfo() {
         Users user = Users.builder()
                 .id(1L)
@@ -79,6 +81,7 @@ class UserServiceTest {
 
 
     @Test
+    @DisplayName("닉네임을 변경하면 사용자와 교육계좌에 모두 반영된다")
     void testChangeNickname() {
         Users user = Users.builder()
                 .id(1L)

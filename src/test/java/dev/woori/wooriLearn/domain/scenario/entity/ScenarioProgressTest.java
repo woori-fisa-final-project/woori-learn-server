@@ -5,6 +5,7 @@ import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.user.entity.Users;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -45,6 +46,7 @@ class ScenarioProgressTest {
     }
 
     @Test
+    @DisplayName("다음 스텝으로 이동하면 step이 교체된다")
     void moveToStep_updatesStep() {
         ScenarioStep current = step(1L);
         ScenarioStep next = step(2L);
@@ -62,6 +64,7 @@ class ScenarioProgressTest {
     }
 
     @Test
+    @DisplayName("이동 시 진행률을 함께 전달하면 진행률도 갱신된다")
     void moveToStep_withRate_updatesRateAndStep() {
         ScenarioStep current = step(1L);
         ScenarioStep next = step(2L);
@@ -80,6 +83,7 @@ class ScenarioProgressTest {
     }
 
     @Test
+    @DisplayName("다음 스텝이 null이면 INTERNAL_SERVER_ERROR 예외를 던진다")
     void moveToStep_null_throwsInternalServerError() {
         ScenarioProgress progress = ScenarioProgress.builder()
                 .id(7L)
@@ -94,6 +98,7 @@ class ScenarioProgressTest {
     }
 
     @Test
+    @DisplayName("진행률이 0 미만이면 INVALID_REQUEST 예외를 던진다")
     void moveToStep_invalidRateLow_throwsInvalidRequest() {
         ScenarioProgress progress = ScenarioProgress.builder()
                 .id(8L)
@@ -108,6 +113,7 @@ class ScenarioProgressTest {
     }
 
     @Test
+    @DisplayName("진행률이 100 초과이면 INVALID_REQUEST 예외를 던진다")
     void moveToStep_invalidRateHigh_throwsInvalidRequest() {
         ScenarioProgress progress = ScenarioProgress.builder()
                 .id(9L)

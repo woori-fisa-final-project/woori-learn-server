@@ -5,6 +5,7 @@ import dev.woori.wooriLearn.config.exception.ErrorCode;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -23,6 +24,7 @@ class JwtValidatorTest {
     }
 
     @Test
+    @DisplayName("유효한 토큰을 JwtInfo로 파싱한다")
     void parseToken_success() {
         String token = Jwts.builder()
                 .setSubject("user1")
@@ -37,6 +39,7 @@ class JwtValidatorTest {
     }
 
     @Test
+    @DisplayName("만료된 토큰이면 TOKEN_EXPIRED 예외를 던진다")
     void parseToken_expiredThrows() {
         String token = Jwts.builder()
                 .setSubject("user1")
@@ -50,6 +53,7 @@ class JwtValidatorTest {
     }
 
     @Test
+    @DisplayName("손상된 토큰이면 TOKEN_UNAUTHORIZED 예외를 던진다")
     void parseToken_invalidThrowsUnauthorized() {
         CommonException ex = assertThrows(CommonException.class, () -> validator().parseToken("invalid.token.here"));
         assertEquals(ErrorCode.TOKEN_UNAUTHORIZED, ex.getErrorCode());

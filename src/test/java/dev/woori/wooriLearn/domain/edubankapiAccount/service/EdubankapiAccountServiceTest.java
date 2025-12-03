@@ -10,6 +10,7 @@ import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiAc
 import dev.woori.wooriLearn.domain.edubankapi.eduaccount.repository.EdubankapiTransactionHistoryRepository;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
 
@@ -47,6 +48,7 @@ class EdubankapiAccountServiceTest {
          * ----------------------------------------------------------
          */
         @Test
+        @DisplayName("사용자 계좌 목록을 조회해 DTO 리스트로 반환한다")
         void testGetAccountByUsername_Success() {
                 // Mock User 객체 생성
                 dev.woori.wooriLearn.domain.user.entity.Users mockUser = dev.woori.wooriLearn.domain.user.entity.Users
@@ -99,6 +101,7 @@ class EdubankapiAccountServiceTest {
          * ----------------------------------------------------------
          */
         @Test
+        @DisplayName("사용자를 찾지 못하면 CommonException을 던진다")
         void testGetAccountByUsername_UserNotFound() {
                 // Mock 설정: 사용자를 찾을 수 없음
                 when(userRepository.findByUserId("nonexistent"))
@@ -119,6 +122,7 @@ class EdubankapiAccountServiceTest {
          * ----------------------------------------------------------
          */
         @Test
+        @DisplayName("기간 미지정 시 기본 1개월 거래내역을 조회한다")
         void testGetTransactions_Default1Month() {
                 // 소유권 검증 mock
                 when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
@@ -150,6 +154,7 @@ class EdubankapiAccountServiceTest {
          * ----------------------------------------------------------
          */
         @Test
+        @DisplayName("직접 입력한 기간(start/end)으로 거래내역을 조회한다")
         void testGetTransactions_DateRangeDirect() {
                 // 소유권 검증 mock
                 when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
@@ -185,6 +190,7 @@ class EdubankapiAccountServiceTest {
          * ----------------------------------------------------------
          */
         @Test
+        @DisplayName("기간 코드 3M이면 3개월 치 거래를 조회한다")
         void testGetTransactions_Period3M() {
                 // 소유권 검증 mock
                 when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
@@ -205,6 +211,7 @@ class EdubankapiAccountServiceTest {
          * ----------------------------------------------------------
          */
         @Test
+        @DisplayName("필터가 DEPOSIT이면 입금 내역만 반환한다")
         void testGetTransactions_FilterDeposit() {
                 // 소유권 검증 mock
                 when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
@@ -229,6 +236,7 @@ class EdubankapiAccountServiceTest {
          * ----------------------------------------------------------
          */
         @Test
+        @DisplayName("필터가 WITHDRAW이면 출금 내역만 반환한다")
         void testGetTransactions_FilterWithdraw() {
                 // 소유권 검증 mock
                 when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
@@ -253,6 +261,7 @@ class EdubankapiAccountServiceTest {
          * ----------------------------------------------------------
          */
         @Test
+        @DisplayName("지원하지 않는 기간 코드는 IllegalArgumentException을 던진다")
         void testGetTransactions_InvalidPeriod_Throws() {
                 // 소유권 검증 mock
                 when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
@@ -268,6 +277,7 @@ class EdubankapiAccountServiceTest {
          * ----------------------------------------------------------
          */
         @Test
+        @DisplayName("거래내역은 최대 30건까지 반환한다")
         void testGetTransactions_Limit30() {
                 // 소유권 검증 mock
                 when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
@@ -293,6 +303,7 @@ class EdubankapiAccountServiceTest {
          * ----------------------------------------------------------
          */
         @Test
+        @DisplayName("계좌가 사용자 소유가 아니면 FORBIDDEN 예외를 던진다")
         void testGetTransactions_Unauthorized_Forbidden() {
                 // 소유권 검증 실패 mock
                 when(accountRepository.existsByIdAndUser_UserId(1L, TEST_USERNAME))
@@ -312,6 +323,7 @@ class EdubankapiAccountServiceTest {
          * ----------------------------------------------------------
          */
         @Test
+        @DisplayName("accountId가 null이면 CommonException을 던진다")
         void testGetTransactions_NullAccountId_Throws() {
                 CommonException exception = assertThrows(CommonException.class,
                                 () -> service.getTransactionList(TEST_USERNAME, null, "1M", null, null, "ALL"));

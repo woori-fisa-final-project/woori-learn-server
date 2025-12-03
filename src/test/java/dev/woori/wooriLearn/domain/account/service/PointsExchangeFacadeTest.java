@@ -5,6 +5,7 @@ import dev.woori.wooriLearn.domain.account.dto.external.request.BankTransferReqD
 import dev.woori.wooriLearn.domain.account.dto.external.response.BankTransferResDto;
 import dev.woori.wooriLearn.domain.account.dto.response.PointsExchangeResponseDto;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -34,6 +35,7 @@ class PointsExchangeFacadeTest {
     }
 
     @Test
+    @DisplayName("이체 준비 후 은행 API 성공 시 결과를 처리하고 요청을 완료한다")
     void executeTransfer_successfulBankCall() {
         ExchangeProcessContext ctx = ExchangeProcessContext.builder()
                 .requestId(1L)
@@ -58,6 +60,7 @@ class PointsExchangeFacadeTest {
     }
 
     @Test
+    @DisplayName("은행 API 실패 시 processFailure로 상태를 실패로 전환한다")
     void executeTransfer_bankFailure_callsProcessFailure() {
         ExchangeProcessContext ctx = ExchangeProcessContext.builder()
                 .requestId(2L)

@@ -4,6 +4,7 @@ import dev.woori.wooriLearn.domain.scenario.model.StepType;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ class ScenarioEntitiesTest {
     }
 
     @Test
+    @DisplayName("시나리오와 스텝 빌더가 필드를 올바르게 채운다")
     void scenarioAndStep_buildersPopulateFields() {
         Scenario scenario = Scenario.builder()
                 .id(10L)
@@ -61,6 +63,7 @@ class ScenarioEntitiesTest {
     }
 
     @Test
+    @DisplayName("ScenarioCompleted에 사용자와 시나리오가 설정된다")
     void scenarioCompleted_setsUserAndScenario() {
         Scenario scenario = Scenario.builder()
                 .id(11L)

@@ -8,6 +8,7 @@ import dev.woori.wooriLearn.domain.scenario.model.AdvanceStatus;
 import dev.woori.wooriLearn.domain.scenario.service.ScenarioProgressService;
 import dev.woori.wooriLearn.domain.scenario.service.StepContext;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -52,6 +53,7 @@ class NormalStepProcessorTest {
     }
 
     @Test
+    @DisplayName("다음 스텝이 없으면 시나리오 완료 처리를 호출한다")
     void noNextStep_callsCompletion() {
         AdvanceResDto expected = new AdvanceResDto(AdvanceStatus.COMPLETED, null, null);
         when(service.handleScenarioCompletion(any())).thenReturn(expected);
@@ -61,6 +63,7 @@ class NormalStepProcessorTest {
     }
 
     @Test
+    @DisplayName("다음 스텝이 있으면 진행률을 갱신하고 ADVANCED를 반환한다")
     void nextStep_advancesAndMaps() {
         ScenarioStep next = ScenarioStep.builder().id(20L).scenario(scenario).content("{}").build();
         when(service.mapStep(next)).thenReturn(null);

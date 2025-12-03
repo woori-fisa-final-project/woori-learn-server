@@ -10,6 +10,7 @@ import dev.woori.wooriLearn.domain.scenario.model.AdvanceStatus;
 import dev.woori.wooriLearn.domain.scenario.service.ScenarioProgressService;
 import dev.woori.wooriLearn.domain.scenario.service.StepContext;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -59,6 +60,7 @@ class QuizGateStepProcessorTest {
     }
 
     @Test
+    @DisplayName("퀴즈가 없으면 NormalStepProcessor로 위임한다")
     void noQuizDelegatesToNormal() {
         ScenarioStep noQuiz = ScenarioStep.builder()
                 .id(step.getId())
@@ -74,6 +76,7 @@ class QuizGateStepProcessorTest {
     }
 
     @Test
+    @DisplayName("정답 미입력 시 QUIZ_REQUIRED로 응답하고 진행률을 동결한다")
     void quizAnswerNull_requiresAnswerAndFreezes() {
         QuizResDto quizDto = new QuizResDto(quiz.getId(), quiz.getQuestion(), java.util.List.of("1"));
         when(service.mapQuiz(quiz)).thenReturn(quizDto);
@@ -86,6 +89,7 @@ class QuizGateStepProcessorTest {
     }
 
     @Test
+    @DisplayName("퀴즈 오답이면 QUIZ_WRONG 상태를 반환한다")
     void quizAnswerWrong_marksWrong() {
         QuizResDto quizDto = new QuizResDto(quiz.getId(), quiz.getQuestion(), java.util.List.of("1"));
         when(service.mapQuiz(quiz)).thenReturn(quizDto);
@@ -97,6 +101,7 @@ class QuizGateStepProcessorTest {
     }
 
     @Test
+    @DisplayName("퀴즈 정답이면 NormalStepProcessor로 진행한다")
     void quizAnswerCorrect_delegatesToNormal() {
         AdvanceResDto expected = new AdvanceResDto(AdvanceStatus.ADVANCED, null, null);
         when(normalStepProcessor.process(any(), eq(service))).thenReturn(expected);

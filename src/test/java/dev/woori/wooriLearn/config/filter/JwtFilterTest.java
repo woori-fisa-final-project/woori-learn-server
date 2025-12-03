@@ -8,6 +8,7 @@ import dev.woori.wooriLearn.config.jwt.JwtValidator;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -35,6 +36,7 @@ class JwtFilterTest {
     }
 
     @Test
+    @DisplayName("정상 토큰이면 인증 정보를 세팅하고 체인을 계속 실행한다")
     void validToken_setsAuthenticationAndContinuesChain() throws ServletException, IOException {
         MockHttpServletRequest req = new MockHttpServletRequest();
         MockHttpServletResponse res = new MockHttpServletResponse();
@@ -52,6 +54,7 @@ class JwtFilterTest {
     }
 
     @Test
+    @DisplayName("토큰 파싱 실패 시 체인을 중단하고 에러 응답을 작성한다")
     void invalidToken_writesErrorResponse() throws ServletException, IOException {
         MockHttpServletRequest req = new MockHttpServletRequest();
         MockHttpServletResponse res = new MockHttpServletResponse();

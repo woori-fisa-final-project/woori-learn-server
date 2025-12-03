@@ -8,6 +8,7 @@ import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
 import dev.woori.wooriLearn.domain.auth.port.RefreshTokenPort;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -63,6 +64,7 @@ public class LoginTest {
     }
 
     @Test
+    @DisplayName("정상 로그인 시 토큰과 리프레시 쿠키를 발급한다")
     void login_success() throws Exception {
         LoginReqDto loginReqDto = new LoginReqDto(testUserId, testPassword);
 
@@ -81,6 +83,7 @@ public class LoginTest {
     }
 
     @Test
+    @DisplayName("잘못된 비밀번호로 로그인하면 401을 반환한다")
     void login_fail_wrongPassword() throws Exception {
 
         LoginReqDto loginReqDto = new LoginReqDto(testUserId, "wrong1234!");
@@ -94,6 +97,7 @@ public class LoginTest {
     }
 
     @Test
+    @DisplayName("리프레시 토큰으로 새 액세스 토큰을 발급한다")
     void refresh_success() throws Exception {
         // 1. 로그인 후 쿠키 획득
         LoginReqDto loginReqDto = new LoginReqDto(testUserId, testPassword);
@@ -125,12 +129,14 @@ public class LoginTest {
     }
 
     @Test
+    @DisplayName("리프레시 쿠키가 없으면 400을 반환한다")
     void refresh_fail_noCookie() throws Exception {
         mockMvc.perform(post("/auth/refresh"))
                 .andExpect(status().isBadRequest()); // 혹은 컨트롤러에서 처리한 401/400
     }
 
     @Test
+    @DisplayName("DB에 없는 리프레시 토큰이면 4xx로 응답한다")
     void refresh_fail_tokenNotInDB() throws Exception {
         // 쿠키만 만들어서 DB에는 없음
         Cookie fakeCookie = new Cookie("refreshToken", "fake.token.value");
@@ -141,6 +147,7 @@ public class LoginTest {
     }
 
     @Test
+    @DisplayName("쿠키의 리프레시 토큰이 저장된 값과 다르면 401을 반환한다")
     void refresh_fail_tokenMismatch() throws Exception {
         // 1. 로그인 후 쿠키 획득
         LoginReqDto loginReqDto = new LoginReqDto(testUserId, testPassword);
@@ -167,6 +174,7 @@ public class LoginTest {
     }
 
     @Test
+    @DisplayName("로그아웃 시 리프레시 쿠키를 제거하고 토큰을 삭제한다")
     void logout_success() throws Exception {
         LoginReqDto loginReqDto = new LoginReqDto(testUserId, testPassword);
         MvcResult loginResult = mockMvc.perform(post("/auth/login")
@@ -190,6 +198,7 @@ public class LoginTest {
     }
 
     @Test
+    @DisplayName("잘못된 액세스 토큰으로 로그아웃하면 401을 반환한다")
     void logout_fail_invalidToken() throws Exception {
         mockMvc.perform(post("/auth/logout")
                         .header("Authorization", "Bearer invalid.token"))
