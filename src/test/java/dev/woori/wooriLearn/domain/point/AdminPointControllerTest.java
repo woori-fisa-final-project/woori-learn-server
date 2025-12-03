@@ -77,9 +77,6 @@ class AdminPointControllerTest {
     @MockitoBean
     PointsHistoryService pointsHistoryService;
 
-    @MockBean
-    PointsExchangeFacade pointsExchangeFacade;
-
     @BeforeEach
     void setUpSecurityContext() {
         // 테스트 시작마다 관리자 권한 인증을 컨텍스트에 주입

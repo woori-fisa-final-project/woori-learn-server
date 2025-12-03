@@ -9,14 +9,14 @@ pitest {
     pitestVersion = '1.16.0'
     junit5PluginVersion = '1.2.0'
 
-    // 🔥 실제 테스트 대상 (서비스/도메인/비즈니스 로직)
+    //  실제 테스트 대상 (서비스/도메인/비즈니스 로직)
     targetClasses = [
             'dev.woori.wooriLearn.domain.*.*',
             'dev.woori.wooriLearn.config.jwt.*',
             'dev.woori.wooriLearn.config.filter.*'
     ]
 
-    // 🔥 돌연변이 제외 (Controller/Config/Entity 등 의미 없는 대상들)
+    // 돌연변이 제외 (Controller/Config/Entity 등 의미 없는 대상들)
     excludedClasses = [
             '*Application',
             '*Config',
@@ -26,10 +26,15 @@ pitest {
             '*Response',
             '*Exception',
             '*ExceptionHandler',
-            '*Entity',
+            '*entity*',
             '*Repository',
             '*Interceptor',
-            '*Adapter'
+            '*Adapter',
+            '*cache*'
+//            'dev.woori.wooriLearn.domain.scenario.entity.*',
+//            'dev.woori.wooriLearn.domain.account.entity.*',
+//            'dev.woori.wooriLearn.domain.edubankapi.autopayment.entity',
+//            'dev.woori.wooriLearn.domain.user.entity.*'
     ]
 
     // PIT 1.16에서는 'STRONG' 그룹이 제거되어 'STRONGER' 등 지원 그룹으로 지정해야 함
