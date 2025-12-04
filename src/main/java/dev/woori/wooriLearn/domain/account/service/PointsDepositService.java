@@ -13,6 +13,7 @@ import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.CacheManager;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ public class PointsDepositService {
 
     private final UserRepository userRepository;
     private final PointsHistoryRepository pointsHistoryRepository;
+    private final CacheManager cacheManager;
     private static final String DEFAULT_DEPOSIT_MESSAGE = "포인트 적립 완료";
 
     /**
@@ -47,6 +49,10 @@ public class PointsDepositService {
                         .status(PointsStatus.SUCCESS)
                         .build()
         );
+
+        // Evict user info cache after points change
+        var userInfoCache = cacheManager.getCache("userInfo");
+        if (userInfoCache != null) userInfoCache.evict(user.getUserId());
 
         // 4) 응답 DTO 구성 및 반환
         return PointsDepositResponseDto.builder()

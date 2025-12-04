@@ -19,6 +19,8 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Redis 캐시 설정
@@ -88,8 +90,15 @@ public class RedisConfig {
                         )
                 );
 
+        // Per-cache TTL overrides
+        Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
+        cacheConfigs.put("scenarioDoc", cacheConfig.entryTtl(Duration.ofMinutes(60)));
+        cacheConfigs.put("pointsHistory", cacheConfig.entryTtl(Duration.ofSeconds(30)));
+        cacheConfigs.put("userInfo", cacheConfig.entryTtl(Duration.ofMinutes(5)));
+
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(cacheConfig)
+                .withInitialCacheConfigurations(cacheConfigs)
                 .build();
     }
 }

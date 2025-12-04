@@ -20,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.CacheManager;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -33,6 +34,7 @@ public class PointsExchangeService {
     private final PointsHistoryRepository pointsHistoryRepository;
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
+    private final CacheManager cacheManager;
 
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 200;
@@ -79,6 +81,12 @@ public class PointsExchangeService {
                         .accountNumber(account.getAccountNumber())
                         .build()
         );
+
+        // Evict user info cache after points subtraction
+        {
+            var cache = cacheManager.getCache("userInfo");
+            if (cache != null) cache.evict(username);
+        }
 
         // 5) 응답 DTO 구성
         return PointsExchangeResponseDto.builder()
@@ -140,10 +148,19 @@ public class PointsExchangeService {
 
         if (bankRes != null && bankRes.code() == 200) {
             history.markSuccess(now);
+            // Evict cache to ensure fresh balance on next read
+            {
+                var cache = cacheManager.getCache("userInfo");
+                if (cache != null) cache.evict(user.getUserId());
+            }
             return buildResponse(history, user, "정상적으로 처리되었습니다.");
         }  else { // 에러 메시지 return
             user.addPoints(history.getAmount());
             history.markFailed(PointsFailReason.PROCESSING_ERROR, now);
+            {
+                var cache = cacheManager.getCache("userInfo");
+                if (cache != null) cache.evict(user.getUserId());
+            }
             return buildResponse(history, user, "처리 중 오류가 발생했습니다.");
         }
     }
@@ -160,6 +177,10 @@ public class PointsExchangeService {
         LocalDateTime now = LocalDateTime.now(clock);
         user.addPoints(history.getAmount());
         history.markFailed(PointsFailReason.PROCESSING_ERROR, now);
+        {
+            var cache = cacheManager.getCache("userInfo");
+            if (cache != null) cache.evict(user.getUserId());
+        }
         return buildResponse(history, user, "은행 서버에서 이체 실패가 발생했습니다.");
     }
 

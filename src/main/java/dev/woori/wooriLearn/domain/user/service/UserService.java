@@ -20,6 +20,7 @@ import dev.woori.wooriLearn.domain.user.dto.UserInfoResDto;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import dev.woori.wooriLearn.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ public class UserService {
     private final PointsHistoryRepository pointsHistoryRepository;
     private final EdubankapiAccountRepository eduAccountRepository;
     private final AccountRepository accountRepository;
+    private final dev.woori.wooriLearn.domain.user.cache.UserCacheManager userCacheManager;
 
     private static final int NEW_MEMBER_REGISTRATION_POINTS = 5000;
     private static final int INITIAL_ACCOUNT_BALANCE = 5000000;
@@ -110,20 +112,10 @@ public class UserService {
     }
 
     public UserInfoResDto getUserInfo(String userId){
-        Users user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
-
-        String accountNumber = accountRepository.findByUserId(user.getId())
-                .map(Account::getAccountNumber)
-                .orElse("");
-
-        return UserInfoResDto.builder()
-                .nickname(user.getNickname())
-                .point(user.getPoints())
-                .account(accountNumber)
-                .build();
+        return userCacheManager.getUserInfoCached(userId);
     }
 
+    @CacheEvict(value = "userInfo", key = "#userId")
     public void changeNickname(String userId, ChangeNicknameReqDto request){
         Users user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));
