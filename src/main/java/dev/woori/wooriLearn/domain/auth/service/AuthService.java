@@ -80,6 +80,11 @@ public class AuthService {
         }
 
         // 검증 끝나면 access token/refresh token 생성해서 return
+        long remainingSeconds = token.getExpiration().getEpochSecond() - Instant.now().getEpochSecond();
+        if (remainingSeconds > 600) {
+            String newAccess = jwtIssuer.generateAccessToken(username, role);
+            return new TokenWithCookie(newAccess, role.name(), CookieUtil.createRefreshTokenCookie(refreshToken, remainingSeconds));
+        }
         return generateAndSaveToken(username, role, token);
     }
 
