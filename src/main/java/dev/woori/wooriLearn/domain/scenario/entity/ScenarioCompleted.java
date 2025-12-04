@@ -2,19 +2,20 @@ package dev.woori.wooriLearn.domain.scenario.entity;
 
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "scenario_completed")
+@Table(name = "scenario_completed",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "scenario_id"}))
+@Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class ScenarioCompleted {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

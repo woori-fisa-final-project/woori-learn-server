@@ -3,11 +3,9 @@ package dev.woori.wooriLearn.domain.account.entity;
 import dev.woori.wooriLearn.config.BaseEntity;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
+@Getter
 @Entity
 @Table(name = "account")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -22,7 +20,7 @@ public class Account extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private Users user;
 
-    @Column(name = "account_number", nullable = false, length = 20)
+    @Column(name = "account_number", nullable = false, length = 20, unique = true)
     private String accountNumber;
 
     @Column(name = "bank_code", nullable = false, length = 10)

@@ -3,9 +3,11 @@ package dev.woori.wooriLearn.config.exception;
 import dev.woori.wooriLearn.config.response.ApiResponse;
 import dev.woori.wooriLearn.config.response.BaseResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -21,7 +23,7 @@ public class GlobalExceptionHandler {
                 request.getMethod(),
                 request.getRequestURI(),
                 ex.getMessage());
-        return ApiResponse.failure(ex.getErrorCode());
+        return ApiResponse.failure(ex.getErrorCode(), ex.getMessage());
     }
 
     // @Valid를 통한 유효성 검증 실패 시
@@ -30,6 +32,22 @@ public class GlobalExceptionHandler {
         String errorMessage = ex.getBindingResult().getAllErrors().get(0).getDefaultMessage();
         log.warn("[ValidationException] {} {} - {}", request.getMethod(), request.getRequestURI(), errorMessage);
         return ApiResponse.failure(ErrorCode.INVALID_REQUEST, errorMessage);
+    }
+
+    // 메소드 파라미터 유효성 검증 실패 시 (@Positive, @NotNull 등)
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<BaseResponse<?>> handleConstraintViolationException(ConstraintViolationException ex, HttpServletRequest request) {
+        String errorMessage = ex.getConstraintViolations().iterator().next().getMessage();
+        log.warn("[ConstraintViolationException] {} {} - {}", request.getMethod(), request.getRequestURI(), errorMessage);
+        return ApiResponse.failure(ErrorCode.INVALID_REQUEST, errorMessage);
+    }
+
+    // 쿠키 미포함 요청에 대한 에러 처리
+    @ExceptionHandler(MissingRequestCookieException.class)
+    public ResponseEntity<BaseResponse<?>> handleMissingCookie(MissingRequestCookieException ex) {
+        String message = String.format("필수 쿠키 '%s'가 요청에 포함되지 않았습니다.", ex.getCookieName());
+        log.warn("[MissingRequestCookieException] {}", message);
+        return ApiResponse.failure(ErrorCode.INVALID_REQUEST, message);
     }
 
     // 그 외의 에러
@@ -41,7 +59,7 @@ public class GlobalExceptionHandler {
                 request.getMethod(),
                 request.getRequestURI(),
                 ex.getMessage());
-        return ApiResponse.failure(errorCode, ex.getMessage());
+        return ApiResponse.failure(errorCode);
     }
 
 }

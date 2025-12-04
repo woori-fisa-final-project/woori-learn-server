@@ -2,7 +2,6 @@ package dev.woori.wooriLearn.config.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.woori.wooriLearn.config.exception.ErrorCode;
-import dev.woori.wooriLearn.config.response.BaseResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,6 +14,8 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -32,6 +33,10 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setCharacterEncoding("utf-8");
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
 
-        response.getWriter().write(objectMapper.writeValueAsString(BaseResponse.of(ErrorCode.UNAUTHORIZED)));
+        Map<String, Object> body = new HashMap<>();
+        body.put("code", ErrorCode.TOKEN_UNAUTHORIZED.getCode());
+        body.put("message", ErrorCode.TOKEN_UNAUTHORIZED.getMessage());
+
+        response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 }

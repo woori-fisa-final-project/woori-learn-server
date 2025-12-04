@@ -2,39 +2,107 @@ package dev.woori.wooriLearn.domain.edubankapi.entity;
 
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
+/**
+ *  [Entity] 교육용 계좌 테이블
+ *
+ *  시나리오용 계좌 데이터를 관리하는 엔티티
+ *  - 한 명의 사용자는 여러 개의 교육용 계좌를 가질 수 있음. (1:N)
+ *  - 한 개의 계좌에는 여러 거래내역이 존재함(1:N)
+ */
+
 @Entity
+@Getter
 @Table(name = "educational_account")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
 public class EducationalAccount {
+
+    // 기본키 자동 증가
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "account_number", nullable = false, length = 20)
+    // 계좌번호
+    @Column(name = "account_number", nullable = false, length = 20, unique = true)
     private String accountNumber;
 
+    // 계좌 종류
+    @Column(name = "account_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private AccountType accountType;
+
+    // 현재 잔액
     @Column(nullable = false)
     private Integer balance;
 
-    @Column(name = "account_password", nullable = false, length = 4)
+    // 계좌 비밀번호
+    @Column(name = "account_password", nullable = false, length = 60)
     private String accountPassword;
 
+    // 계좌명
     @Column(name = "account_name", nullable = false, length = 30)
     private String accountName;
 
+    /*
+        사용자 엔티티와 연관관계
+        - 한명의 사용자가 여러 개의 계좌를 소유할 수 있음 1:N
+        - EducationalAccount는 N 쪽으로 user_id 외래키를 가짐
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private Users user;
 
+    /*
+        거래내역와 엔티티와 연관관계
+        - 한 계좌에는 여러 거래내역이 존재할 수 있음 1:N
+     */
     @OneToMany(mappedBy = "account", fetch = FetchType.LAZY)
     private List<TransactionHistory> transactionHistories;
+
+    // 신규 계좌 생성용 메서드
+    public static EducationalAccount create(
+            AccountType accountType,
+            String accountNumber,
+            Integer balance,
+            String accountPassword,
+            String accountName,
+            Users user
+    ) {
+        return EducationalAccount.builder()
+                .accountType(accountType)
+                .accountNumber(accountNumber)
+                .balance(balance)
+                .accountPassword(accountPassword)
+                .accountName(accountName)
+                .user(user)
+                .build();
+    }
+
+    // 계좌명 변경용 메서드
+    public void updateAccountName(String newName) {
+        this.accountName = newName;
+    }
+
+    // 행위 메서드 추가
+    public void withdraw(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("출금 금액은 0보다 커야 합니다.");
+        }
+        if (this.balance < amount) {
+            throw new IllegalStateException("잔액이 부족합니다.");
+        }
+        this.balance -= amount;
+    }
+
+    public void deposit(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("입금 금액은 0보다 커야 합니다.");
+        }
+        this.balance += amount;
+    }
 }
