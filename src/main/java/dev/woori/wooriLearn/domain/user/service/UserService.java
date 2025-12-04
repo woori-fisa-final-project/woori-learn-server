@@ -115,7 +115,7 @@ public class UserService {
         return userCacheManager.getUserInfoCached(userId);
     }
 
-    @CacheEvict(value = "userInfo", key = "#userId")
+    @CacheEvict(value = "userInfo_v2", key = "#userId")
     public void changeNickname(String userId, ChangeNicknameReqDto request){
         Users user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new CommonException(ErrorCode.ENTITY_NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + userId));

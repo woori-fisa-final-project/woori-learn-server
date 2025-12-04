@@ -51,7 +51,7 @@ public class PointsDepositService {
         );
 
         // Evict user info cache after points change
-        var userInfoCache = cacheManager.getCache("userInfo");
+        var userInfoCache = cacheManager.getCache("userInfo_v2");
         if (userInfoCache != null) userInfoCache.evict(user.getUserId());
 
         // 4) 응답 DTO 구성 및 반환

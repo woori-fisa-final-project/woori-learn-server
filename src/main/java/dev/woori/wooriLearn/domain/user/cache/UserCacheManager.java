@@ -18,7 +18,7 @@ public class UserCacheManager {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
 
-    @Cacheable(value = "userInfo", key = "#userId", sync = true)
+    @Cacheable(value = "userInfo_v2", key = "#userId", sync = true)
     public UserInfoResDto getUserInfoCached(String userId) {
         Users user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new CommonException(
@@ -37,4 +37,3 @@ public class UserCacheManager {
                 .build();
     }
 }
-

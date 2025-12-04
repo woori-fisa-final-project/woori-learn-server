@@ -86,7 +86,7 @@ public class RedisConfig {
                 )
                 .serializeValuesWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(
-                                new GenericJackson2JsonRedisSerializer(objectMapper)
+                                new GenericJackson2JsonRedisSerializer()
                         )
                 );
 
@@ -95,6 +95,7 @@ public class RedisConfig {
         cacheConfigs.put("scenarioDoc", cacheConfig.entryTtl(Duration.ofMinutes(60)));
         cacheConfigs.put("pointsHistory", cacheConfig.entryTtl(Duration.ofSeconds(30)));
         cacheConfigs.put("userInfo", cacheConfig.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigs.put("userInfo_v2", cacheConfig.entryTtl(Duration.ofMinutes(5)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(cacheConfig)
