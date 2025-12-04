@@ -3,51 +3,67 @@ spring:
     name: wooriLearn-test
 
   datasource:
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: sa
-    password:
     driver-class-name: org.h2.Driver
+    url: ${TEST_DATASOURCE_URL:jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${TEST_DATASOURCE_USERNAME:sa}
+    password: ${TEST_DATASOURCE_PASSWORD:}
 
   jpa:
-    show-sql: false
+    show-sql: true
     hibernate:
       ddl-auto: create-drop
     properties:
       hibernate:
-        format_sql: false
+        format_sql: true
+        show_sql: true
         dialect: org.hibernate.dialect.H2Dialect
 
-  h2:
-    console:
-      enabled: false
-
   jwt:
-    secret: test-secret-key-for-unit-testing-purposes-only-minimum-256-bits
-    access-expiration: 3600000
-    refresh-expiration: 31536000000
+    secret: ${TEST_JWT_SECRET:dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0aW5nLXB1cnBvc2VzLW9ubHktdGhpcy1pcy1sb25nLWVub3VnaC1mb3ItaG1hYy1zaGEyNTY=}
+    access-expiration: ${TEST_JWT_ACCESS_EXPIRATION:3600000}
+    refresh-expiration: ${TEST_JWT_REFRESH_EXPIRATION:31536000000}
+
+  data:
+    redis:
+      host: ${TEST_REDIS_HOST:localhost}
+      port: ${TEST_REDIS_PORT:6379}
+      ttl: ${TEST_REDIS_TTL:10m}
 
   cache:
-    type: none  # 테스트에서는 캐싱 비활성화
+    type: none
+
+  env:
+    app-key: ${TEST_APP_KEY:test-app-key}
+    secret-key: ${TEST_SECRET_KEY:test-secret-key}
 
 client:
-  base-url: http://localhost:3000
-
-app:
-  rate-limit:
-    enabled: false  # 테스트에서는 Rate Limiting 비활성화
-  auto-payment:
-    amount-limit-enabled: false  # 테스트에서는 금액 한도 검증 비활성화
+  base-url: ${TEST_CLIENT_BASE_URL:http://localhost:3000}
 
 account:
   external-auth:
-    base-url: http://localhost:9999
-    request-path: /otp
-    connect-timeout-ms: 1000
-    read-timeout-ms: 2000
+    base-url: ${TEST_ACCOUNT_EXTERNAL_AUTH_BASE_URL:http://localhost:8080}
+    request-path: ${TEST_ACCOUNT_EXTERNAL_AUTH_REQUEST_PATH:/otp}
 
-logging:
-  level:
-    root: WARN
-    dev.woori.wooriLearn: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+external:
+  bank:
+    base-url: ${TEST_EXTERNAL_BANK_BASE_URL:http://localhost:8081}
+    account-url: ${TEST_EXTERNAL_BANK_ACCOUNT_URL:/account}
+
+api:
+  client:
+    connect-timeout: ${TEST_API_CONNECT_TIMEOUT:5s}
+    read-timeout: ${TEST_API_READ_TIMEOUT:5s}
+
+app:
+  admin:
+    account-number: ${TEST_ADMIN_ACCOUNT_NUMBER:1002889596111}
+
+  rate-limit:
+    enabled: ${TEST_RATE_LIMIT_ENABLED:false}
+    capacity: ${TEST_RATE_LIMIT_CAPACITY:60}
+    refill-tokens: ${TEST_RATE_LIMIT_REFILL_TOKENS:60}
+    refill-duration-minutes: ${TEST_RATE_LIMIT_REFILL_DURATION:1}
+
+  auto-payment:
+    max-amount: ${TEST_AUTO_PAYMENT_MAX_AMOUNT:5000000}
+    amount-limit-enabled: ${TEST_AUTO_PAYMENT_AMOUNT_LIMIT_ENABLED:true}

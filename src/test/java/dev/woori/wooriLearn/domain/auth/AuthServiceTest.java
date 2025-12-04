@@ -11,6 +11,7 @@ import dev.woori.wooriLearn.domain.auth.port.AuthUserPort;
 import dev.woori.wooriLearn.domain.auth.port.RefreshTokenPort;
 import dev.woori.wooriLearn.domain.auth.service.AuthService;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.DisplayName;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
@@ -41,16 +42,20 @@ public class AuthServiceTest {
 
         authService = new AuthService(authUserPort, passwordEncoder, encoder, jwtIssuer, jwtValidator, refreshTokenPort);
 
+        // 실패 케이스의 never() 검증과 충돌하지 않도록 암호화 호출 없이 더미 사용자만 저장
         AuthUsers user = AuthUsers.builder()
                 .userId(testUserId)
-                .password(passwordEncoder.encode(testPassword))
+                .password("hashedPassword1234")  // 미리 인코딩된 값으로 가정
                 .role(Role.ROLE_USER)
                 .build();
         authUserPort.save(user);
+
     }
 
     @Test
+    @DisplayName("현재 비밀번호가 일치하면 새 비밀번호로 변경한다")
     void testChangePassword() {
+        // 정상 흐름: 현재 비밀번호 일치 → 새 비밀번호로 업데이트
         AuthUsers auth = AuthUsers.builder()
                 .userId("testUser")
                 .password("oldHashedPw")
@@ -77,7 +82,9 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("현재 비밀번호가 틀리면 CommonException을 던진다")
     void testChangePassword_WrongCurrentPassword() {
+        // 실패 흐름: 현재 비밀번호 불일치 → 예외, encode 호출 없음
         AuthUsers auth = AuthUsers.builder()
                 .userId("testUser")
                 .password("oldHashedPw")
@@ -99,7 +106,9 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("사용자를 찾지 못하면 CommonException을 던진다")
     void testChangePassword_UserNotFound() {
+        // 실패 흐름: 사용자 미존재 → 예외, matches/encode 호출 없음
         ChangePasswdReqDto req = new ChangePasswdReqDto("currentPw", "newPw");
 
         when(authUserPort.findByUserId("nonExistUser"))

@@ -4,6 +4,7 @@ import dev.woori.wooriLearn.domain.auth.entity.AuthUsers;
 import dev.woori.wooriLearn.domain.auth.entity.Role;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment;
 import dev.woori.wooriLearn.domain.edubankapi.autopayment.entity.AutoPayment.AutoPaymentStatus;
+import dev.woori.wooriLearn.domain.edubankapi.entity.AccountType;
 import dev.woori.wooriLearn.domain.edubankapi.entity.EducationalAccount;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,6 +59,7 @@ class AutoPaymentRepositoryTest {
                 .accountNumber("123456789")
                 .accountPassword("encodedPassword")
                 .accountName("김테스트")
+                .accountType(AccountType.SAVINGS)
                 .balance(100000)
                 .user(testUser)
                 .build();

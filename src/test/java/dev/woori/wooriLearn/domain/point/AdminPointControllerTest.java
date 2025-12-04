@@ -8,8 +8,10 @@ import dev.woori.wooriLearn.domain.account.dto.response.PointsExchangeResponseDt
 import dev.woori.wooriLearn.domain.account.entity.PointsHistory;
 import dev.woori.wooriLearn.domain.account.entity.PointsHistoryType;
 import dev.woori.wooriLearn.domain.account.entity.PointsStatus;
+import dev.woori.wooriLearn.domain.account.service.PointsExchangeFacade;
 import dev.woori.wooriLearn.domain.account.service.PointsDepositService;
 import dev.woori.wooriLearn.domain.account.service.PointsExchangeService;
+import dev.woori.wooriLearn.domain.account.service.PointsExchangeFacade;
 import dev.woori.wooriLearn.domain.account.service.PointsHistoryService;
 import dev.woori.wooriLearn.domain.user.entity.Users;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,11 +20,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -53,6 +56,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
  */
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
+@ActiveProfiles("test")
 class AdminPointControllerTest {
 
     @Autowired
@@ -61,13 +65,16 @@ class AdminPointControllerTest {
     @Autowired
     ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     PointsDepositService pointsDepositService;
 
-    @MockBean
+    @MockitoBean
     PointsExchangeService pointsExchangeService;
 
-    @MockBean
+    @MockitoBean
+    PointsExchangeFacade pointsExchangeFacade;
+
+    @MockitoBean
     PointsHistoryService pointsHistoryService;
 
     @BeforeEach
@@ -132,7 +139,7 @@ class AdminPointControllerTest {
                 .build();
 
         // 2) Mock 동작 설정: 환전 승인 서비스 호출 시 준비한 응답 반환
-        given(pointsExchangeService.approveExchange(eq(1L))).willReturn(resp);
+        given(pointsExchangeFacade.executeTransfer(eq(1L))).willReturn(resp);
 
         // 3) API 호출 및 응답 검증
         mockMvc.perform(put("/admin/points/exchange/approve/{id}", 1L)
