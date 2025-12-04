@@ -80,7 +80,7 @@ public class AuthService {
         }
 
         // 검증 끝나면 access token/refresh token 생성해서 return
-        return generateAndSaveToken(username, role);
+        return generateAndSaveToken(username, role, token);
     }
 
     /**
@@ -128,6 +128,31 @@ public class AuthService {
                         .token(encoder.encode(refreshToken))
                         .expiration(refreshTokenExpiration)
                         .build());
+        refreshTokenRepository.save(token);
+
+        long maxAgeSeconds = refreshTokenExpiration.getEpochSecond() - Instant.now().getEpochSecond();
+        return new TokenWithCookie(accessToken, role.name(), CookieUtil.createRefreshTokenCookie(refreshToken, maxAgeSeconds));
+    }
+
+    public TokenWithCookie generateAndSaveToken(String username, Role role, RefreshToken existing){
+        String accessToken = jwtIssuer.generateAccessToken(username, role);
+        var refreshTokenInfo = jwtIssuer.generateRefreshToken(username, role);
+        String refreshToken = refreshTokenInfo.token();
+        Instant refreshTokenExpiration = refreshTokenInfo.expiration();
+
+        RefreshToken token = existing != null
+                ? existing
+                : refreshTokenRepository.findByUsername(username).orElse(null);
+
+        if (token != null) {
+            token.updateToken(encoder.encode(refreshToken), refreshTokenExpiration);
+        } else {
+            token = RefreshToken.builder()
+                    .username(username)
+                    .token(encoder.encode(refreshToken))
+                    .expiration(refreshTokenExpiration)
+                    .build();
+        }
         refreshTokenRepository.save(token);
 
         long maxAgeSeconds = refreshTokenExpiration.getEpochSecond() - Instant.now().getEpochSecond();

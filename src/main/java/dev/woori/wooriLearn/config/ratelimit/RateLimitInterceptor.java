@@ -22,6 +22,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.time.Duration;
+import java.util.Set;
 
 /**
  * API 호출 Rate Limiting 인터셉터
@@ -48,6 +49,11 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     private static final String RATE_LIMIT_KEY_PREFIX = "rate_limit:";
 
+    private static final Set<String> EXCLUDED_PATHS = Set.of(
+            "/auth/refresh",
+            "/users/me"
+    );
+
     /**
      * BucketConfiguration을 필드에 캐싱하여 매번 생성하는 비용 절감
      */
@@ -72,6 +78,11 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        // Exclude selected paths from rate limiting
+        String uri = request.getRequestURI();
+        if (EXCLUDED_PATHS.contains(uri)) {
+            return true;
+        }
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String key;
 

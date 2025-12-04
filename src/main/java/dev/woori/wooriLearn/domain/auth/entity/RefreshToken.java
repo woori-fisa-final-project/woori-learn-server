@@ -6,6 +6,9 @@ import lombok.*;
 import java.time.Instant;
 
 @Entity
+@Table(indexes = {
+        @Index(name = "idx_refresh_username", columnList = "username")
+})
 @Builder
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
