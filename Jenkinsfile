@@ -89,7 +89,7 @@ docker run -d --name woori_backend -p 8080:8080 \
     -e SPRING_DATASOURCE_USERNAME="${DB_USER}" \
     -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
     -e JWT_SECRET="${JWT_SECRET}" \
-    -e CLIENT_BASE_URL="http://woorilearn.site" \
+    -e CLIENT_BASE_URL="https://woorilearn.site" \
     -e SPRING_DATA_REDIS_HOST="172.31.2.246" \
     -e SPRING_DATA_REDIS_PORT="6379" \
     -e ACCOUNT_EXTERNAL_AUTH_BASE_URL="http://43.201.222.157:8081" \
